@@ -53,11 +53,12 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         }
         try {
             const headers = getCFHeaders(settings.email, settings.apiKey);
-            // 1. Plan & Total Licenses
             const subRes = await fetch(`https://api.cloudflare.com/client/v4/accounts/${settings.accountId}/subscriptions`, { headers });
             const subData: any = await subRes.json();
+            if (!subData.success) {
+                return c.json({ success: false, error: subData.errors?.[0]?.message || 'Cloudflare API error' }, { status: 401 });
+            }
             const ztSub = subData.result?.find((s: any) => s.public_name?.includes('Zero Trust'));
-            // 2. Used Licenses
             const usersRes = await fetch(`https://api.cloudflare.com/client/v4/accounts/${settings.accountId}/access/users?per_page=1`, { headers });
             const usersData: any = await usersRes.json();
             const dlp = subData.result?.some((s: any) => s.component_values?.some((c: any) => c.name === 'dlp' && c.value > 0)) ? 'VAR' : 'YOK';
@@ -122,11 +123,6 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
             return c.json({ success: false, error: 'Cloudflare credentials not configured' }, { status: 400 });
         }
         try {
-            const headers = getCFHeaders(settings.email, settings.apiKey);
-            // Mocking real data aggregation for Phase 6 logic
-            // In a real production environment, we would fetch:
-            // 1. GET /accounts/{id}/gateway/app_types (to find AI apps)
-            // 2. GET /accounts/{id}/gateway/logging/dns (to find shadow usage)
             const baseReport = {
                 id: `rep_${Date.now()}`,
                 date: new Date().toISOString().split('T')[0],
@@ -169,9 +165,13 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
             const aiResponse = await chatHandler.processMessage(prompt, []);
             let aiInsights;
             try {
-                const jsonStr = aiResponse.content.replace(/```json|```/g, '').trim();
+                // Robust parsing for AI output that might include markdown or extra text
+                const content = aiResponse.content;
+                const jsonMatch = content.match(/\{[\s\S]*\}/);
+                const jsonStr = jsonMatch ? jsonMatch[0] : content;
                 aiInsights = JSON.parse(jsonStr);
             } catch (e) {
+                console.error('AI Parsing Error:', e);
                 aiInsights = {
                     summary: "AI analysis completed. Security posture is stable but requires monitoring of unapproved AI tools.",
                     recommendations: [
@@ -189,6 +189,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
             });
             return c.json({ success: true, data: finalReport });
         } catch (error) {
+            console.error('Assessment Error:', error);
             return c.json({ success: false, error: 'Failed to generate report' }, { status: 500 });
         }
     });
