@@ -1,93 +1,37 @@
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
-import { produce } from 'immer';
-/** Recursive DeepPartial utility to allow nested updates */
-export type DeepPartial<T> = T extends object ? {
-  [P in keyof T]?: DeepPartial<T[P]>;
-} : T;
-export interface CloudflareContact {
-  name: string;
-  role: string;
-  email: string;
-  team: string;
-}
-export interface CustomerContact {
-  customerName: string;
-  name: string;
-  role: string;
-  email: string;
-}
+import { persist } from 'zustand/middleware';
 export interface Settings {
   accountId: string;
   email: string;
   apiKey: string;
-  cloudflareContact: CloudflareContact;
-  customerContact: CustomerContact;
+  contactName: string;
+  contactEmail: string;
 }
 interface AppState {
   isAuthenticated: boolean;
-  username: string | null;
   settings: Settings;
-  _hasHydrated: boolean;
-  setAuthenticated: (val: boolean, username: string) => void;
-  updateSettings: (settings: DeepPartial<Settings>) => void;
-  setHasHydrated: (state: boolean) => void;
+  setAuthenticated: (val: boolean) => void;
+  updateSettings: (settings: Partial<Settings>) => void;
   logout: () => void;
 }
-const DEFAULT_SETTINGS: Settings = {
-  accountId: '',
-  email: '',
-  apiKey: '',
-  cloudflareContact: {
-    name: 'Cloudflare Admin',
-    role: 'Solutions Engineer',
-    email: 'se@cloudflare.com',
-    team: 'Security Specialist',
-  },
-  customerContact: {
-    customerName: 'Enterprise Corp',
-    name: 'Security Director',
-    role: 'CISO',
-    email: 'ciso@enterprise.com',
-  },
-};
 export const useAppStore = create<AppState>()(
   persist(
     (set) => ({
       isAuthenticated: false,
-      username: null,
-      settings: DEFAULT_SETTINGS,
-      _hasHydrated: false,
-      setAuthenticated: (val, username) => set({ isAuthenticated: val, username }),
-      setHasHydrated: (state) => set({ _hasHydrated: state }),
+      settings: {
+        accountId: '',
+        email: '',
+        apiKey: '',
+        contactName: 'Security Admin',
+        contactEmail: 'admin@company.com',
+      },
+      setAuthenticated: (val) => set({ isAuthenticated: val }),
       updateSettings: (newSettings) =>
-        set(
-          produce((state: AppState) => {
-            if (newSettings.accountId !== undefined) state.settings.accountId = newSettings.accountId;
-            if (newSettings.email !== undefined) state.settings.email = newSettings.email;
-            if (newSettings.apiKey !== undefined) state.settings.apiKey = newSettings.apiKey;
-            if (newSettings.cloudflareContact) {
-              state.settings.cloudflareContact = {
-                ...state.settings.cloudflareContact,
-                ...newSettings.cloudflareContact,
-              } as CloudflareContact;
-            }
-            if (newSettings.customerContact) {
-              state.settings.customerContact = {
-                ...state.settings.customerContact,
-                ...newSettings.customerContact,
-              } as CustomerContact;
-            }
-          })
-        ),
-      logout: () => set({ isAuthenticated: false, username: null, settings: DEFAULT_SETTINGS }),
+        set((state) => ({ settings: { ...state.settings, ...newSettings } })),
+      logout: () => set({ isAuthenticated: false }),
     }),
     {
       name: 'riskguard-storage',
-      storage: createJSONStorage(() => localStorage),
-      onRehydrateStorage: () => (state) => {
-        state?.setHasHydrated(true);
-      },
     }
   )
 );

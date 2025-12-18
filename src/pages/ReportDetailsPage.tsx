@@ -1,186 +1,213 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ChevronLeft, Printer, Loader2, FileText, LayoutGrid, ShieldAlert, BarChart3 } from 'lucide-react';
-import { api, AssessmentReport } from '@/lib/api';
-import { ExecutiveScorecard } from '@/components/reports/ExecutiveScorecard';
-import { AppLibraryTab } from '@/components/reports/AppLibraryTab';
-import { SecurityForensicsTab } from '@/components/reports/SecurityForensicsTab';
-import { SummaryRemediationTab } from '@/components/reports/SummaryRemediationTab';
-import { useAppStore } from '@/lib/store';
-import { motion, AnimatePresence } from 'framer-motion';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { 
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
+  PieChart, Pie, Cell, LineChart, Line, AreaChart, Area 
+} from 'recharts';
+import { 
+  ChevronLeft, Download, ShieldAlert, BrainCircuit, 
+  Users, Lock, AlertTriangle, CheckCircle2 
+} from 'lucide-react';
+import { MOCK_REPORT_DETAILS } from '@/lib/mock-data';
+const COLORS = ['#F38020', '#3182CE', '#48BB78', '#F56565', '#805AD5'];
 export function ReportDetailsPage() {
-  const { id } = useParams<{ id: string }>();
+  const { id } = useParams();
   const navigate = useNavigate();
-  const [report, setReport] = useState<AssessmentReport | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('forensics');
-  // Primtive selections for stability
-  const cfContactName = useAppStore(s => s.settings.cloudflareContact.name);
-  const cfContactTeam = useAppStore(s => s.settings.cloudflareContact.team);
-  const cfContactRole = useAppStore(s => s.settings.cloudflareContact.role);
-  const custName = useAppStore(s => s.settings.customerContact.customerName);
-  const custContactName = useAppStore(s => s.settings.customerContact.name);
-  const custContactRole = useAppStore(s => s.settings.customerContact.role);
-  useEffect(() => {
-    let isMounted = true;
-    const fetchReport = async () => {
-      if (!id) return;
-      try {
-        setIsLoading(true);
-        const res = await api.getReport(id);
-        if (isMounted && res.success && res.data) {
-          setReport(res.data);
-        }
-      } catch (err) {
-        console.error('[ReportDetails] Fetch failed:', err);
-      } finally {
-        if (isMounted) setIsLoading(false);
-      }
-    };
-    fetchReport();
-    return () => { isMounted = false; };
-  }, [id]);
-  if (isLoading) {
-    return (
-      <AppLayout container>
-        <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-6">
-          <div className="relative">
-            <Loader2 className="h-16 w-16 animate-spin text-[#F38020]" />
-            <FileText className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-6 w-6 text-[#F38020]/40" />
-          </div>
-          <div className="text-center space-y-2">
-            <p className="text-xl font-bold tracking-tight">Generating Precision Audit</p>
-            <p className="text-muted-foreground text-sm italic font-medium uppercase tracking-widest">Synthesizing executive telemetry...</p>
-          </div>
-        </div>
-      </AppLayout>
-    );
-  }
-  if (!report || !id) {
-    return (
-      <AppLayout container>
-        <div className="text-center py-24 space-y-6">
-          <h2 className="text-3xl font-bold">Report Not Found</h2>
-          <Button onClick={() => navigate('/reports')} className="rounded-xl px-8 h-11">Back to Archive</Button>
-        </div>
-      </AppLayout>
-    );
-  }
-  const safeSummary = {
-    totalApps: report.summary?.totalApps ?? 0,
-    aiApps: report.summary?.aiApps ?? 0,
-    shadowAiApps: report.summary?.shadowAiApps ?? 0,
-    shadowUsage: report.summary?.shadowUsage ?? 0,
-    dataExfiltrationKB: report.summary?.dataExfiltrationKB ?? 0,
-    unapprovedApps: report.summary?.unapprovedApps ?? 0,
-    dataExfiltrationRisk: report.summary?.dataExfiltrationRisk ?? '0 KB',
-    complianceScore: report.summary?.complianceScore ?? 0,
-    libraryCoverage: report.summary?.libraryCoverage ?? 0,
-    casbPosture: report.summary?.casbPosture ?? 0
-  };
+  const data = MOCK_REPORT_DETAILS;
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 printable-report">
-      <div className="py-8 md:py-10 lg:py-12 space-y-12">
-        <header className="flex flex-col items-center justify-center space-y-6 text-center relative">
-          <div className="no-print lg:absolute top-0 left-0">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => navigate('/reports')}
-              className="rounded-xl gap-2 text-muted-foreground hover:text-foreground"
-            >
-              <ChevronLeft className="h-4 w-4" /> Back to Archive
+    <AppLayout container>
+      <div className="space-y-8">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" size="icon" onClick={() => navigate('/reports')}>
+              <ChevronLeft className="h-5 w-5" />
             </Button>
-          </div>
-          <div className="space-y-4">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#F38020]/10 text-[#F38020] text-[10px] font-black uppercase tracking-[0.2em] border border-[#F38020]/20">
-              Security Compliance Audit
-            </div>
-            <h1 className="text-4xl md:text-6xl font-black tracking-tighter text-foreground uppercase">RiskGuard AI Report</h1>
-            <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[10px] font-mono text-muted-foreground uppercase tracking-[0.3em] border-y border-border/50 py-3 px-6 print:border-black">
-              <span>ID: {id.slice(-8).toUpperCase()}</span>
-              <span className="hidden sm:inline">•</span>
-              <span>Date: {report.date}</span>
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">Report {id}</h1>
+              <p className="text-muted-foreground">Generated on May 20, 2024 ��� Enterprise Audit</p>
             </div>
           </div>
-          <Button
-            variant="outline"
-            size="lg"
-            className="rounded-2xl no-print hover:bg-secondary border-border/50 shadow-soft h-14 px-8 font-bold"
-            onClick={() => window.print()}
-          >
-            <Printer className="h-5 w-5 mr-3" /> Export Executive PDF
+          <Button className="btn-gradient">
+            <Download className="h-4 w-4 mr-2" /> Download PDF
           </Button>
-        </header>
-        <section className="space-y-8">
-          <ExecutiveScorecard 
-            summary={safeSummary} 
-            score={report.score} 
-            powerUsers={report.powerUsers ?? []} 
-          />
-        </section>
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-10">
-          <div className="flex justify-center no-print">
-            <TabsList className="bg-white/40 dark:bg-black/20 backdrop-blur-xl border border-border/50 p-1 h-auto rounded-2xl shadow-soft">
-              <TabsTrigger value="library" className="flex items-center gap-2 px-6 py-2.5 rounded-xl data-[state=active]:bg-white dark:data-[state=active]:bg-secondary">
-                <LayoutGrid className="h-4 w-4" />
-                <span className="font-bold text-xs uppercase tracking-wider">Inventory</span>
-              </TabsTrigger>
-              <TabsTrigger value="forensics" className="flex items-center gap-2 px-6 py-2.5 rounded-xl data-[state=active]:bg-white dark:data-[state=active]:bg-secondary">
-                <BarChart3 className="h-4 w-4" />
-                <span className="font-bold text-xs uppercase tracking-wider">AI Security</span>
-              </TabsTrigger>
-              <TabsTrigger value="summary" className="flex items-center gap-2 px-6 py-2.5 rounded-xl data-[state=active]:bg-white dark:data-[state=active]:bg-secondary">
-                <ShieldAlert className="h-4 w-4" />
-                <span className="font-bold text-xs uppercase tracking-wider">AI Summary</span>
-              </TabsTrigger>
-            </TabsList>
-          </div>
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={activeTab}
-              initial={{ opacity: 0, x: 10 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -10 }}
-              transition={{ duration: 0.2 }}
-              className="min-h-[500px]"
-            >
-              {activeTab === 'library' && (
-                <div className="mt-0 focus-visible:outline-none chart-print-fix h-full">
-                  <AppLibraryTab report={report} />
-                </div>
-              )}
-              {activeTab === 'forensics' && (
-                <div className="mt-0 focus-visible:outline-none chart-print-fix h-full">
-                  <SecurityForensicsTab report={report} />
-                </div>
-              )}
-              {activeTab === 'summary' && (
-                <div className="mt-0 focus-visible:outline-none chart-print-fix h-full">
-                  <SummaryRemediationTab report={report} />
-                </div>
-              )}
-            </motion.div>
-          </AnimatePresence>
-        </Tabs>
-        <div className="hidden print:flex flex-col border-t border-black pt-8 space-y-4">
-          <div className="flex justify-between items-end">
-            <div className="space-y-1">
-              <p className="text-[8px] font-black uppercase tracking-widest text-gray-500">Prepared For</p>
-              <p className="text-sm font-bold">{custName}</p>
-              <p className="text-xs">{custContactName} — {custContactRole}</p>
-            </div>
-            <div className="text-right space-y-1">
-              <p className="text-[8px] font-black uppercase tracking-widest text-gray-500">Cloudflare Representative</p>
-              <p className="text-sm font-bold">{cfContactName}</p>
-              <p className="text-xs">{cfContactTeam} — {cfContactRole}</p>
-            </div>
-          </div>
         </div>
+        {/* Scorecards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          {[
+            { label: 'Total Apps', value: data.summary.totalApps, icon: BrainCircuit, color: 'text-blue-500' },
+            { label: 'AI Apps', value: data.summary.aiApps, icon: Users, color: 'text-[#F38020]' },
+            { label: 'Shadow AI', value: data.summary.shadowAiApps, icon: ShieldAlert, color: 'text-red-500' },
+            { label: 'Risk Level', value: data.summary.dataExfiltrationRisk, icon: AlertTriangle, color: 'text-orange-500' },
+            { label: 'Compliance', value: `${data.summary.complianceScore}%`, icon: Lock, color: 'text-green-500' },
+          ].map((stat, i) => (
+            <Card key={i} className="border-border/50 shadow-soft">
+              <CardContent className="p-6 flex flex-col items-center text-center space-y-2">
+                <stat.icon className={`h-6 w-6 ${stat.color}`} />
+                <p className="text-2xl font-bold">{stat.value}</p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wider">{stat.label}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        <Tabs defaultValue="library" className="w-full">
+          <TabsList className="w-full justify-start border-b rounded-none bg-transparent h-auto p-0 mb-8">
+            <TabsTrigger value="library" className="rounded-none border-b-2 border-transparent data-[state=active]:border-[#F38020] data-[state=active]:bg-transparent px-6 py-3">App Library</TabsTrigger>
+            <TabsTrigger value="security" className="rounded-none border-b-2 border-transparent data-[state=active]:border-[#F38020] data-[state=active]:bg-transparent px-6 py-3">AI Security Report</TabsTrigger>
+            <TabsTrigger value="recommendations" className="rounded-none border-b-2 border-transparent data-[state=active]:border-[#F38020] data-[state=active]:bg-transparent px-6 py-3">Executive Recommendations</TabsTrigger>
+          </TabsList>
+          <TabsContent value="library" className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <Card className="lg:col-span-1 border-border/50 shadow-soft">
+                <CardHeader>
+                  <CardTitle className="text-lg">Risk Distribution</CardTitle>
+                </CardHeader>
+                <CardContent className="h-[300px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={data.securityCharts.riskDistribution}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={80}
+                        paddingAngle={5}
+                        dataKey="value"
+                      >
+                        {data.securityCharts.riskDistribution.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+              <Card className="lg:col-span-2 border-border/50 shadow-soft">
+                <CardHeader>
+                  <CardTitle className="text-lg">AI Application Inventory</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Application</TableHead>
+                        <TableHead>Category</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Users</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {data.appLibrary.map((app, i) => (
+                        <TableRow key={i}>
+                          <TableCell className="font-medium">{app.name}</TableCell>
+                          <TableCell>{app.category}</TableCell>
+                          <TableCell>
+                            <Badge variant={app.status === 'Approved' ? 'outline' : app.status === 'Unapproved' ? 'destructive' : 'secondary'}>
+                              {app.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">{app.users}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+          <TabsContent value="security" className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Card className="border-border/50 shadow-soft">
+                <CardHeader>
+                  <CardTitle className="text-lg">AI Usage Trends (Requests)</CardTitle>
+                </CardHeader>
+                <CardContent className="h-[300px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={data.securityCharts.usageOverTime}>
+                      <defs>
+                        <linearGradient id="colorUsage" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#F38020" stopOpacity={0.3}/>
+                          <stop offset="95%" stopColor="#F38020" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                      <XAxis dataKey="name" />
+                      <YAxis />
+                      <Tooltip />
+                      <Area type="monotone" dataKey="usage" stroke="#F38020" fillOpacity={1} fill="url(#colorUsage)" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+              <Card className="border-border/50 shadow-soft">
+                <CardHeader>
+                  <CardTitle className="text-lg">Data Transfer Volume (MB)</CardTitle>
+                </CardHeader>
+                <CardContent className="h-[300px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={data.securityCharts.usageOverTime}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                      <XAxis dataKey="name" />
+                      <YAxis />
+                      <Tooltip />
+                      <Bar dataKey="usage" fill="#3182CE" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+          <TabsContent value="recommendations">
+            <Card className="border-border/50 shadow-soft">
+              <CardHeader>
+                <CardTitle>Executive Summary & Action Plan</CardTitle>
+                <CardDescription>AI-generated insights based on your Zero Trust activity.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-4">
+                  <div className="flex gap-4 p-4 rounded-xl bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900">
+                    <ShieldAlert className="h-6 w-6 text-red-600 shrink-0" />
+                    <div>
+                      <h4 className="font-bold text-red-900 dark:text-red-100">Critical: Shadow AI Usage Detected</h4>
+                      <p className="text-sm text-red-700 dark:text-red-300 mt-1">
+                        8 unapproved AI applications are currently bypassing standard procurement. 
+                        Recommend implementing a "Block All AI" Gateway policy with an "Approved List" exception.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex gap-4 p-4 rounded-xl bg-blue-50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900">
+                    <BrainCircuit className="h-6 w-6 text-blue-600 shrink-0" />
+                    <div>
+                      <h4 className="font-bold text-blue-900 dark:text-blue-100">Optimization: License Coverage</h4>
+                      <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
+                        Your current Zero Trust Enterprise license covers all detected users. 
+                        Consider enabling "DLP for AI" to prevent sensitive data from being pasted into LLM prompts.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex gap-4 p-4 rounded-xl bg-green-50 dark:bg-green-950/20 border border-green-100 dark:border-green-900">
+                    <CheckCircle2 className="h-6 w-6 text-green-600 shrink-0" />
+                    <div>
+                      <h4 className="font-bold text-green-900 dark:text-green-100">Policy Strength: High</h4>
+                      <p className="text-sm text-green-700 dark:text-green-300 mt-1">
+                        Access policies for GitHub Copilot are correctly configured with MFA. 
+                        No unauthorized access attempts detected in this period.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
-    </div>
+    </AppLayout>
   );
 }
