@@ -9,8 +9,9 @@ export interface Settings {
 }
 interface AppState {
   isAuthenticated: boolean;
+  username: string | null;
   settings: Settings;
-  setAuthenticated: (val: boolean) => void;
+  setAuthenticated: (val: boolean, username: string) => void;
   updateSettings: (settings: Partial<Settings>) => void;
   logout: () => void;
 }
@@ -18,6 +19,7 @@ export const useAppStore = create<AppState>()(
   persist(
     (set) => ({
       isAuthenticated: false,
+      username: null,
       settings: {
         accountId: '',
         email: '',
@@ -25,10 +27,10 @@ export const useAppStore = create<AppState>()(
         contactName: 'Security Admin',
         contactEmail: 'admin@company.com',
       },
-      setAuthenticated: (val) => set({ isAuthenticated: val }),
+      setAuthenticated: (val, username) => set({ isAuthenticated: val, username }),
       updateSettings: (newSettings) =>
         set((state) => ({ settings: { ...state.settings, ...newSettings } })),
-      logout: () => set({ isAuthenticated: false }),
+      logout: () => set({ isAuthenticated: false, username: null }),
     }),
     {
       name: 'riskguard-storage',

@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { ShieldCheck, Zap, ArrowRight, AlertTriangle, Activity, Loader2, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 export function DashboardPage() {
   const navigate = useNavigate();
   const [isAssessing, setIsAssessing] = useState(false);
@@ -61,14 +61,14 @@ export function DashboardPage() {
   };
   return (
     <AppLayout container>
-      <motion.div 
+      <motion.div
         variants={containerVariants}
         initial="hidden"
         animate="show"
         className="space-y-8"
       >
         {/* Hero Section */}
-        <motion.div 
+        <motion.div
           variants={itemVariants}
           className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#F38020] to-[#E55A1B] p-8 md:p-12 text-white shadow-xl"
         >
@@ -191,12 +191,14 @@ export function DashboardPage() {
             </Card>
           </motion.div>
         </div>
-        <motion.footer 
+        <motion.footer
           variants={itemVariants}
-          className="pt-12 text-center text-muted-foreground/60 text-sm"
+          className="pt-12 pb-6 text-center text-muted-foreground/60 text-sm space-y-2"
         >
           <p>Powered by Cloudflare Workers & AI</p>
-          <p className="mt-2">Note: This project has AI capabilities with request limits across all user apps.</p>
+          <p className="max-w-2xl mx-auto px-4">
+            Note: Although this project has AI capabilities, there is a limit on the number of requests that can be made to the AI servers across all user apps in a given time period.
+          </p>
         </motion.footer>
       </motion.div>
     </AppLayout>

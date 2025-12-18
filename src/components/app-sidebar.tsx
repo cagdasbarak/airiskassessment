@@ -1,5 +1,5 @@
 import React from "react";
-import { Home, FileText, History, Settings, ShieldAlert, LogOut } from "lucide-react";
+import { Home, FileText, History, Settings, ShieldAlert, LogOut, User } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Sidebar,
@@ -16,6 +16,7 @@ export function AppSidebar(): JSX.Element {
   const location = useLocation();
   const navigate = useNavigate();
   const logout = useAppStore(s => s.logout);
+  const username = useAppStore(s => s.username);
   const handleLogout = () => {
     logout();
     navigate("/login");
@@ -44,8 +45,8 @@ export function AppSidebar(): JSX.Element {
           <SidebarMenu>
             {menuItems.map((item) => (
               <SidebarMenuItem key={item.path}>
-                <SidebarMenuButton 
-                  asChild 
+                <SidebarMenuButton
+                  asChild
                   isActive={location.pathname === item.path}
                   tooltip={item.title}
                   className="py-6"
@@ -60,8 +61,17 @@ export function AppSidebar(): JSX.Element {
           </SidebarMenu>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter className="p-4">
-        <SidebarMenuButton 
+      <SidebarFooter className="p-4 space-y-2">
+        <div className="flex items-center gap-3 px-3 py-2 rounded-lg bg-secondary/50 border border-border/50">
+          <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+            <User className="h-4 w-4 text-primary" />
+          </div>
+          <div className="flex flex-col overflow-hidden">
+            <span className="text-sm font-semibold truncate">{username ?? 'Guest'}</span>
+            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Active Session</span>
+          </div>
+        </div>
+        <SidebarMenuButton
           onClick={handleLogout}
           className="w-full justify-start gap-3 text-destructive hover:text-destructive hover:bg-destructive/10"
         >

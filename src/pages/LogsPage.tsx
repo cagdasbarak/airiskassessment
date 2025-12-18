@@ -3,7 +3,7 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Download, RefreshCw, Loader2, History } from 'lucide-react';
+import { Download, RefreshCw, History, User } from 'lucide-react';
 import { api, AuditLog } from '@/lib/api';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
@@ -98,10 +98,15 @@ export function LogsPage() {
                       {new Date(log.timestamp).toLocaleString()}
                     </TableCell>
                     <TableCell className="font-medium">{log.action}</TableCell>
-                    <TableCell>{log.user}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <User className="h-3 w-3 text-muted-foreground" />
+                        <span>{log.user}</span>
+                      </div>
+                    </TableCell>
                     <TableCell className="text-right">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        log.status === 'Success' 
+                        log.status === 'Success'
                           ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
                           : log.status === 'Failed'
                           ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'

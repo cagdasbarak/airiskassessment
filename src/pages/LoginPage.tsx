@@ -1,18 +1,28 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ShieldAlert, Lock, Mail } from 'lucide-react';
+import { ShieldAlert, Lock, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAppStore } from '@/lib/store';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { toast } from 'sonner';
 export function LoginPage() {
   const navigate = useNavigate();
   const setAuthenticated = useAppStore(s => s.setAuthenticated);
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    setAuthenticated(true);
-    navigate('/');
+    if (username === 'admin' && password === 'admin') {
+      setAuthenticated(true, 'admin');
+      toast.success('Welcome back, Admin');
+      navigate('/');
+    } else {
+      toast.error('Invalid credentials', {
+        description: 'Please use the default administrator credentials.'
+      });
+    }
   };
   return (
     <div className="min-h-screen flex items-center justify-center bg-background relative overflow-hidden">
@@ -34,23 +44,27 @@ export function LoginPage() {
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <div className="relative">
-                <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input 
-                  type="email" 
-                  placeholder="admin@company.com" 
-                  className="pl-10 bg-secondary/50" 
-                  required 
+                <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="text"
+                  placeholder="Username (admin)"
+                  className="pl-10 bg-secondary/50"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  required
                 />
               </div>
             </div>
             <div className="space-y-2">
               <div className="relative">
                 <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input 
-                  type="password" 
-                  placeholder="••••••••" 
-                  className="pl-10 bg-secondary/50" 
-                  required 
+                <Input
+                  type="password"
+                  placeholder="Password (admin)"
+                  className="pl-10 bg-secondary/50"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
                 />
               </div>
             </div>
@@ -62,8 +76,8 @@ export function LoginPage() {
           </CardFooter>
         </form>
       </Card>
-      <div className="absolute bottom-8 text-center text-sm text-muted-foreground">
-        <p>Note: This project has AI capabilities with request limits.</p>
+      <div className="absolute bottom-8 text-center text-sm text-muted-foreground px-4">
+        <p>Note: Although this project has AI capabilities, there is a limit on the number of requests that can be made to the AI servers across all user apps in a given time period.</p>
       </div>
     </div>
   );
