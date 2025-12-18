@@ -6,7 +6,6 @@ import { createRoot } from 'react-dom/client'
 import {
   createBrowserRouter,
   RouterProvider,
-  Navigate,
 } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
@@ -18,13 +17,8 @@ import { SettingsPage } from '@/pages/SettingsPage'
 import { ReportsPage } from '@/pages/ReportsPage'
 import { ReportDetailsPage } from '@/pages/ReportDetailsPage'
 import { LogsPage } from '@/pages/LogsPage'
-import { useAppStore } from '@/lib/store'
+import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 const queryClient = new QueryClient();
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const isAuthenticated = useAppStore(s => s.isAuthenticated);
-  if (!isAuthenticated) return <Navigate to="/login" replace />;
-  return <>{children}</>;
-};
 const router = createBrowserRouter([
   {
     path: "/login",

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -6,46 +6,81 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
-  PieChart, Pie, Cell, LineChart, Line, AreaChart, Area 
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell, AreaChart, Area
 } from 'recharts';
-import { 
-  ChevronLeft, Download, ShieldAlert, BrainCircuit, 
-  Users, Lock, AlertTriangle, CheckCircle2 
+import {
+  ChevronLeft, Download, ShieldAlert, BrainCircuit,
+  Users, Lock, AlertTriangle, CheckCircle2, Loader2
 } from 'lucide-react';
-import { MOCK_REPORT_DETAILS } from '@/lib/mock-data';
+import { api } from '@/lib/api';
 const COLORS = ['#F38020', '#3182CE', '#48BB78', '#F56565', '#805AD5'];
 export function ReportDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const data = MOCK_REPORT_DETAILS;
+  const [report, setReport] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  useEffect(() => {
+    const fetchReport = async () => {
+      if (!id) return;
+      try {
+        const res = await api.getReport(id);
+        if (res.success) {
+          setReport(res.data);
+        }
+      } catch (err) {
+        console.error('Failed to fetch report details');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchReport();
+  }, [id]);
+  if (isLoading) {
+    return (
+      <AppLayout container>
+        <div className="flex flex-col items-center justify-center h-96 space-y-4">
+          <Loader2 className="h-12 w-12 animate-spin text-[#F38020]" />
+          <p className="text-muted-foreground">Loading assessment data...</p>
+        </div>
+      </AppLayout>
+    );
+  }
+  if (!report) {
+    return (
+      <AppLayout container>
+        <div className="text-center py-24">
+          <h2 className="text-2xl font-bold">Report not found</h2>
+          <Button variant="link" onClick={() => navigate('/reports')}>Back to reports</Button>
+        </div>
+      </AppLayout>
+    );
+  }
   return (
     <AppLayout container>
       <div className="space-y-8">
-        {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="icon" onClick={() => navigate('/reports')}>
               <ChevronLeft className="h-5 w-5" />
             </Button>
             <div>
-              <h1 className="text-3xl font-bold tracking-tight">Report {id}</h1>
-              <p className="text-muted-foreground">Generated on May 20, 2024 ��� Enterprise Audit</p>
+              <h1 className="text-3xl font-bold tracking-tight">Report {report.id.slice(-6)}</h1>
+              <p className="text-muted-foreground">Generated on {report.date} • Enterprise Audit</p>
             </div>
           </div>
           <Button className="btn-gradient">
             <Download className="h-4 w-4 mr-2" /> Download PDF
           </Button>
         </div>
-        {/* Scorecards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           {[
-            { label: 'Total Apps', value: data.summary.totalApps, icon: BrainCircuit, color: 'text-blue-500' },
-            { label: 'AI Apps', value: data.summary.aiApps, icon: Users, color: 'text-[#F38020]' },
-            { label: 'Shadow AI', value: data.summary.shadowAiApps, icon: ShieldAlert, color: 'text-red-500' },
-            { label: 'Risk Level', value: data.summary.dataExfiltrationRisk, icon: AlertTriangle, color: 'text-orange-500' },
-            { label: 'Compliance', value: `${data.summary.complianceScore}%`, icon: Lock, color: 'text-green-500' },
+            { label: 'Total Apps', value: report.summary.totalApps, icon: BrainCircuit, color: 'text-blue-500' },
+            { label: 'AI Apps', value: report.summary.aiApps, icon: Users, color: 'text-[#F38020]' },
+            { label: 'Shadow AI', value: report.summary.shadowAiApps, icon: ShieldAlert, color: 'text-red-500' },
+            { label: 'Risk Level', value: report.riskLevel, icon: AlertTriangle, color: 'text-orange-500' },
+            { label: 'Compliance', value: `${report.summary.complianceScore}%`, icon: Lock, color: 'text-green-500' },
           ].map((stat, i) => (
             <Card key={i} className="border-border/50 shadow-soft">
               <CardContent className="p-6 flex flex-col items-center text-center space-y-2">
@@ -72,7 +107,7 @@ export function ReportDetailsPage() {
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
-                        data={data.securityCharts.riskDistribution}
+                        data={report.securityCharts.riskDistribution}
                         cx="50%"
                         cy="50%"
                         innerRadius={60}
@@ -80,7 +115,7 @@ export function ReportDetailsPage() {
                         paddingAngle={5}
                         dataKey="value"
                       >
-                        {data.securityCharts.riskDistribution.map((entry, index) => (
+                        {report.securityCharts.riskDistribution.map((entry: any, index: number) => (
                           <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                         ))}
                       </Pie>
@@ -104,7 +139,7 @@ export function ReportDetailsPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {data.appLibrary.map((app, i) => (
+                      {report.appLibrary.map((app: any, i: number) => (
                         <TableRow key={i}>
                           <TableCell className="font-medium">{app.name}</TableCell>
                           <TableCell>{app.category}</TableCell>
@@ -130,7 +165,7 @@ export function ReportDetailsPage() {
                 </CardHeader>
                 <CardContent className="h-[300px]">
                   <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={data.securityCharts.usageOverTime}>
+                    <AreaChart data={report.securityCharts.usageOverTime}>
                       <defs>
                         <linearGradient id="colorUsage" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="5%" stopColor="#F38020" stopOpacity={0.3}/>
@@ -152,7 +187,7 @@ export function ReportDetailsPage() {
                 </CardHeader>
                 <CardContent className="h-[300px]">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={data.securityCharts.usageOverTime}>
+                    <BarChart data={report.securityCharts.usageOverTime}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} />
                       <XAxis dataKey="name" />
                       <YAxis />
@@ -177,7 +212,7 @@ export function ReportDetailsPage() {
                     <div>
                       <h4 className="font-bold text-red-900 dark:text-red-100">Critical: Shadow AI Usage Detected</h4>
                       <p className="text-sm text-red-700 dark:text-red-300 mt-1">
-                        8 unapproved AI applications are currently bypassing standard procurement. 
+                        {report.summary.shadowAiApps} unapproved AI applications are currently bypassing standard procurement.
                         Recommend implementing a "Block All AI" Gateway policy with an "Approved List" exception.
                       </p>
                     </div>
@@ -187,7 +222,7 @@ export function ReportDetailsPage() {
                     <div>
                       <h4 className="font-bold text-blue-900 dark:text-blue-100">Optimization: License Coverage</h4>
                       <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
-                        Your current Zero Trust Enterprise license covers all detected users. 
+                        Your current Zero Trust Enterprise license covers all detected users.
                         Consider enabling "DLP for AI" to prevent sensitive data from being pasted into LLM prompts.
                       </p>
                     </div>
@@ -197,7 +232,7 @@ export function ReportDetailsPage() {
                     <div>
                       <h4 className="font-bold text-green-900 dark:text-green-100">Policy Strength: High</h4>
                       <p className="text-sm text-green-700 dark:text-green-300 mt-1">
-                        Access policies for GitHub Copilot are correctly configured with MFA. 
+                        Access policies for GitHub Copilot are correctly configured with MFA.
                         No unauthorized access attempts detected in this period.
                       </p>
                     </div>
