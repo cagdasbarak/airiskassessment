@@ -17,10 +17,14 @@ export function DashboardPage() {
       try {
         const res = await api.listReports();
         if (res.success && res.data && res.data.length > 0) {
+          // Ensure we get the most recent report (first in the list)
           setLastReport(res.data[0]);
+        } else {
+          setLastReport(null);
         }
       } catch (err) {
         console.error('Failed to fetch reports');
+        setLastReport(null);
       } finally {
         setIsLoading(false);
       }

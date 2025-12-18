@@ -4,7 +4,7 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { FileText, Calendar, Eye, Loader2, AlertCircle } from 'lucide-react';
+import { FileText, Calendar, Eye, Loader2, AlertCircle, Trash2 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { toast } from 'sonner';
 export function ReportsPage() {
@@ -31,6 +31,21 @@ export function ReportsPage() {
   useEffect(() => {
     fetchReports();
   }, []);
+  const handleDelete = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!confirm('Are you sure you want to delete this report?')) return;
+    try {
+      const res = await api.deleteReport(id);
+      if (res.success) {
+        setReports(prev => prev.filter(r => r.id !== id));
+        toast.success('Report deleted successfully');
+      } else {
+        toast.error(res.error || 'Failed to delete report');
+      }
+    } catch (err) {
+      toast.error('Network error while deleting report');
+    }
+  };
   return (
     <AppLayout container>
       <div className="space-y-8">
@@ -71,9 +86,19 @@ export function ReportsPage() {
                     <div className="p-2 rounded-lg bg-[#F38020]/10">
                       <FileText className="h-5 w-5 text-[#F38020]" />
                     </div>
-                    <Badge variant={report.riskLevel === 'High' ? 'destructive' : report.riskLevel === 'Medium' ? 'secondary' : 'outline'}>
-                      {report.riskLevel} Risk
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={report.riskLevel === 'High' ? 'destructive' : report.riskLevel === 'Medium' ? 'secondary' : 'outline'}>
+                        {report.riskLevel} Risk
+                      </Badge>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                        onClick={(e) => handleDelete(report.id, e)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                   <CardTitle className="text-xl">Report {report.id.slice(-6)}</CardTitle>
                   <div className="flex items-center text-sm text-muted-foreground mt-1">
@@ -87,8 +112,8 @@ export function ReportsPage() {
                       <p className="text-3xl font-bold text-foreground">{report.score}%</p>
                     </div>
                     <div className="h-12 w-12 rounded-full border-4 border-secondary flex items-center justify-center overflow-hidden">
-                      <div 
-                        className="h-full w-full bg-[#F38020]" 
+                      <div
+                        className="h-full w-full bg-[#F38020]"
                         style={{ height: `${report.score}%`, marginTop: 'auto' }}
                       />
                     </div>

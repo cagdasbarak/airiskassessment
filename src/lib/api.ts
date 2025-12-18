@@ -32,6 +32,12 @@ export const api = {
     const res = await fetch(`/api/reports/${id}`);
     return res.json();
   },
+  async deleteReport(id: string): Promise<ApiResponse<void>> {
+    const res = await fetch(`/api/reports/${id}`, {
+      method: 'DELETE',
+    });
+    return res.json();
+  },
   async startAssessment(): Promise<ApiResponse<any>> {
     const res = await fetch('/api/assess', { method: 'POST' });
     return res.json();

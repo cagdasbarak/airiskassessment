@@ -54,6 +54,22 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         if (!report) return c.json({ success: false, error: 'Report not found' }, { status: 404 });
         return c.json({ success: true, data: report });
     });
+    app.delete('/api/reports/:id', async (c) => {
+        const id = c.req.param('id');
+        const controller = getAppController(c.env);
+        const settings = await controller.getSettings();
+        const removed = await controller.removeReport(id);
+        if (removed) {
+            await controller.addLog({
+                timestamp: new Date().toISOString(),
+                action: 'Report Deleted',
+                user: settings.email || 'System Admin',
+                status: 'Success'
+            });
+            return c.json({ success: true });
+        }
+        return c.json({ success: false, error: 'Report not found' }, { status: 404 });
+    });
     // Logs Endpoint
     app.get('/api/logs', async (c) => {
         const controller = getAppController(c.env);
@@ -100,7 +116,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
             };
             // 2. Generate AI Insights
             const chatHandler = new ChatHandler(c.env.CF_AI_BASE_URL, c.env.CF_AI_API_KEY, 'google-ai-studio/gemini-2.0-flash');
-            const prompt = `Analyze this Cloudflare Zero Trust AI Risk Report and provide executive recommendations in JSON format. 
+            const prompt = `Analyze this Cloudflare Zero Trust AI Risk Report and provide executive recommendations in JSON format.
             Report Data: ${JSON.stringify(baseReport.summary)}
             Return ONLY a JSON object with:
             {
@@ -112,7 +128,6 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
             const aiResponse = await chatHandler.processMessage(prompt, []);
             let aiInsights;
             try {
-                // Extract JSON from potential markdown wrapping
                 const jsonStr = aiResponse.content.replace(/```json|```/g, '').trim();
                 aiInsights = JSON.parse(jsonStr);
             } catch (e) {

@@ -93,6 +93,16 @@ export class AppController extends DurableObject<Env> {
     const reports = await this.ctx.storage.get<AssessmentReport[]>('reports') || [];
     return reports.find(r => r.id === id) || null;
   }
+  async removeReport(id: string): Promise<boolean> {
+    const reports = await this.ctx.storage.get<AssessmentReport[]>('reports') || [];
+    const initialLength = reports.length;
+    const filteredReports = reports.filter(r => r.id !== id);
+    if (filteredReports.length < initialLength) {
+      await this.ctx.storage.put('reports', filteredReports);
+      return true;
+    }
+    return false;
+  }
   // Audit Logging
   async addLog(log: Omit<AuditLog, 'id'>): Promise<void> {
     const logs = await this.ctx.storage.get<AuditLog[]>('audit_logs') || [];
