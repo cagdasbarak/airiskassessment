@@ -5,8 +5,18 @@ export interface UserSettings {
   accountId: string;
   email: string;
   apiKey: string;
-  contactName: string;
-  contactEmail: string;
+  cloudflareContact: {
+    name: string;
+    role: string;
+    email: string;
+    team: string;
+  };
+  customerContact: {
+    customerName: string;
+    name: string;
+    role: string;
+    email: string;
+  };
 }
 export interface AuditLog {
   id: string;
@@ -66,25 +76,40 @@ export class AppController extends DurableObject<Env> {
   private async persistSessions(): Promise<void> {
     await this.ctx.storage.put('sessions', Object.fromEntries(this.sessions));
   }
-  // Settings Management
   async getSettings(): Promise<UserSettings> {
     const defaultSettings: UserSettings = {
       accountId: '',
       email: '',
       apiKey: '',
-      contactName: 'Security Admin',
-      contactEmail: 'admin@company.com',
+      cloudflareContact: {
+        name: 'Cloudflare Admin',
+        role: 'Solutions Engineer',
+        email: 'se@cloudflare.com',
+        team: 'Security Specialist',
+      },
+      customerContact: {
+        customerName: 'Enterprise Corp',
+        name: 'Security Director',
+        role: 'CISO',
+        email: 'ciso@enterprise.com',
+      },
     };
-    return await this.ctx.storage.get<UserSettings>('user_settings') || defaultSettings;
+    const stored = await this.ctx.storage.get<UserSettings>('user_settings');
+    if (!stored) return defaultSettings;
+    return {
+      ...defaultSettings,
+      ...stored,
+      cloudflareContact: { ...defaultSettings.cloudflareContact, ...stored.cloudflareContact },
+      customerContact: { ...defaultSettings.customerContact, ...stored.customerContact },
+    };
   }
   async updateSettings(settings: UserSettings): Promise<void> {
     await this.ctx.storage.put('user_settings', settings);
   }
-  // Report Management
   async addReport(report: AssessmentReport): Promise<void> {
     const reports = await this.ctx.storage.get<AssessmentReport[]>('reports') || [];
     reports.unshift(report);
-    await this.ctx.storage.put('reports', reports.slice(0, 50));
+    await this.ctx.storage.put('reports', reports.slice(0, 10));
   }
   async listReports(): Promise<AssessmentReport[]> {
     return await this.ctx.storage.get<AssessmentReport[]>('reports') || [];
@@ -103,7 +128,6 @@ export class AppController extends DurableObject<Env> {
     }
     return false;
   }
-  // Audit Logging
   async addLog(log: Omit<AuditLog, 'id'>): Promise<void> {
     const logs = await this.ctx.storage.get<AuditLog[]>('audit_logs') || [];
     const newLog: AuditLog = { ...log, id: crypto.randomUUID() };
@@ -113,7 +137,6 @@ export class AppController extends DurableObject<Env> {
   async getLogs(): Promise<AuditLog[]> {
     return await this.ctx.storage.get<AuditLog[]>('audit_logs') || [];
   }
-  // Original Session Methods
   async addSession(sessionId: string, title?: string): Promise<void> {
     await this.ensureLoaded();
     const now = Date.now();

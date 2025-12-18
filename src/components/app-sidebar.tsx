@@ -28,7 +28,7 @@ export function AppSidebar(): JSX.Element {
     { title: "Settings", icon: Settings, path: "/settings" },
   ];
   return (
-    <Sidebar>
+    <Sidebar collapsible="none" className="border-r border-border/50">
       <SidebarHeader>
         <div className="flex items-center gap-3 px-4 py-6">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#F38020] shadow-lg">
@@ -48,7 +48,6 @@ export function AppSidebar(): JSX.Element {
                 <SidebarMenuButton
                   asChild
                   isActive={location.pathname === item.path}
-                  tooltip={item.title}
                   className="py-6"
                 >
                   <Link to={item.path} className="flex items-center gap-3">

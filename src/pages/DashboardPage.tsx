@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ShieldCheck, Zap, ArrowRight, AlertTriangle, Activity, Loader2, Sparkles } from 'lucide-react';
+import { ShieldCheck, Zap, ArrowRight, Activity, Loader2, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import { motion } from 'framer-motion';
@@ -17,7 +17,6 @@ export function DashboardPage() {
       try {
         const res = await api.listReports();
         if (res.success && res.data && res.data.length > 0) {
-          // Ensure we get the most recent report (first in the list)
           setLastReport(res.data[0]);
         } else {
           setLastReport(null);
@@ -71,7 +70,6 @@ export function DashboardPage() {
         animate="show"
         className="space-y-8"
       >
-        {/* Hero Section */}
         <motion.div
           variants={itemVariants}
           className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#F38020] to-[#E55A1B] p-8 md:p-12 text-white shadow-xl"
@@ -116,85 +114,49 @@ export function DashboardPage() {
             <ShieldCheck className="h-full w-full" />
           </div>
         </motion.div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Last Report Summary */}
-          <motion.div variants={itemVariants} className="md:col-span-2">
-            <Card className="h-full border-border/50 shadow-soft hover:shadow-md transition-shadow">
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle>Latest Security Insight</CardTitle>
-                  <CardDescription>
-                    {lastReport ? `Summary from report generated on ${lastReport.date}` : 'No assessments generated yet'}
-                  </CardDescription>
+        <motion.div variants={itemVariants}>
+          <Card className="border-border/50 shadow-soft hover:shadow-md transition-shadow">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Latest Security Insight</CardTitle>
+                <CardDescription>
+                  {lastReport ? `Summary from report generated on ${lastReport.date}` : 'No assessments generated yet'}
+                </CardDescription>
+              </div>
+              <Activity className="h-5 w-5 text-[#F38020]" />
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <div className="flex justify-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                 </div>
-                <Activity className="h-5 w-5 text-[#F38020]" />
-              </CardHeader>
-              <CardContent>
-                {isLoading ? (
-                  <div className="flex justify-center py-8">
-                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              ) : lastReport ? (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    {[
+                      { label: 'Health Score', value: `${lastReport.score}%`, color: 'text-foreground' },
+                      { label: 'AI Apps', value: lastReport.summary.aiApps, color: 'text-orange-500' },
+                      { label: 'Shadow AI', value: lastReport.summary.shadowAiApps, color: 'text-red-500' },
+                      { label: 'Risk Level', value: lastReport.riskLevel, color: 'text-blue-500' },
+                    ].map((stat, i) => (
+                      <div key={i} className="p-4 rounded-2xl bg-secondary/50 text-center space-y-1">
+                        <span className={`text-2xl font-bold ${stat.color}`}>{stat.value}</span>
+                        <p className="text-xs text-muted-foreground uppercase tracking-wider">{stat.label}</p>
+                      </div>
+                    ))}
                   </div>
-                ) : lastReport ? (
-                  <div className="space-y-6">
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                      {[
-                        { label: 'Health Score', value: `${lastReport.score}%`, color: 'text-foreground' },
-                        { label: 'AI Apps', value: lastReport.summary.aiApps, color: 'text-orange-500' },
-                        { label: 'Shadow AI', value: lastReport.summary.shadowAiApps, color: 'text-red-500' },
-                        { label: 'Risk Level', value: lastReport.riskLevel, color: 'text-blue-500' },
-                      ].map((stat, i) => (
-                        <div key={i} className="p-4 rounded-2xl bg-secondary/50 text-center space-y-1">
-                          <span className={`text-2xl font-bold ${stat.color}`}>{stat.value}</span>
-                          <p className="text-xs text-muted-foreground uppercase tracking-wider">{stat.label}</p>
-                        </div>
-                      ))}
-                    </div>
-                    <Button variant="ghost" className="w-full group" onClick={() => navigate(`/reports/${lastReport.id}`)}>
-                      View Full Report <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="text-center py-8 text-muted-foreground">
-                    Click "Start New Assessment" to begin your first audit.
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </motion.div>
-          {/* Quick Actions / Status */}
-          <motion.div variants={itemVariants}>
-            <Card className="h-full border-border/50 shadow-soft">
-              <CardHeader>
-                <CardTitle>System Status</CardTitle>
-                <CardDescription>Real-time connectivity</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-                    <span className="text-sm font-medium">Cloudflare API</span>
-                  </div>
-                  <span className="text-xs text-muted-foreground">Connected</span>
+                  <Button variant="ghost" className="w-full group" onClick={() => navigate(`/reports/${lastReport.id}`)}>
+                    View Full Report <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+                  </Button>
                 </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-                    <span className="text-sm font-medium">Gateway Logs</span>
-                  </div>
-                  <span className="text-xs text-muted-foreground">Syncing</span>
+              ) : (
+                <div className="text-center py-12 text-muted-foreground border-2 border-dashed rounded-2xl">
+                  Click "Start New Assessment" to begin your first audit.
                 </div>
-                <div className="pt-4 border-t">
-                  <div className="flex items-start gap-3 text-amber-600 bg-amber-50 dark:bg-amber-950/20 p-3 rounded-xl">
-                    <AlertTriangle className="h-5 w-5 shrink-0" />
-                    <p className="text-xs leading-relaxed">
-                      Review your Gateway policies regularly to ensure new AI models are correctly categorized.
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        </div>
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
         <motion.footer
           variants={itemVariants}
           className="pt-12 pb-6 text-center text-muted-foreground/60 text-sm space-y-2"

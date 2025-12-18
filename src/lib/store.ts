@@ -1,11 +1,23 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+export interface CloudflareContact {
+  name: string;
+  role: string;
+  email: string;
+  team: string;
+}
+export interface CustomerContact {
+  customerName: string;
+  name: string;
+  role: string;
+  email: string;
+}
 export interface Settings {
   accountId: string;
   email: string;
   apiKey: string;
-  contactName: string;
-  contactEmail: string;
+  cloudflareContact: CloudflareContact;
+  customerContact: CustomerContact;
 }
 interface AppState {
   isAuthenticated: boolean;
@@ -24,8 +36,18 @@ export const useAppStore = create<AppState>()(
         accountId: '',
         email: '',
         apiKey: '',
-        contactName: 'Security Admin',
-        contactEmail: 'admin@company.com',
+        cloudflareContact: {
+          name: 'Cloudflare Admin',
+          role: 'Solutions Engineer',
+          email: 'se@cloudflare.com',
+          team: 'Security Specialist',
+        },
+        customerContact: {
+          customerName: 'Enterprise Corp',
+          name: 'Security Director',
+          role: 'CISO',
+          email: 'ciso@enterprise.com',
+        },
       },
       setAuthenticated: (val, username) => set({ isAuthenticated: val, username }),
       updateSettings: (newSettings) =>

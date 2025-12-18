@@ -11,6 +11,14 @@ export interface AuditLog {
   user: string;
   status: 'Success' | 'Failed' | 'Warning';
 }
+export interface LicenseInfo {
+  plan: string;
+  totalLicenses: number;
+  usedLicenses: number;
+  dlp: 'VAR' | 'YOK';
+  casb: 'VAR' | 'YOK';
+  rbi: 'VAR' | 'YOK';
+}
 export const api = {
   async getSettings(): Promise<ApiResponse<Settings>> {
     const res = await fetch('/api/settings');
@@ -22,6 +30,10 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(settings),
     });
+    return res.json();
+  },
+  async checkLicense(): Promise<ApiResponse<LicenseInfo>> {
+    const res = await fetch('/api/license-check', { method: 'POST' });
     return res.json();
   },
   async listReports(): Promise<ApiResponse<any[]>> {

@@ -5,15 +5,17 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { ShieldCheck, Key, User, Save, RefreshCw, Loader2 } from 'lucide-react';
+import { ShieldCheck, Key, User, Save, RefreshCw, Loader2, Building2, Briefcase } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAppStore } from '@/lib/store';
-import { api } from '@/lib/api';
+import { api, LicenseInfo } from '@/lib/api';
 export function SettingsPage() {
   const settings = useAppStore((s) => s.settings);
   const updateStoreSettings = useAppStore((s) => s.updateSettings);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [license, setLicense] = useState<LicenseInfo | null>(null);
+  const [isCheckingLicense, setIsCheckingLicense] = useState(false);
   useEffect(() => {
     const fetchSettings = async () => {
       try {
@@ -34,7 +36,7 @@ export function SettingsPage() {
     try {
       const res = await api.updateSettings(settings);
       if (res.success) {
-        toast.success('Settings saved to secure storage');
+        toast.success('Settings saved securely');
       } else {
         toast.error(res.error || 'Failed to save settings');
       }
@@ -44,15 +46,21 @@ export function SettingsPage() {
       setIsSaving(false);
     }
   };
-  const checkLicense = () => {
-    toast.promise(
-      new Promise((resolve) => setTimeout(resolve, 1000)),
-      {
-        loading: 'Verifying Cloudflare license...',
-        success: 'License verified: Zero Trust Enterprise',
-        error: 'Invalid API credentials',
+  const checkLicense = async () => {
+    setIsCheckingLicense(true);
+    try {
+      const res = await api.checkLicense();
+      if (res.success && res.data) {
+        setLicense(res.data);
+        toast.success('License verified successfully');
+      } else {
+        toast.error(res.error || 'License verification failed');
       }
-    );
+    } catch (err) {
+      toast.error('Connection error during license check');
+    } finally {
+      setIsCheckingLicense(false);
+    }
   };
   if (isLoading) {
     return (
@@ -65,10 +73,41 @@ export function SettingsPage() {
   }
   return (
     <AppLayout container>
-      <div className="max-w-4xl mx-auto space-y-8">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
-          <p className="text-muted-foreground">Manage your Cloudflare integration and report preferences.</p>
+      <div className="max-w-5xl mx-auto space-y-8">
+        <div className="flex justify-between items-start">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
+            <p className="text-muted-foreground">Manage your Cloudflare integration and report preferences.</p>
+          </div>
+          {license && (
+            <Card className="w-72 border-[#F38020]/20 shadow-soft bg-secondary/30">
+              <CardHeader className="py-3 px-4 border-b">
+                <CardTitle className="text-xs font-bold uppercase tracking-widest flex items-center gap-2">
+                  <ShieldCheck className="h-3 w-3 text-[#F38020]" />
+                  License Status
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-4 space-y-2">
+                <div className="flex justify-between text-xs">
+                  <span className="text-muted-foreground">Plan:</span>
+                  <span className="font-bold">{license.plan}</span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="text-muted-foreground">Total:</span>
+                  <span className="font-bold">{license.totalLicenses}</span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="text-muted-foreground">Used:</span>
+                  <span className="font-bold">{license.usedLicenses}</span>
+                </div>
+                <div className="pt-2 border-t grid grid-cols-3 gap-1 text-[10px] text-center font-bold">
+                  <div className={license.dlp === 'VAR' ? 'text-green-600' : 'text-muted-foreground'}>DLP: {license.dlp}</div>
+                  <div className={license.casb === 'VAR' ? 'text-green-600' : 'text-muted-foreground'}>CASB: {license.casb}</div>
+                  <div className={license.rbi === 'VAR' ? 'text-green-600' : 'text-muted-foreground'}>RBI: {license.rbi}</div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
         <Tabs defaultValue="integration" className="w-full">
           <TabsList className="grid w-full grid-cols-2 mb-8">
@@ -120,16 +159,10 @@ export function SettingsPage() {
                     />
                   </div>
                 </div>
-                <div className="p-4 rounded-xl bg-blue-50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <ShieldCheck className="h-5 w-5 text-blue-600" />
-                    <div>
-                      <p className="text-sm font-semibold text-blue-900 dark:text-blue-100">License Status</p>
-                      <p className="text-xs text-blue-700 dark:text-blue-300">Enterprise Plan Detected</p>
-                    </div>
-                  </div>
-                  <Button variant="outline" size="sm" onClick={checkLicense} className="bg-white dark:bg-background">
-                    <RefreshCw className="h-3 w-3 mr-2" /> Re-verify
+                <div className="flex justify-end">
+                  <Button variant="outline" size="sm" onClick={checkLicense} disabled={isCheckingLicense}>
+                    {isCheckingLicense ? <Loader2 className="h-3 w-3 mr-2 animate-spin" /> : <RefreshCw className="h-3 w-3 mr-2" />}
+                    Check License
                   </Button>
                 </div>
               </CardContent>
@@ -143,41 +176,100 @@ export function SettingsPage() {
             </Card>
           </TabsContent>
           <TabsContent value="report">
-            <Card className="border-border/50 shadow-soft">
-              <CardHeader>
-                <CardTitle>Executive Contact</CardTitle>
-                <CardDescription>These details will appear on the generated PDF reports.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Card className="border-border/50 shadow-soft">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Building2 className="h-5 w-5 text-[#F38020]" />
+                    Cloudflare Contact
+                  </CardTitle>
+                  <CardDescription>Internal Cloudflare representative details.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="contactName">Contact Name</Label>
-                    <Input
-                      id="contactName"
-                      value={settings.contactName}
-                      onChange={(e) => updateStoreSettings({ contactName: e.target.value })}
+                    <Label>Full Name</Label>
+                    <Input 
+                      value={settings.cloudflareContact.name} 
+                      onChange={(e) => updateStoreSettings({ cloudflareContact: { ...settings.cloudflareContact, name: e.target.value } })}
                       className="bg-secondary/50"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="contactEmail">Contact Email</Label>
-                    <Input
-                      id="contactEmail"
-                      type="email"
-                      value={settings.contactEmail}
-                      onChange={(e) => updateStoreSettings({ contactEmail: e.target.value })}
+                    <Label>Role</Label>
+                    <Input 
+                      value={settings.cloudflareContact.role} 
+                      onChange={(e) => updateStoreSettings({ cloudflareContact: { ...settings.cloudflareContact, role: e.target.value } })}
                       className="bg-secondary/50"
                     />
                   </div>
-                </div>
-              </CardContent>
-              <CardFooter className="flex justify-end border-t pt-6">
-                <Button onClick={handleSave} disabled={isSaving} className="btn-gradient">
-                  {isSaving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-                  Save Preferences
-                </Button>
-              </CardFooter>
-            </Card>
+                  <div className="space-y-2">
+                    <Label>Email</Label>
+                    <Input 
+                      value={settings.cloudflareContact.email} 
+                      onChange={(e) => updateStoreSettings({ cloudflareContact: { ...settings.cloudflareContact, email: e.target.value } })}
+                      className="bg-secondary/50"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Team</Label>
+                    <Input 
+                      value={settings.cloudflareContact.team} 
+                      onChange={(e) => updateStoreSettings({ cloudflareContact: { ...settings.cloudflareContact, team: e.target.value } })}
+                      className="bg-secondary/50"
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="border-border/50 shadow-soft">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Briefcase className="h-5 w-5 text-blue-500" />
+                    Customer Contact
+                  </CardTitle>
+                  <CardDescription>Primary customer stakeholder details.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Customer Name</Label>
+                    <Input 
+                      value={settings.customerContact.customerName} 
+                      onChange={(e) => updateStoreSettings({ customerContact: { ...settings.customerContact, customerName: e.target.value } })}
+                      className="bg-secondary/50"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Full Name</Label>
+                    <Input 
+                      value={settings.customerContact.name} 
+                      onChange={(e) => updateStoreSettings({ customerContact: { ...settings.customerContact, name: e.target.value } })}
+                      className="bg-secondary/50"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Role</Label>
+                    <Input 
+                      value={settings.customerContact.role} 
+                      onChange={(e) => updateStoreSettings({ customerContact: { ...settings.customerContact, role: e.target.value } })}
+                      className="bg-secondary/50"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Email</Label>
+                    <Input 
+                      value={settings.customerContact.email} 
+                      onChange={(e) => updateStoreSettings({ customerContact: { ...settings.customerContact, email: e.target.value } })}
+                      className="bg-secondary/50"
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+            <div className="mt-6 flex justify-end">
+              <Button onClick={handleSave} disabled={isSaving} className="btn-gradient">
+                {isSaving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+                Save Report Preferences
+              </Button>
+            </div>
           </TabsContent>
         </Tabs>
       </div>
