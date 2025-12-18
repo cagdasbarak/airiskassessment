@@ -2,19 +2,19 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, AreaChart, Area
+  PieChart, Pie, Cell, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar
 } from 'recharts';
 import {
   ChevronLeft, Download, ShieldAlert, BrainCircuit,
-  Users, Lock, AlertTriangle, CheckCircle2, Loader2
+  Users, Lock, AlertTriangle, Loader2, Sparkles
 } from 'lucide-react';
 import { api } from '@/lib/api';
+import { AIInsightsSection } from '@/components/reports/AIInsightsSection';
 const COLORS = ['#F38020', '#3182CE', '#48BB78', '#F56565', '#805AD5'];
 export function ReportDetailsPage() {
   const { id } = useParams();
@@ -200,46 +200,22 @@ export function ReportDetailsPage() {
             </div>
           </TabsContent>
           <TabsContent value="recommendations">
-            <Card className="border-border/50 shadow-soft">
-              <CardHeader>
-                <CardTitle>Executive Summary & Action Plan</CardTitle>
-                <CardDescription>AI-generated insights based on your Zero Trust activity.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-4">
-                  <div className="flex gap-4 p-4 rounded-xl bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900">
-                    <ShieldAlert className="h-6 w-6 text-red-600 shrink-0" />
-                    <div>
-                      <h4 className="font-bold text-red-900 dark:text-red-100">Critical: Shadow AI Usage Detected</h4>
-                      <p className="text-sm text-red-700 dark:text-red-300 mt-1">
-                        {report.summary.shadowAiApps} unapproved AI applications are currently bypassing standard procurement.
-                        Recommend implementing a "Block All AI" Gateway policy with an "Approved List" exception.
-                      </p>
-                    </div>
+            {report.aiInsights ? (
+              <AIInsightsSection insights={report.aiInsights} />
+            ) : (
+              <Card className="border-border/50 shadow-soft">
+                <CardContent className="py-12 flex flex-col items-center justify-center space-y-4">
+                  <Sparkles className="h-12 w-12 text-muted-foreground opacity-20" />
+                  <div className="text-center">
+                    <h3 className="text-lg font-medium">No AI Insights Available</h3>
+                    <p className="text-muted-foreground">This report was generated before AI analysis was enabled.</p>
                   </div>
-                  <div className="flex gap-4 p-4 rounded-xl bg-blue-50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900">
-                    <BrainCircuit className="h-6 w-6 text-blue-600 shrink-0" />
-                    <div>
-                      <h4 className="font-bold text-blue-900 dark:text-blue-100">Optimization: License Coverage</h4>
-                      <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
-                        Your current Zero Trust Enterprise license covers all detected users.
-                        Consider enabling "DLP for AI" to prevent sensitive data from being pasted into LLM prompts.
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex gap-4 p-4 rounded-xl bg-green-50 dark:bg-green-950/20 border border-green-100 dark:border-green-900">
-                    <CheckCircle2 className="h-6 w-6 text-green-600 shrink-0" />
-                    <div>
-                      <h4 className="font-bold text-green-900 dark:text-green-100">Policy Strength: High</h4>
-                      <p className="text-sm text-green-700 dark:text-green-300 mt-1">
-                        Access policies for GitHub Copilot are correctly configured with MFA.
-                        No unauthorized access attempts detected in this period.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                  <Button variant="outline" onClick={() => navigate('/')}>
+                    Generate New Assessment
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
         </Tabs>
       </div>

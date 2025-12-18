@@ -8,6 +8,22 @@ export interface UserSettings {
   contactName: string;
   contactEmail: string;
 }
+export interface AuditLog {
+  id: string;
+  timestamp: string;
+  action: string;
+  user: string;
+  status: 'Success' | 'Failed' | 'Warning';
+}
+export interface AIRecommendation {
+  title: string;
+  description: string;
+  type: 'critical' | 'policy' | 'optimization';
+}
+export interface AIInsights {
+  summary: string;
+  recommendations: AIRecommendation[];
+}
 export interface AssessmentReport {
   id: string;
   date: string;
@@ -32,6 +48,7 @@ export interface AssessmentReport {
     usageOverTime: Array<{ name: string; usage: number }>;
     riskDistribution: Array<{ name: string; value: number }>;
   };
+  aiInsights?: AIInsights;
 }
 export class AppController extends DurableObject<Env> {
   private sessions = new Map<string, SessionInfo>();
@@ -67,7 +84,6 @@ export class AppController extends DurableObject<Env> {
   async addReport(report: AssessmentReport): Promise<void> {
     const reports = await this.ctx.storage.get<AssessmentReport[]>('reports') || [];
     reports.unshift(report);
-    // Keep only last 50 reports
     await this.ctx.storage.put('reports', reports.slice(0, 50));
   }
   async listReports(): Promise<AssessmentReport[]> {
@@ -76,6 +92,16 @@ export class AppController extends DurableObject<Env> {
   async getReportById(id: string): Promise<AssessmentReport | null> {
     const reports = await this.ctx.storage.get<AssessmentReport[]>('reports') || [];
     return reports.find(r => r.id === id) || null;
+  }
+  // Audit Logging
+  async addLog(log: Omit<AuditLog, 'id'>): Promise<void> {
+    const logs = await this.ctx.storage.get<AuditLog[]>('audit_logs') || [];
+    const newLog: AuditLog = { ...log, id: crypto.randomUUID() };
+    logs.unshift(newLog);
+    await this.ctx.storage.put('audit_logs', logs.slice(0, 100));
+  }
+  async getLogs(): Promise<AuditLog[]> {
+    return await this.ctx.storage.get<AuditLog[]>('audit_logs') || [];
   }
   // Original Session Methods
   async addSession(sessionId: string, title?: string): Promise<void> {

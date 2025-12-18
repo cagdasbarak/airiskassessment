@@ -4,6 +4,13 @@ export interface ApiResponse<T> {
   data?: T;
   error?: string;
 }
+export interface AuditLog {
+  id: string;
+  timestamp: string;
+  action: string;
+  user: string;
+  status: 'Success' | 'Failed' | 'Warning';
+}
 export const api = {
   async getSettings(): Promise<ApiResponse<Settings>> {
     const res = await fetch('/api/settings');
@@ -27,6 +34,10 @@ export const api = {
   },
   async startAssessment(): Promise<ApiResponse<any>> {
     const res = await fetch('/api/assess', { method: 'POST' });
+    return res.json();
+  },
+  async getLogs(): Promise<ApiResponse<AuditLog[]>> {
+    const res = await fetch('/api/logs');
     return res.json();
   },
 };
