@@ -60,10 +60,12 @@ export function SettingsPage() {
       if (res.success) {
         toast.success('Settings saved securely');
       } else {
-        toast.error(res.error || 'Failed to save settings');
+        console.error('Settings save failed API error:', res.error);
+        toast.warn('Save failed—check console logs');
       }
     } catch (err) {
-      toast.error('Network error while saving');
+      console.error('Network error while saving settings:', err);
+      toast.warn('Save failed—check console logs');
     } finally {
       setIsSaving(false);
     }

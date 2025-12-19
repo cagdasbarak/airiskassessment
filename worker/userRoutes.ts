@@ -4,6 +4,7 @@ import { ChatAgent } from './agent';
 import { Env, getAppController, registerSession } from "./core-utils";
 import { ChatHandler } from './chat';
 import type { AssessmentReport, AIInsights, PowerUser } from './app-controller';
+console.log('SAFE_LOAD: userRoutes imported success');
 let coreRoutesRegistered = false;
 let userRoutesRegistered = false;
 const safeJSON = (text: string) => {
@@ -164,18 +165,16 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       const accessResp = await safeFetch('/access/events?per_page=1000', settings);
       const accessJson = safeJSON(await accessResp.text());
       const events = Array.isArray(accessJson?.result) ? accessJson.result : [];
-      // 3rd Metric: Unmanaged AI Traffic precision reduction
-      const unmanagedEvents = events.filter((ev: any) => 
-        ev.gatewayApp && 
-        ['Unapproved', 'Unreviewed'].includes(ev.gatewayApp.status) && 
+      const unmanagedEvents = events.filter((ev: any) =>
+        ev.gatewayApp &&
+        ['Unapproved', 'Unreviewed'].includes(ev.gatewayApp.status) &&
         Number(ev.bytesSent || 0) > 0
       );
-      const dataExfiltrationKB = Math.floor(unmanagedEvents.reduce((sum: number, ev: any) => 
+      const dataExfiltrationKB = Math.floor(unmanagedEvents.reduce((sum: number, ev: any) =>
         sum + (Number(ev.bytesSent || 0) / 1024), 0
       ));
-      // 4th Metric: Power User Detection
       const aiKeywords = /chatgpt|claude|gemini|copilot/i;
-      const aiUsageEvents = events.filter((ev: any) => 
+      const aiUsageEvents = events.filter((ev: any) =>
         ev.gatewayApp?.name && aiKeywords.test(ev.gatewayApp.name)
       );
       const userMap = new Map<string, number>();
@@ -191,11 +190,6 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         }))
         .sort((a, b) => b.prompts - a.prompts)
         .slice(0, 3);
-      console.log('EVENTS_DEBUG', { 
-        unmg_ai_events: unmanagedEvents.length, 
-        power_users: topPowerUsers.length, 
-        total_events: events.length 
-      });
       const unapprovedAppsCount = unapproved.filter((id: string) => aiIds.includes(id)).length;
       const healthScore = Math.max(0, Math.min(100, 100 - (shadowUsage / 1.5) - (unapprovedAppsCount * 2)));
       let aiInsights: AIInsights | undefined;
@@ -273,4 +267,5 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     await registerSession(c.env, sessionId, body.title || 'New Chat');
     return c.json({ success: true, data: { sessionId } });
   });
+  console.log('USER_ROUTES LOADED: settings/reports/assess/license-check registered');
 }
