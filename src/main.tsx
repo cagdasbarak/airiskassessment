@@ -60,12 +60,10 @@ const router = createBrowserRouter([
   },
 ]);
 createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <ErrorBoundary>
-        <RouterProvider router={router} />
-        <Toaster richColors closeButton position="top-right" />
-      </ErrorBoundary>
-    </QueryClientProvider>
-  </React.StrictMode>
+  <QueryClientProvider client={queryClient}>
+    <ErrorBoundary>
+      <RouterProvider router={router} />
+      <Toaster richColors closeButton position="top-right" />
+    </ErrorBoundary>
+  </QueryClientProvider>
 )

@@ -34,7 +34,7 @@ const ChartContainer = React.forwardRef<
           {
             "--chart-style-id": `chart-style-${chartId}`,
             minWidth: "0",
-            minHeight: "400px"
+            minHeight: "450px"
           } as React.CSSProperties
         }
         ref={ref}
