@@ -67,10 +67,11 @@ const ProgressRing = ({ value, colorKey }: { value: number; colorKey: ColorKey }
   );
 };
 export function ExecutiveScorecard({ summary, score, powerUsers = [] }: ScorecardProps) {
-  const shadowUsage = Number(summary?.shadowUsage || 0);
-  const unapprovedCount = Number(summary?.unapprovedApps || 0);
-  const dataRiskKB = Number(summary?.dataExfiltrationKB || 0);
-  const healthScore = Number(score || 0);
+  const safeSummary = summary || {};
+  const shadowUsage = Number(safeSummary.shadowUsage || 0);
+  const unapprovedCount = Number(safeSummary.unapprovedApps || 0);
+  const dataRiskKB = Number(safeSummary.dataExfiltrationKB || 0);
+  const healthScore = Number(score ?? 0);
   const complianceScore = Number(summary?.complianceScore || 0);
   const topUser = powerUsers[0];
   const isTrafficRisk = dataRiskKB >= 1024;
