@@ -34,6 +34,22 @@ export interface AIInsights {
   summary: string;
   recommendations: AIRecommendation[];
 }
+export interface AppPolicy {
+  name: string;
+  action: string;
+  type: 'Gateway' | 'Access';
+}
+export interface AppUsageEvent {
+  clientIP: string;
+  userEmail: string;
+  action: string;
+  date: string;
+  bytesKB: number;
+}
+export interface PowerUser {
+  email: string;
+  events: number;
+}
 export interface AssessmentReport {
   id: string;
   date: string;
@@ -44,19 +60,30 @@ export interface AssessmentReport {
     totalApps: number;
     aiApps: number;
     shadowAiApps: number;
-    dataExfiltrationRisk: string;
+    dataExfiltrationRisk: string; // in MB formatted
     complianceScore: number;
+    libraryCoverage: number; // percentage
+    casbPosture: number; // avg risk score
   };
+  powerUsers: PowerUser[];
   appLibrary: Array<{
+    appId: string;
     name: string;
     category: string;
-    status: string;
+    status: 'Approved' | 'Unapproved' | 'Review' | 'Unreviewed';
     users: number;
     risk: string;
+    risk_score: number;
+    genai_score: number;
+    policies: AppPolicy[];
+    usage: AppUsageEvent[];
   }>;
   securityCharts: {
     usageOverTime: Array<{ name: string; usage: number }>;
     riskDistribution: Array<{ name: string; value: number }>;
+    dataVolume: Array<{ name: string; value: number }>;
+    mcpActivity: Array<{ name: string; value: number }>;
+    loginEvents: Array<{ name: string; value: number }>;
   };
   aiInsights?: AIInsights;
 }
