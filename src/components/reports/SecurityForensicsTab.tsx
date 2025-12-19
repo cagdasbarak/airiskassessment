@@ -4,29 +4,22 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { motion } from 'framer-motion';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ShieldAlert, Info } from 'lucide-react';
 import { AssessmentReport } from '@/lib/api';
-
 interface SecurityForensicsTabProps {
   report: AssessmentReport;
 }
-
 const COLORS = [
-  'hsl(24, 90%, 55%)',  // Cloudflare Orange
-  'hsl(217, 91%, 60%)',  // Blue
-  'hsl(271, 91%, 65%)',  // Purple
-  'hsl(142, 71%, 45%)',  // Emerald
-  'hsl(329, 81%, 56%)'   // Pink
+  'hsl(24, 90%, 55%)',
+  'hsl(217, 91%, 60%)',
+  'hsl(271, 91%, 65%)',
+  'hsl(142, 71%, 45%)',
+  'hsl(329, 81%, 56%)'
 ];
-
 export function SecurityForensicsTab({ report }: SecurityForensicsTabProps) {
   const trendData = report.securityCharts?.topAppsTrends || [];
-  
-  // Dynamically derive keys from the data (excluding 'date')
   const appKeys = trendData.length > 0
     ? Object.keys(trendData[0]).filter(k => k !== 'date')
     : [];
-    
   const chartConfig = trendData.length > 0 ? appKeys.reduce((acc, key, idx) => {
     acc[key] = {
       label: key,
@@ -34,11 +27,9 @@ export function SecurityForensicsTab({ report }: SecurityForensicsTabProps) {
     };
     return acc;
   }, {} as any) : {};
-
   if (trendData.length === 0) {
     return <Skeleton className="h-[500px] w-full" />;
   }
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -60,6 +51,9 @@ export function SecurityForensicsTab({ report }: SecurityForensicsTabProps) {
             <BarChart
               data={trendData}
               margin={{ top: 20, right: 80, left: 10, bottom: 60 }}
+              barSize={30}
+              barGap={4}
+              barCategoryGap="20%"
             >
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" opacity={0.3} />
               <XAxis
@@ -100,6 +94,8 @@ export function SecurityForensicsTab({ report }: SecurityForensicsTabProps) {
                   dataKey={key}
                   stackId="a"
                   fill={COLORS[idx % COLORS.length]}
+                  fillOpacity={1}
+                  stroke="transparent"
                   radius={[0, 0, 0, 0]}
                   animationDuration={1500}
                   minPointSize={2}
@@ -116,5 +112,3 @@ export function SecurityForensicsTab({ report }: SecurityForensicsTabProps) {
     </motion.div>
   );
 }
-//
-```
