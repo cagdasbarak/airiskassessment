@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { produce } from 'immer';
 export interface CloudflareContact {
   name: string;
   role: string;
@@ -27,32 +28,51 @@ interface AppState {
   updateSettings: (settings: Partial<Settings>) => void;
   logout: () => void;
 }
+const DEFAULT_SETTINGS: Settings = {
+  accountId: '',
+  email: '',
+  apiKey: '',
+  cloudflareContact: {
+    name: 'Cloudflare Admin',
+    role: 'Solutions Engineer',
+    email: 'se@cloudflare.com',
+    team: 'Security Specialist',
+  },
+  customerContact: {
+    customerName: 'Enterprise Corp',
+    name: 'Security Director',
+    role: 'CISO',
+    email: 'ciso@enterprise.com',
+  },
+};
 export const useAppStore = create<AppState>()(
   persist(
     (set) => ({
       isAuthenticated: false,
       username: null,
-      settings: {
-        accountId: '',
-        email: '',
-        apiKey: '',
-        cloudflareContact: {
-          name: 'Cloudflare Admin',
-          role: 'Solutions Engineer',
-          email: 'se@cloudflare.com',
-          team: 'Security Specialist',
-        },
-        customerContact: {
-          customerName: 'Enterprise Corp',
-          name: 'Security Director',
-          role: 'CISO',
-          email: 'ciso@enterprise.com',
-        },
-      },
+      settings: DEFAULT_SETTINGS,
       setAuthenticated: (val, username) => set({ isAuthenticated: val, username }),
       updateSettings: (newSettings) =>
-        set((state) => ({ settings: { ...state.settings, ...newSettings } })),
-      logout: () => set({ isAuthenticated: false, username: null }),
+        set(
+          produce((state: AppState) => {
+            if (newSettings.accountId !== undefined) state.settings.accountId = newSettings.accountId;
+            if (newSettings.email !== undefined) state.settings.email = newSettings.email;
+            if (newSettings.apiKey !== undefined) state.settings.apiKey = newSettings.apiKey;
+            if (newSettings.cloudflareContact) {
+              state.settings.cloudflareContact = {
+                ...state.settings.cloudflareContact,
+                ...newSettings.cloudflareContact,
+              };
+            }
+            if (newSettings.customerContact) {
+              state.settings.customerContact = {
+                ...state.settings.customerContact,
+                ...newSettings.customerContact,
+              };
+            }
+          })
+        ),
+      logout: () => set({ isAuthenticated: false, username: null, settings: DEFAULT_SETTINGS }),
     }),
     {
       name: 'riskguard-storage',

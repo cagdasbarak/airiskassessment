@@ -61,7 +61,7 @@ export function ReportsPage() {
         {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[1, 2, 3].map((i) => (
-              <Card key={i} className="h-64 animate-pulse bg-secondary/20" />
+              <Card key={`skeleton-${i}`} className="h-64 animate-pulse bg-secondary/20" />
             ))}
           </div>
         ) : error ? (
@@ -71,61 +71,64 @@ export function ReportsPage() {
             <Button onClick={fetchReports}>Retry</Button>
           </div>
         ) : reports.length === 0 ? (
-          <div className="text-center py-24 border-2 border-dashed rounded-3xl">
-            <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+          <div className="flex flex-col items-center justify-center py-24 border-2 border-dashed rounded-3xl min-h-[400px]">
+            <FileText className="h-12 w-12 text-muted-foreground mb-4 opacity-20" />
             <h3 className="text-lg font-medium">No reports found</h3>
-            <p className="text-muted-foreground mb-6">Start your first assessment to see results here.</p>
-            <Button onClick={() => navigate('/')}>Start Assessment</Button>
+            <p className="text-muted-foreground mb-6 max-w-sm text-center">Start your first assessment to begin tracking your organizational AI risk posture.</p>
+            <Button onClick={() => navigate('/')} className="btn-gradient h-11 px-8">Start Assessment</Button>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {reports.map((report) => (
-              <Card key={report?.id ?? Math.random()} className="group border-border/50 shadow-soft hover:shadow-lg transition-all duration-300">
-                <CardHeader className="pb-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="p-2 rounded-lg bg-[#F38020]/10">
-                      <FileText className="h-5 w-5 text-[#F38020]" />
+            {reports.map((report, idx) => {
+              const reportId = report?.id || `fallback-${idx}`;
+              return (
+                <Card key={`report-${reportId}-${idx}`} className="group border-border/50 shadow-soft hover:shadow-lg transition-all duration-300">
+                  <CardHeader className="pb-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="p-2 rounded-lg bg-[#F38020]/10">
+                        <FileText className="h-5 w-5 text-[#F38020]" />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant={report?.riskLevel === 'High' ? 'destructive' : report?.riskLevel === 'Medium' ? 'secondary' : 'outline'}>
+                          {report?.riskLevel ?? 'Unknown'} Risk
+                        </Badge>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-destructive no-print"
+                          onClick={(e) => handleDelete(reportId, e)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant={report?.riskLevel === 'High' ? 'destructive' : report?.riskLevel === 'Medium' ? 'secondary' : 'outline'}>
-                        {report?.riskLevel ?? 'Unknown'} Risk
-                      </Badge>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                        onClick={(e) => handleDelete(report.id, e)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                    <CardTitle className="text-xl">Report {reportId.slice(-6).toUpperCase()}</CardTitle>
+                    <div className="flex items-center text-sm text-muted-foreground mt-1">
+                      <Calendar className="h-3 w-3 mr-1" /> {report?.date ?? 'N/A'}
                     </div>
-                  </div>
-                  <CardTitle className="text-xl">Report {report?.id?.slice(-6) ?? '...'}</CardTitle>
-                  <div className="flex items-center text-sm text-muted-foreground mt-1">
-                    <Calendar className="h-3 w-3 mr-1" /> {report?.date ?? 'N/A'}
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-end justify-between">
-                    <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground uppercase tracking-wider">Health Score</p>
-                      <p className="text-3xl font-bold text-foreground">{report?.score ?? 0}%</p>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-end justify-between">
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Health Score</p>
+                        <p className="text-3xl font-bold text-foreground">{report?.score ?? 0}%</p>
+                      </div>
+                      <div className="h-12 w-12 rounded-full border-4 border-secondary flex items-center justify-center overflow-hidden">
+                        <div
+                          className="w-full bg-[#F38020]"
+                          style={{ height: `${report?.score ?? 0}%`, marginTop: 'auto' }}
+                        />
+                      </div>
                     </div>
-                    <div className="h-12 w-12 rounded-full border-4 border-secondary flex items-center justify-center overflow-hidden">
-                      <div
-                        className="h-full w-full bg-[#F38020]"
-                        style={{ height: `${report?.score ?? 0}%`, marginTop: 'auto' }}
-                      />
-                    </div>
-                  </div>
-                </CardContent>
-                <CardFooter className="pt-4 border-t">
-                  <Button variant="outline" className="w-full" onClick={() => navigate(`/reports/${report.id}`)}>
-                    <Eye className="h-4 w-4 mr-2" /> View Details
-                  </Button>
-                </CardFooter>
-              </Card>
-            ))}
+                  </CardContent>
+                  <CardFooter className="pt-4 border-t">
+                    <Button variant="outline" className="w-full h-11 rounded-xl" onClick={() => navigate(`/reports/${reportId}`)}>
+                      <Eye className="h-4 w-4 mr-2" /> View Details
+                    </Button>
+                  </CardFooter>
+                </Card>
+              );
+            })}
           </div>
         )}
       </div>

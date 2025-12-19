@@ -20,18 +20,16 @@ interface ScorecardProps {
   score: number;
 }
 export function ExecutiveScorecard({ summary, score }: ScorecardProps) {
-  const shadowUsageValue = summary?.shadowUsage ?? 0;
-  const unapprovedCount = summary?.unapprovedApps ?? 0;
-  const dataExfiltrationKB = summary?.dataExfiltrationKB ?? 0;
-  const healthScore = score ?? 0;
-  // Consume the pre-formatted high-fidelity string from the backend
-  const dataRiskLabel = summary?.dataExfiltrationRisk ?? '0 KB';
-  const compliance = summary?.complianceScore ?? 0;
-  // Visual Risk Triggers
+  // Defensive numeric casting
+  const shadowUsageValue = Number(summary?.shadowUsage || 0);
+  const unapprovedCount = Number(summary?.unapprovedApps || 0);
+  const dataExfiltrationKB = Number(summary?.dataExfiltrationKB || 0);
+  const healthScore = Number(score || 0);
+  const compliance = Number(summary?.complianceScore || 0);
+  const dataRiskLabel = summary?.dataExfiltrationRisk || '0 KB';
   const isHighRiskShadow = shadowUsageValue > 50;
   const isCriticalUnapproved = unapprovedCount > 0;
-  // Badge and color triggers for data volume (1024KB = 1MB)
-  const isCriticalUpload = dataExfiltrationKB >= 1024;
+  const isCriticalUpload = dataExfiltrationKB >= 1024; // 1MB threshold
   const cards = [
     {
       title: "Shadow AI Usage",
@@ -42,18 +40,18 @@ export function ExecutiveScorecard({ summary, score }: ScorecardProps) {
       bg: isHighRiskShadow ? "bg-red-500/10" : "bg-[#F38020]/10",
       highlight: isHighRiskShadow,
       badge: isHighRiskShadow ? "High Risk" : null,
-      tooltip: "Percentage of detected AI applications not present in your organization's managed and reviewed application list."
+      tooltip: "Percentage of detected AI applications not present in your organization's managed list."
     },
     {
       title: "Unapproved Apps",
-      value: unapprovedCount,
+      value: String(unapprovedCount),
       description: "Active restricted AI assets.",
       icon: AlertTriangle,
       color: isCriticalUnapproved ? "text-red-500" : "text-emerald-500",
       bg: isCriticalUnapproved ? "bg-red-500/10" : "bg-emerald-500/10",
       highlight: isCriticalUnapproved,
       badge: isCriticalUnapproved ? "Critical" : null,
-      tooltip: "The count of AI applications explicitly marked as 'Unapproved' that still show active network telemetry."
+      tooltip: "The count of AI applications explicitly marked as 'Unapproved' with active telemetry."
     },
     {
       title: "Unmanaged AI Upload",
@@ -64,7 +62,7 @@ export function ExecutiveScorecard({ summary, score }: ScorecardProps) {
       bg: isCriticalUpload ? "bg-red-500/10" : "bg-purple-500/10",
       highlight: isCriticalUpload,
       badge: isCriticalUpload ? "Critical" : null,
-      tooltip: "High-fidelity aggregate of bytes sent to unreviewed or unapproved AI endpoints within the last 30 days, filtered by Gateway status and DLP incidents."
+      tooltip: "Aggregate bytes sent to unreviewed or unapproved AI endpoints within the last 30 days."
     },
     {
       title: "Health Score",
@@ -73,11 +71,11 @@ export function ExecutiveScorecard({ summary, score }: ScorecardProps) {
       icon: ShieldCheck,
       color: healthScore >= 85 ? "text-blue-500" : healthScore >= 70 ? "text-emerald-500" : "text-amber-500",
       bg: healthScore >= 85 ? "bg-blue-500/10" : healthScore >= 70 ? "bg-emerald-500/10" : "bg-amber-500/10",
-      tooltip: "A composite indicator reflecting policy coverage, shadow usage density, and effective Cloudflare ZTNA configuration."
+      tooltip: "Composite indicator of policy coverage, shadow usage, and ZTNA configuration."
     },
     {
       title: "Compliance Rate",
-      value: `${compliance}%`,
+      value: `${compliance.toFixed(0)}%`,
       description: "Managed application ratio.",
       icon: FileCheck,
       color: "text-[#F38020]",
@@ -90,7 +88,7 @@ export function ExecutiveScorecard({ summary, score }: ScorecardProps) {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
         {cards.map((card, idx) => (
           <motion.div
-            key={card.title}
+            key={`scorecard-${card.title}-${idx}`}
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{
@@ -119,7 +117,10 @@ export function ExecutiveScorecard({ summary, score }: ScorecardProps) {
                     <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{card.title}</h3>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <button className="focus:outline-none" aria-label={`Details for ${card.title}`}>
+                        <button 
+                          className="focus:outline-none" 
+                          aria-label={`Show detailed information about ${card.title}`}
+                        >
                           <Info className="h-3 w-3 text-muted-foreground/30 cursor-help" />
                         </button>
                       </TooltipTrigger>

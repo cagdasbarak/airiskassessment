@@ -25,7 +25,7 @@ const safeFetch = async (endpoint: string, settings: any) => {
   });
 };
 const formatRiskVolume = (kb: number): string => {
-  if (kb === 0) return "0 KB";
+  if (kb <= 0) return "0 KB";
   if (kb < 1024) return `${kb.toLocaleString()} KB`;
   return `${(kb / 1024).toFixed(2)} MB`;
 };
@@ -135,7 +135,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         }).filter(Boolean);
       }
       aiIds = Array.from(new Set(aiIds));
-      const totalAI = aiIds.length;
+      const totalAI = Math.max(0, aiIds.length);
       const reviewResp = await safeFetch('/gateway/apps/review_status', settings);
       const reviewText = await reviewResp.text();
       const reviewJson = safeJSON(reviewText);
@@ -145,17 +145,16 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       const unapproved = (statuses.unapproved_apps || []).map(String);
       const managedIdsSet = new Set([...approved, ...inReview, ...unapproved]);
       const managedIds = aiIds.filter((id: string) => managedIdsSet.has(id));
-      const managedCount = managedIds.length;
-      const shadowCount = totalAI - managedCount;
+      const managedCount = Math.max(0, managedIds.length);
+      const shadowCount = Math.max(0, totalAI - managedCount);
       const shadowUsage = totalAI > 0
         ? Number(((shadowCount / totalAI) * 100).toFixed(3))
         : 0;
-      // PHASE 29: Precision 30-Day DLP Forensic Filtering
       const cutoffDate = new Date(Date.now() - 30 * 24 * 3600 * 1000);
       const dlpResp = await safeFetch('/dlp/incidents?per_page=500', settings);
       const dlpJson = safeJSON(await dlpResp.text());
       let dataExfiltrationKB = 0;
-      if (dlpJson?.result) {
+      if (dlpJson?.result && Array.isArray(dlpJson.result)) {
         const forensicIncidents = dlpJson.result.filter((i: any) => {
           const timestamp = i.timestamp || i.edgeStartTS || i.created_at;
           const incidentDate = new Date(timestamp);
@@ -164,10 +163,10 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
           const isUnmanaged = status === 'Unreviewed' || status === 'Unapproved';
           return isWithin30Days && isUnmanaged;
         });
-        const totalBytes = forensicIncidents.reduce((sum: number, i: any) => sum + (i.fileSize || 0), 0);
-        dataExfiltrationKB = Math.floor(totalBytes / 1024);
+        const totalBytes = forensicIncidents.reduce((sum: number, i: any) => sum + Number(i.fileSize || 0), 0);
+        dataExfiltrationKB = Math.max(0, Math.floor(totalBytes / 1024));
       }
-      const unapprovedAppsCount = unapproved.filter((id: string) => aiIds.includes(id)).length;
+      const unapprovedAppsCount = Math.max(0, unapproved.filter((id: string) => aiIds.includes(id)).length);
       const healthScore = Math.max(0, Math.min(100, 100 - (shadowUsage / 1.5)));
       let aiInsights: AIInsights | undefined;
       try {
@@ -191,7 +190,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         aiInsights = JSON.parse(aiResponse.content);
       } catch (aiErr) {
         aiInsights = {
-          summary: `Shadow AI usage at ${shadowUsage.toFixed(3)}% represents a critical blind spot. Immediate management of unmanaged endpoints is required to mitigate data loss risk.`,
+          summary: `Shadow AI usage at ${shadowUsage.toFixed(3)}% represents a blind spot. Management of unmanaged endpoints is required.`,
           recommendations: [
             { title: "Block Unapproved Endpoints", description: `Enforce Cloudflare Gateway block policies for the ${unapprovedAppsCount} identified unapproved applications.`, type: "critical" },
             { title: "Enable DLP Scans", description: "Activate DLP profiles to detect and block sensitive PII/secrets being sent to Generative AI prompts.", type: "policy" },
@@ -235,12 +234,12 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         action: 'Report Generated',
         user: settings.email || 'System Admin',
         status: 'Success',
-        description: `30-Day Forensic: Detected ${shadowCount} shadow apps with ${formatRiskVolume(dataExfiltrationKB)} unmanaged data exposure.`
+        description: `30-Day Forensic: Detected ${shadowCount} shadow apps with ${formatRiskVolume(dataExfiltrationKB)} unmanaged exposure.`
       });
       return c.json({ success: true, data: report });
     } catch (error: any) {
       console.error('Assessment Engine Failure:', error);
-      return c.json({ success: false, error: 'Failed to aggregate Cloudflare telemetry. Check API credentials.' }, { status: 500 });
+      return c.json({ success: false, error: 'Failed to aggregate Cloudflare telemetry.' }, { status: 500 });
     }
   });
   app.get('/api/sessions', async (c) => c.json({ success: true, data: await getAppController(c.env).listSessions() }));
