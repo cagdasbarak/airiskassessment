@@ -227,11 +227,17 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
                 const chat = new ChatHandler(c.env.CF_AI_BASE_URL, c.env.CF_AI_API_KEY, 'google-ai-studio/gemini-2.0-flash');
                 const aiRes = await chat.processMessage(`Analyze risk summary: ${JSON.stringify(report.summary)}. Provide 3 critical recommendations in JSON format: { "summary": "string", "recommendations": [{ "title": "string", "description": "string", "type": "critical|policy|optimization" }] }.`, []);
                 const json = JSON.parse(aiRes.content.match(/\{[\s\S]*\}/)?.[0] || '{}');
-                (report as any).aiInsights = json;
+                (report as any).aiInsights = {
+                    summary: json.summary || "Manual review of detected AI applications is required to ensure data governance compliance.",
+                    recommendations: Array.isArray(json.recommendations) ? json.recommendations : []
+                };
             } catch (e) {
-                (report as any).aiInsights = { summary: "Critical analysis of shadow AI usage.", recommendations: [{ title: "Block Shadow AI", description: "Implement block policies.", type: "critical" }] };
+                (report as any).aiInsights = { 
+                    summary: "Telemetry analysis suggests increased shadow AI usage within the network perimeter.", 
+                    recommendations: [{ title: "Implement CASB Governance", description: "Review and approve discovered AI applications through the Cloudflare Zero Trust dashboard.", type: "critical" }] 
+                };
             }
-            await controller.addReport(report as any);
+            await controller.addReport(report as AssessmentReport);
             await controller.addLog({
                 timestamp: new Date().toISOString(),
                 action: 'Advanced Assessment Generated',

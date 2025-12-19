@@ -9,10 +9,10 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
 import {
-  PieChart, Pie, Cell, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, LineChart, Line, Legend
+  PieChart, Pie, Cell, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from 'recharts';
 import {
-  ChevronLeft, Download, ShieldAlert, Users, Lock, Loader2, Activity, ShieldCheck, Database, Globe, Terminal, Sparkles, Printer, XCircle
+  ChevronLeft, Download, ShieldAlert, Users, Lock, Loader2, Activity, ShieldCheck, Database, Globe, Terminal, Sparkles, Printer
 } from 'lucide-react';
 import { api, AssessmentReport, SecurityCharts } from '@/lib/api';
 import { AIInsightsSection } from '@/components/reports/AIInsightsSection';
@@ -65,7 +65,7 @@ export function ReportDetailsPage() {
     </AppLayout>
   );
   const safeAppLibrary = report.appLibrary ?? [];
-  const summary = report.summary ?? {};
+  const summary = report.summary;
   const charts = (report.securityCharts || {}) as SecurityCharts;
   const topAppsTrend = charts.topAppsTrend ?? [];
   const statusCounts = safeAppLibrary.reduce((acc: Record<string, number>, app) => {
@@ -110,14 +110,14 @@ export function ReportDetailsPage() {
               </div>
               <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-1">Shadow AI Usage</p>
               <div className="flex items-baseline gap-2">
-                <p className={cn("text-3xl font-bold", (summary.shadowUsage ?? 0) > 50 ? "text-red-500" : "text-foreground")}>
-                  {summary.shadowUsage ?? 0}%
+                <p className={cn("text-3xl font-bold", (summary.shadowUsage) > 50 ? "text-red-500" : "text-foreground")}>
+                  {summary.shadowUsage}%
                 </p>
-                {(summary.shadowUsage ?? 0) > 50 && (
+                {(summary.shadowUsage) > 50 && (
                   <Badge variant="destructive" className="text-[8px] h-4">HighRisk</Badge>
                 )}
               </div>
-              <Progress value={summary.shadowUsage ?? 0} className={cn("h-1 mt-2", (summary.shadowUsage ?? 0) > 50 ? "[&>div]:bg-red-500" : "")} />
+              <Progress value={summary.shadowUsage} className={cn("h-1 mt-2", (summary.shadowUsage) > 50 ? "[&>div]:bg-red-500" : "")} />
             </CardContent>
           </Card>
           <Card className="border-border/50 shadow-soft overflow-hidden group hover:shadow-md transition-all">
@@ -127,7 +127,7 @@ export function ReportDetailsPage() {
               </div>
               <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-1">Unapproved Apps</p>
               <div className="flex items-baseline gap-2">
-                <p className="text-3xl font-bold text-orange-500">{summary.unapprovedApps ?? 0}</p>
+                <p className="text-3xl font-bold text-orange-500">{summary.unapprovedApps}</p>
                 <span className="text-xs text-muted-foreground">Blocked</span>
               </div>
             </CardContent>
@@ -138,7 +138,7 @@ export function ReportDetailsPage() {
                 <Database className="h-5 w-5 text-blue-500" />
               </div>
               <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-1">Data Exfil Risk</p>
-              <p className="text-2xl font-bold text-blue-500">{summary.dataExfiltrationRisk ?? 'Low'}</p>
+              <p className="text-2xl font-bold text-blue-500">{summary.dataExfiltrationRisk}</p>
               <p className="text-[10px] text-muted-foreground mt-1">DLP Incident Volume</p>
             </CardContent>
           </Card>
@@ -165,9 +165,9 @@ export function ReportDetailsPage() {
               </div>
               <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-1">Posture Score</p>
               <div className="flex flex-col">
-                <p className="text-2xl font-bold text-green-500">{summary.casbPosture ?? 0}/100</p>
+                <p className="text-2xl font-bold text-green-500">{summary.casbPosture}/100</p>
                 <div className="h-1 w-full bg-secondary mt-2 rounded-full overflow-hidden">
-                  <div className="h-full bg-green-500" style={{ width: `${summary.casbPosture ?? 0}%` }} />
+                  <div className="h-full bg-green-500" style={{ width: `${summary.casbPosture}%` }} />
                 </div>
               </div>
             </CardContent>
