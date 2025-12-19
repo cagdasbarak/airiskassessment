@@ -34,6 +34,7 @@ export interface SecurityCharts {
   dataTrends?: any[];
   mcpTrends?: any[];
   topAppsTrends?: Array<Record<string, any>>;
+  topAppsTrends?: Array<Record<string, any>>;
 }
 export interface AIRecommendation {
   title: string;

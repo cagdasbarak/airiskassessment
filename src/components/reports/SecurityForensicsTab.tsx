@@ -1,163 +1,134 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Legend, ResponsiveContainer } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Legend } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
-import { Activity, ShieldAlert, BarChart3, Globe, Lock } from 'lucide-react';
+import { Activity, ShieldCheck } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { AssessmentReport } from '@/lib/api';
 interface SecurityForensicsTabProps {
   report: AssessmentReport;
 }
-const COLORS = [
-  'hsl(24, 95%, 53%)', // Orange
-  'hsl(0, 84%, 60%)',  // Red
-  'hsl(271, 91%, 65%)', // Purple
-  'hsl(217, 91%, 60%)', // Blue
-  'hsl(142, 71%, 45%)'  // Emerald
+// Exact HSL Mapping as per requirements
+const STATUS_COLORS: Record<string, string> = {
+  'Unreviewed': 'hsl(0, 0%, 50%)',
+  'Review': 'hsl(45, 100%, 70%)',
+  'Unapproved': 'hsl(0, 100%, 60%)',
+  'Approved': 'hsl(142, 71%, 45%)'
+};
+const FALLBACK_COLORS = [
+  'hsl(24, 95%, 53%)',
+  'hsl(217, 91%, 60%)',
+  'hsl(271, 91%, 65%)',
+  'hsl(189, 94%, 43%)',
+  'hsl(142, 71%, 45%)'
 ];
 export function SecurityForensicsTab({ report }: SecurityForensicsTabProps) {
   const trendData = report.securityCharts?.topAppsTrends || [];
   // Extract keys for Area components, excluding 'date'
-  const appKeys = trendData.length > 0 
+  const appKeys = trendData.length > 0
     ? Object.keys(trendData[0]).filter(k => k !== 'date')
     : [];
   const chartConfig = appKeys.reduce((acc, key, idx) => {
+    // Try to map status based color if the key contains status info, else use fallback
+    const color = STATUS_COLORS[key] || FALLBACK_COLORS[idx % FALLBACK_COLORS.length];
     acc[key] = {
       label: key,
-      color: COLORS[idx % COLORS.length]
+      color: color
     };
     return acc;
   }, {} as any);
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.98 }}
-      animate={{ opacity: 1, scale: 1 }}
-      className="space-y-8"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="space-y-0 h-full min-h-[600px] flex flex-col"
     >
-      <Card className="border-border/50 shadow-soft bg-white/40 dark:bg-black/20 backdrop-blur-xl overflow-hidden">
-        <CardHeader className="border-b border-border/10 pb-6">
+      <Card className="flex-1 border-border/50 shadow-soft bg-white/40 dark:bg-black/20 backdrop-blur-xl overflow-hidden flex flex-col">
+        <CardHeader className="border-b border-border/10 pb-6 flex-shrink-0">
           <div className="flex items-center justify-between">
             <div className="space-y-1">
-              <CardTitle className="text-xl font-black uppercase tracking-tight flex items-center gap-3">
-                <Activity className="h-6 w-6 text-[#F38020]" />
+              <CardTitle className="text-2xl font-black uppercase tracking-tighter flex items-center gap-4">
+                <Activity className="h-8 w-8 text-[#F38020]" />
                 AI Adoption Velocity
               </CardTitle>
-              <CardDescription className="text-xs font-bold uppercase tracking-wider text-muted-foreground/60">
-                Unique daily user trends for Top 5 AI platforms (30-day lookback)
+              <CardDescription className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground/60">
+                Executive Forensic Analysis: Unique Daily Users (30-Day Lookback)
               </CardDescription>
             </div>
-            <div className="px-3 py-1.5 rounded-xl bg-[#F38020]/10 border border-[#F38020]/20 text-[10px] font-black uppercase tracking-[0.2em] text-[#F38020]">
-              Forensic Real-time
+            <div className="flex items-center gap-3 px-4 py-2 rounded-2xl bg-[#F38020]/10 border border-[#F38020]/20">
+              <ShieldCheck className="h-4 w-4 text-[#F38020]" />
+              <span className="text-[10px] font-black uppercase tracking-widest text-[#F38020]">Precision Audit</span>
             </div>
           </div>
         </CardHeader>
-        <CardContent className="pt-8">
-          <div className="h-[450px] w-full">
-            <ChartContainer config={chartConfig}>
-              <AreaChart data={trendData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                <defs>
-                  {appKeys.map((key, idx) => (
+        <CardContent className="flex-1 p-8 min-h-[500px]">
+          <ChartContainer config={chartConfig} className="h-full w-full">
+            <AreaChart data={trendData} margin={{ top: 20, right: 30, left: 10, bottom: 20 }}>
+              <defs>
+                {appKeys.map((key, idx) => {
+                  const color = STATUS_COLORS[key] || FALLBACK_COLORS[idx % FALLBACK_COLORS.length];
+                  return (
                     <linearGradient key={`grad-${key}`} id={`grad-${key}`} x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor={COLORS[idx % COLORS.length]} stopOpacity={0.3} />
-                      <stop offset="95%" stopColor={COLORS[idx % COLORS.length]} stopOpacity={0} />
+                      <stop offset="5%" stopColor={color} stopOpacity={0.6} />
+                      <stop offset="95%" stopColor={color} stopOpacity={0} />
                     </linearGradient>
-                  ))}
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" opacity={0.5} />
-                <XAxis 
-                  dataKey="date" 
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fontSize: 10, fontWeight: 700 }}
-                  tickFormatter={(val) => val.split('-').slice(1).join('/')}
-                  dy={10}
-                />
-                <YAxis 
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fontSize: 10, fontWeight: 700 }}
-                  dx={-10}
-                />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Legend 
-                  verticalAlign="top" 
-                  align="right" 
-                  iconType="circle"
-                  wrapperStyle={{ paddingBottom: '20px', fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.1em' }}
-                />
-                {appKeys.map((key, idx) => (
+                  );
+                })}
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" opacity={0.5} />
+              <XAxis
+                dataKey="date"
+                axisLine={false}
+                tickLine={false}
+                tick={{ fontSize: 10, fontWeight: 700, fontFamily: 'JetBrains Mono' }}
+                tickFormatter={(val) => {
+                  const d = new Date(val);
+                  return `${d.getMonth() + 1}/${d.getDate()}`;
+                }}
+                dy={10}
+                angle={-45}
+                textAnchor="end"
+              />
+              <YAxis
+                axisLine={false}
+                tickLine={false}
+                tick={{ fontSize: 10, fontWeight: 700, fontFamily: 'JetBrains Mono' }}
+                dx={-10}
+              />
+              <ChartTooltip content={<ChartTooltipContent />} />
+              <Legend
+                verticalAlign="middle"
+                align="right"
+                layout="vertical"
+                iconType="circle"
+                wrapperStyle={{ 
+                  paddingLeft: '40px', 
+                  fontSize: '11px', 
+                  fontWeight: 900, 
+                  textTransform: 'uppercase', 
+                  letterSpacing: '0.1em' 
+                }}
+              />
+              {appKeys.map((key, idx) => {
+                const color = STATUS_COLORS[key] || FALLBACK_COLORS[idx % FALLBACK_COLORS.length];
+                return (
                   <Area
                     key={key}
                     type="monotone"
                     dataKey={key}
                     stackId="1"
-                    stroke={COLORS[idx % COLORS.length]}
-                    strokeWidth={3}
+                    stroke={color}
+                    strokeWidth={2}
                     fillOpacity={1}
                     fill={`url(#grad-${key})`}
                     animationDuration={1500}
                   />
-                ))}
-              </AreaChart>
-            </ChartContainer>
-          </div>
+                );
+              })}
+            </AreaChart>
+          </ChartContainer>
         </CardContent>
       </Card>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <Card className="border-border/50 shadow-soft bg-white/30 dark:bg-black/10 backdrop-blur-md overflow-hidden">
-          <CardHeader className="pb-2">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
-                <ShieldAlert className="h-5 w-5 text-blue-500" />
-              </div>
-              <div>
-                <CardTitle className="text-sm font-black uppercase tracking-tight">Access Log Correlation</CardTitle>
-                <CardDescription className="text-[10px] uppercase font-bold text-muted-foreground/60">Risk Vector distribution</CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="h-48 flex flex-col items-center justify-center">
-             <div className="w-full h-full border-2 border-dashed border-border/30 rounded-2xl flex flex-col items-center justify-center gap-4">
-                <BarChart3 className="h-10 w-10 text-muted-foreground/20" />
-                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground/40">Visualizing Log Streams</p>
-              </div>
-          </CardContent>
-        </Card>
-        <Card className="border-border/50 shadow-soft bg-white/30 dark:bg-black/10 backdrop-blur-md overflow-hidden">
-          <CardHeader className="pb-2">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-purple-500/10 flex items-center justify-center">
-                <Globe className="h-5 w-5 text-purple-500" />
-              </div>
-              <div>
-                <CardTitle className="text-sm font-black uppercase tracking-tight">Geographic Origin</CardTitle>
-                <CardDescription className="text-[10px] uppercase font-bold text-muted-foreground/60">Regional AI Traffic Density</CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="h-48 flex flex-col items-center justify-center">
-             <div className="w-full h-full border-2 border-dashed border-border/30 rounded-2xl flex flex-col items-center justify-center gap-4">
-                <Globe className="h-10 w-10 text-muted-foreground/20" />
-                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground/40">Regional Compliance Check</p>
-              </div>
-          </CardContent>
-        </Card>
-      </div>
-      <div className="p-6 rounded-[2rem] bg-[#F38020]/5 border border-[#F38020]/10 flex items-center justify-between gap-6">
-        <div className="flex items-center gap-4">
-          <div className="h-12 w-12 rounded-2xl bg-white dark:bg-black/40 flex items-center justify-center shadow-sm">
-            <Lock className="h-6 w-6 text-[#F38020]" />
-          </div>
-          <div>
-            <h4 className="text-sm font-black uppercase tracking-tight">ZTNA Log Synchronization</h4>
-            <p className="text-xs text-muted-foreground font-medium italic">Connected to Cloudflare Gateway API via riskguard-ai-agent-v1</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-           <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-           <span className="text-[10px] font-black uppercase tracking-widest">Active Tunnel</span>
-        </div>
-      </div>
     </motion.div>
   );
 }

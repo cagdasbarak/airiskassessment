@@ -39,9 +39,9 @@ export function ReportDetailsPage() {
     };
     fetchReport();
     return () => { 
-      isMounted = false; 
+      isMounted = false;
     };
-  }, []);
+  }, [id]);
   const handleBack = goBack;
   const handlePrint = () => window.print();
   if (isLoading) {

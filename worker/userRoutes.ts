@@ -217,7 +217,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         .sort((a, b) => b.prompts - a.prompts)
         .slice(0, 3);
       const unapprovedAppsCount = unapproved.filter((id: string) => aiIds.includes(id)).length;
-      const dataExfiltrationKB = Math.floor(events
+      const dataExfiltrationKB = Math.floor((events as any[])
         .filter((ev: any) => aiKeywords.test(ev.gatewayApp?.name || '') && !managedIdsSet.has(String(ev.gatewayApp?.id)))
         .reduce((sum, ev) => sum + (Number(ev.bytesSent || 0) / 1024), 0));
       const healthScore = Math.max(0, Math.min(100, 100 - (shadowUsage / 1.5) - (unapprovedAppsCount * 2)));
