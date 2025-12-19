@@ -11,7 +11,7 @@ import {
   PieChart, Pie, Cell, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, LineChart, Line, Legend
 } from 'recharts';
 import {
-  ChevronLeft, Download, ShieldAlert, BrainCircuit, Users, Lock, AlertTriangle, Loader2, Sparkles, Activity, FileWarning, ShieldCheck, Database, Globe
+  ChevronLeft, Download, ShieldAlert, Users, Lock, Loader2, Activity, ShieldCheck, Database, Globe
 } from 'lucide-react';
 import { api, AssessmentReport } from '@/lib/api';
 import { AIInsightsSection } from '@/components/reports/AIInsightsSection';
@@ -61,19 +61,33 @@ export function ReportDetailsPage() {
     </AppLayout>
   );
   const safeAppLibrary = report.appLibrary ?? [];
-  const safeSummary = report.summary ?? { totalApps: 0, aiApps: 0, shadowAiApps: 0, dataExfiltrationRisk: '0 MB', complianceScore: 0, libraryCoverage: 0, casbPosture: 0 };
+  const safeSummary = report.summary ?? { 
+    totalApps: 0, 
+    aiApps: 0, 
+    shadowAiApps: 0, 
+    dataExfiltrationRisk: '0 MB', 
+    complianceScore: 0, 
+    libraryCoverage: 0, 
+    casbPosture: 0 
+  };
+  // Explicitly typing the fallbacks to avoid TS2339 property access errors
   const safeCharts = report.securityCharts ?? {};
-  const statusCounts = safeAppLibrary.reduce((acc: any, app) => {
+  const topAppsTrend = safeCharts.topAppsTrend ?? [];
+  const statusTrend = safeCharts.statusTrend ?? [];
+  const dataTrend = safeCharts.dataTrend ?? [];
+  const mcpAccessTrend = safeCharts.mcpAccessTrend ?? [];
+  const mcpLoginTrend = safeCharts.mcpLoginTrend ?? [];
+  const statusCounts = safeAppLibrary.reduce((acc: Record<string, number>, app) => {
     acc[app.status] = (acc[app.status] || 0) + 1;
     return acc;
   }, {});
-  const pieData = Object.entries(statusCounts).map(([name, value]) => ({ name, value: Number(value) }));
-  const filteredApps = selectedStatus ? safeAppLibrary.filter(a => a.status === selectedStatus) : safeAppLibrary;
-  const topAppsTrend = safeCharts.topAppsTrend || [];
-  const statusTrend = safeCharts.statusTrend || [];
-  const dataTrend = safeCharts.dataTrend || [];
-  const mcpAccessTrend = safeCharts.mcpAccessTrend || [];
-  const mcpLoginTrend = safeCharts.mcpLoginTrend || [];
+  const pieData = Object.entries(statusCounts).map(([name, value]) => ({ 
+    name, 
+    value: Number(value) 
+  }));
+  const filteredApps = selectedStatus 
+    ? safeAppLibrary.filter(a => a.status === selectedStatus) 
+    : safeAppLibrary;
   return (
     <AppLayout container>
       <div className="space-y-10">
@@ -188,7 +202,7 @@ export function ReportDetailsPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredApps.map((app, index) => (
+                      {filteredApps.map((app) => (
                         <React.Fragment key={app.appId}>
                           <TableRow
                             className="cursor-pointer group hover:bg-secondary/10 transition-colors border-l-4 border-l-transparent data-[state=expanded]:border-l-[#F38020] data-[state=expanded]:bg-secondary/30"
@@ -249,7 +263,7 @@ export function ReportDetailsPage() {
                     <YAxis />
                     <Tooltip />
                     <Legend />
-                    {Object.keys(topAppsTrend[0] || {}).filter(k => k !== 'name').map((key, i) => (
+                    {topAppsTrend.length > 0 && Object.keys(topAppsTrend[0]).filter(k => k !== 'name').map((key, i) => (
                       <Area key={key} type="monotone" dataKey={key} stackId="1" stroke={`hsl(${i * 60}, 70%, 50%)`} fill={`hsl(${i * 60}, 70%, 50%)`} fillOpacity={0.4} />
                     ))}
                   </AreaChart>
@@ -320,7 +334,7 @@ export function ReportDetailsPage() {
             </div>
           </TabsContent>
           <TabsContent value="recommendations">
-            {report.aiInsights ? <AIInsightsSection insights={report.aiInsights as any} /> : (
+            {report.aiInsights ? <AIInsightsSection insights={report.aiInsights} /> : (
               <div className="text-center py-20 opacity-50">AI analysis data missing for this report.</div>
             )}
           </TabsContent>

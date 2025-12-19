@@ -37,6 +37,18 @@ export interface PowerUser {
   email: string;
   events: number;
 }
+export interface SecurityCharts {
+  usageOverTime: Array<{ name: string; usage: number }>;
+  riskDistribution: Array<{ name: string; value: number }>;
+  dataVolume: Array<{ name: string; value: number }>;
+  mcpActivity: Array<{ name: string; value: number }>;
+  loginEvents: Array<{ name: string; value: number }>;
+  topAppsTrend?: Array<Record<string, any>>;
+  statusTrend?: Array<{ name: string; Approved: number; Review: number; Unapproved: number; Unreviewed: number }>;
+  dataTrend?: Array<{ name: string; total: number; delta: number }>;
+  mcpAccessTrend?: Array<{ name: string; servers: number }>;
+  mcpLoginTrend?: Array<{ name: string; events: number }>;
+}
 export interface AssessmentReport {
   id: string;
   date: string;
@@ -60,23 +72,12 @@ export interface AssessmentReport {
     status: 'Approved' | 'Unapproved' | 'Review' | 'Unreviewed';
     users: number;
     risk: string;
-    risk_score: number; // Also known as appConfidence
-    genai_score: number; // Also known as genaiConfidence
+    risk_score: number;
+    genai_score: number;
     policies: AppPolicy[];
     usage: AppUsageEvent[];
   }>;
-  securityCharts: {
-    usageOverTime: Array<{ name: string; usage: number }>;
-    riskDistribution: Array<{ name: string; value: number }>;
-    dataVolume: Array<{ name: string; value: number }>;
-    mcpActivity: Array<{ name: string; value: number }>;
-    loginEvents: Array<{ name: string; value: number }>;
-    topAppsTrend?: Array<{ name: string; [key: string]: any }>;
-    statusTrend?: Array<{ name: string; Approved: number; Review: number; Unapproved: number; Unreviewed: number }>;
-    dataTrend?: Array<{ name: string; total: number; delta: number }>;
-    mcpAccessTrend?: Array<{ name: string; servers: number }>;
-    mcpLoginTrend?: Array<{ name: string; events: number }>;
-  };
+  securityCharts: SecurityCharts;
   aiInsights?: {
     summary: string;
     recommendations: Array<{

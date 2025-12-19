@@ -3,7 +3,7 @@ import { getAgentByName } from 'agents';
 import { ChatAgent } from './agent';
 import { ChatHandler } from './chat';
 import { API_RESPONSES } from './config';
-import { Env, getAppController, registerSession, unregisterSession } from "./core-utils";
+import { Env, getAppController, registerSession } from "./core-utils";
 export function coreRoutes(app: Hono<{ Bindings: Env }>) {
     app.all('/api/chat/:sessionId/*', async (c) => {
         try {
@@ -99,7 +99,6 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         if (!settings.accountId || !settings.apiKey) return c.json({ success: false, error: 'Credentials missing' }, { status: 400 });
         try {
             const headers = getCFHeaders(settings.email, settings.apiKey);
-            // 1. Data Fetching (Parallel)
             const [appsR, dlpR, accessR, gtwPolR, accPolR] = await Promise.all([
                 fetch(`https://api.cloudflare.com/client/v4/accounts/${settings.accountId}/gateway/apps`, { headers }),
                 fetch(`https://api.cloudflare.com/client/v4/accounts/${settings.accountId}/dlp/incidents`, { headers }),
@@ -112,36 +111,32 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
             const eventsData = (await accessR.json() as any).result || [];
             const gtwPols = (await gtwPolR.json() as any).result || [];
             const accPols = (await accPolR.json() as any).result || [];
-            // 2. High-Fidelity Logic (JS equivalent of JQ)
-            const aiApps = appsData.filter((a: any) => a.categories?.some((c: string) => c.toLowerCase().includes('ai')));
+            const aiApps = appsData.filter((a: any) => a.categories?.some((cat: string) => cat.toLowerCase().includes('ai')));
             const shadowAiApps = aiApps.filter((a: any) => a.status === 'Unapproved');
             const approvedApps = aiApps.filter((a: any) => a.status === 'Approved');
-            const libraryCoverage = aiApps.length > 0 ? (approvedApps.length / aiApps.length) * 100 : 0;
+            const libCoverage = aiApps.length > 0 ? (approvedApps.length / aiApps.length) * 100 : 0;
             const totalExfilMB = dlpData.reduce((acc: number, cur: any) => acc + (cur.fileSize || 0), 0) / (1024 * 1024);
-            const casbPosture = aiApps.length > 0 ? aiApps.reduce((acc: number, cur: any) => acc + (cur.risk_score || 0), 0) / aiApps.length : 0;
-            const userFreq = eventsData.reduce((acc: any, e: any) => {
+            const casbPost = aiApps.length > 0 ? aiApps.reduce((acc: number, cur: any) => acc + (cur.risk_score || 0), 0) / aiApps.length : 0;
+            const userFreq = eventsData.reduce((acc: Record<string, number>, e: any) => {
                 if (e.userEmail) acc[e.userEmail] = (acc[e.userEmail] || 0) + 1;
                 return acc;
             }, {});
-            const powerUsers = Object.entries(userFreq).map(([email, events]) => ({ email, events: events as number })).sort((a, b) => b.events - a.events).slice(0, 3);
-            // 3. MCP Specific Detection
-            const mcpEvents = eventsData.filter((e: any) => 
-                JSON.stringify(e).toLowerCase().includes('mcp') || 
-                JSON.stringify(e).toLowerCase().includes('modelcontextprotocol')
-            );
-            // 4. App Library Mapping
+            const powerUsers = Object.entries(userFreq)
+                .map(([email, events]) => ({ email, events: events as number }))
+                .sort((a, b) => b.events - a.events)
+                .slice(0, 3);
             const appLibrary = aiApps.map((a: any) => ({
                 appId: a.id || crypto.randomUUID(),
                 name: a.name || 'Unknown AI',
                 category: 'Generative AI',
-                status: a.status || 'Unreviewed',
+                status: (a.status || 'Unreviewed') as 'Approved' | 'Unapproved' | 'Review' | 'Unreviewed',
                 users: eventsData.filter((e: any) => e.appID === a.id).length || Math.floor(Math.random() * 20),
                 risk: (a.risk_score || 50) > 70 ? 'High' : (a.risk_score || 50) > 30 ? 'Medium' : 'Low',
                 risk_score: a.risk_score || 50,
                 genai_score: a.genai_score || 75,
                 policies: [
-                    ...gtwPols.filter((p: any) => JSON.stringify(p).includes(a.name)).map((p: any) => ({ name: p.name, action: p.action, type: 'Gateway' })),
-                    ...accPols.filter((p: any) => JSON.stringify(p).includes(a.name)).map((p: any) => ({ name: p.name, action: 'Allow', type: 'Access' }))
+                    ...gtwPols.filter((p: any) => JSON.stringify(p).includes(a.name)).map((p: any) => ({ name: p.name, action: p.action, type: 'Gateway' as const })),
+                    ...accPols.filter((p: any) => JSON.stringify(p).includes(a.name)).map((p: any) => ({ name: p.name, action: 'Allow', type: 'Access' as const }))
                 ],
                 usage: eventsData.filter((e: any) => e.appID === a.id).slice(0, 50).map((e: any) => ({
                     clientIP: e.ipAddress || '0.0.0.0',
@@ -151,7 +146,6 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
                     bytesKB: Math.floor(Math.random() * 1024)
                 }))
             }));
-            // 5. 30-Day Trend Generation
             const generateTrend = (days: number, fn: (i: number) => any) => Array.from({ length: days }).map((_, i) => ({
                 name: new Date(Date.now() - (days - i) * 86400000).toISOString().split('T')[0],
                 ...fn(i)
@@ -168,8 +162,10 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
                 mcpActivity: generateTrend(30, () => ({ value: Math.random() * 100 })),
                 loginEvents: generateTrend(30, () => ({ value: Math.floor(Math.random() * 50) })),
                 topAppsTrend: generateTrend(30, () => {
-                    const obj: any = {};
-                    top5.forEach(app => obj[app.name] = Math.floor(Math.random() * 100));
+                    const obj: Record<string, number> = {};
+                    top5.forEach((app: any) => {
+                        obj[app.name] = Math.floor(Math.random() * 100);
+                    });
                     return obj;
                 }),
                 statusTrend: generateTrend(30, () => ({
@@ -185,29 +181,29 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
             const report = {
                 id: `rep_${Date.now()}`,
                 date: new Date().toISOString().split('T')[0],
-                status: 'Completed',
+                status: 'Completed' as const,
                 score: Math.max(0, 100 - (shadowAiApps.length * 10)),
-                riskLevel: shadowAiApps.length > 5 ? 'High' : shadowAiApps.length > 0 ? 'Medium' : 'Low',
+                riskLevel: shadowAiApps.length > 5 ? 'High' as const : shadowAiApps.length > 0 ? 'Medium' as const : 'Low' as const,
                 summary: {
                     totalApps: appsData.length,
                     aiApps: aiApps.length,
                     shadowAiApps: shadowAiApps.length,
                     dataExfiltrationRisk: `${totalExfilMB.toFixed(1)} MB`,
-                    complianceScore: Math.floor(libraryCoverage),
-                    libraryCoverage: Math.floor(libraryCoverage),
-                    casbPosture: Math.floor(casbPosture)
+                    complianceScore: Math.floor(libCoverage),
+                    libraryCoverage: Math.floor(libCoverage),
+                    casbPosture: Math.floor(casbPost)
                 },
                 powerUsers, appLibrary, securityCharts
             };
             try {
                 const chat = new ChatHandler(c.env.CF_AI_BASE_URL, c.env.CF_AI_API_KEY, 'google-ai-studio/gemini-2.0-flash');
-                const aiRes = await chat.processMessage(`Analyze this risk report: ${JSON.stringify(report.summary)}. Provide 3 critical recs in JSON format {summary: string, recommendations: [{title, description, type}]}.`, []);
+                const aiRes = await chat.processMessage(`Analyze this risk report: ${JSON.stringify(report.summary)}. Provide 3 critical recommendations in JSON format: { "summary": "string", "recommendations": [{ "title": "string", "description": "string", "type": "critical|policy|optimization" }] }.`, []);
                 const json = JSON.parse(aiRes.content.match(/\{[\s\S]*\}/)?.[0] || '{}');
                 (report as any).aiInsights = json;
             } catch (e) {
                 (report as any).aiInsights = { summary: "Critical analysis of shadow AI usage.", recommendations: [{ title: "Block Shadow AI", description: "Implement block policies.", type: "critical" }] };
             }
-            await controller.addReport(report as any);
+            await controller.addReport(report);
             await controller.addLog({ timestamp: new Date().toISOString(), action: 'Advanced Assessment Generated', user: settings.email, status: 'Success' });
             return c.json({ success: true, data: report });
         } catch (error: any) {
