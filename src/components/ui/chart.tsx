@@ -27,6 +27,10 @@ const ChartContainer = React.forwardRef<
 >(({ id, className, children, config, ...props }, ref) => {
   const uniqueId = React.useId?.() ?? ''
   const chartId = `chart-${id || uniqueId.replace(/:/g, "")}`
+  const [mounted, setMounted] = React.useState(false)
+  React.useEffect(() => {
+    setMounted(true)
+  }, [])
   return (
     <ChartContext.Provider value={{ config }}>
       <div
@@ -34,20 +38,21 @@ const ChartContainer = React.forwardRef<
           {
             "--chart-style-id": `chart-style-${chartId}`,
             minWidth: "0",
-            minHeight: "450px", // Increased minHeight to ensure stable dimensions
           } as React.CSSProperties
         }
         ref={ref}
         className={cn(
-          "relative flex flex-col min-w-0 w-full overflow-visible justify-center text-xs print:overflow-visible [&_.recharts-cartesian-axis-tick_text]:fill-muted-foreground [&_.recharts-cartesian-grid_line[stroke='#ccc']]:stroke-border/50",
+          "relative flex flex-col min-w-0 w-full overflow-visible justify-center text-xs print:overflow-visible [&_.recharts-cartesian-axis-tick_text]:fill-muted-foreground [&_.recharts-cartesian-grid_line[stroke='#ccc']]:stroke-border/50 h-[450px]",
           className
         )}
         {...props}
       >
         <ChartStyle id={chartId} config={config} />
-        <RechartsPrimitive.ResponsiveContainer width="100%" height="100%" debounce={32}>
-          {children as any}
-        </RechartsPrimitive.ResponsiveContainer>
+        {mounted && (
+          <RechartsPrimitive.ResponsiveContainer width="100%" height="100%" debounce={50}>
+            {children as any}
+          </RechartsPrimitive.ResponsiveContainer>
+        )}
       </div>
     </ChartContext.Provider>
   )
@@ -84,12 +89,12 @@ const ChartTooltipContent = React.forwardRef<HTMLDivElement, any>(
         {!hideLabel && <div className={cn("font-bold mb-1 border-b border-border/50 pb-1", labelClassName)}>{label}</div>}
         <div className="grid gap-1.5">
           {payload.map((item: any, index: number) => {
-            const configItem = config[item.name as string] || config[item.dataKey as string];
+            const configItem = config[item?.name as string] || config[item?.dataKey as string];
             return (
               <div key={index} className="flex w-full items-center gap-2">
-                <div className="h-2 w-2 rounded-full" style={{ backgroundColor: item.color || item.fill }} />
-                <span className="text-muted-foreground flex-1 font-medium">{configItem?.label || item.name}</span>
-                <span className="font-mono font-bold">{(item.value ?? 0).toLocaleString()}</span>
+                <div className="h-2 w-2 rounded-full" style={{ backgroundColor: item?.color || item?.fill }} />
+                <span className="text-muted-foreground flex-1 font-medium">{configItem?.label || item?.name}</span>
+                <span className="font-mono font-bold">{(item?.value ?? 0).toLocaleString()}</span>
               </div>
             );
           })}

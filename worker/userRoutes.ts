@@ -2,29 +2,17 @@ import { Hono } from "hono";
 import { getAgentByName } from 'agents';
 import { ChatAgent } from './agent';
 import { Env, getAppController } from "./core-utils";
+import { ChatHandler } from "./chat";
 import type { AssessmentReport, AIInsights } from './app-controller';
 console.log('[RISKGUARD] Registering user routes...');
 let coreRoutesRegistered = false;
 let userRoutesRegistered = false;
-const DEFAULT_SUMMARY = "This report provides a definitive analysis of organizational AI usage patterns. Current telemetry suggests a dynamic risk landscape that requires proactive Cloudflare Gateway management to ensure data integrity.";
 const MOCK_AI_INSIGHTS: AIInsights = {
-  summary: DEFAULT_SUMMARY,
+  summary: "Telemetry suggests a dynamic risk landscape requiring Cloudflare Gateway management to ensure data integrity.",
   recommendations: [
-    {
-      title: 'Enforce Gateway Access Blocks',
-      description: 'Immediately apply block policies to unapproved AI domains identified in Gateway logs.',
-      type: 'critical'
-    },
-    {
-      title: 'Review Data Leakage Patterns',
-      description: 'Examine DLP incident telemetry for potential sensitive data exfiltration.',
-      type: 'policy'
-    },
-    {
-      title: 'Sanitize Application footprint',
-      description: 'Move users from shadow applications to corporate-managed alternatives.',
-      type: 'optimization'
-    }
+    { title: 'Enforce Gateway Access Blocks', description: 'Immediately apply block policies to unapproved AI domains identified in Gateway logs.', type: 'critical' },
+    { title: 'Review Data Leakage Patterns', description: 'Examine DLP incident telemetry for potential sensitive data exfiltration.', type: 'policy' },
+    { title: 'Sanitize Application footprint', description: 'Move users from shadow applications to corporate-managed alternatives.', type: 'optimization' }
   ]
 };
 const MOCK_LICENSE_DATA = {
@@ -38,66 +26,11 @@ const MOCK_LICENSE_DATA = {
   rbi: false
 };
 const MOCK_APP_LIBRARY: any[] = [
-  {
-    appId: 'chatgpt',
-    name: 'ChatGPT',
-    category: 'LLM Assistant',
-    status: 'Approved',
-    users: 350,
-    risk: 'Medium',
-    risk_score: 42,
-    genai_score: 88,
-    policies: [{ name: 'Corporate AI Policy', action: 'Allow', type: 'Gateway' }],
-    usage: []
-  },
-  {
-    appId: 'microsoft-copilot',
-    name: 'Microsoft Copilot',
-    category: 'Productivity AI',
-    status: 'Approved',
-    users: 300,
-    risk: 'Low',
-    risk_score: 12,
-    genai_score: 90,
-    policies: [{ name: 'Microsoft 365 Policy', action: 'Allow', type: 'Access' }],
-    usage: []
-  },
-  {
-    appId: 'google-gemini',
-    name: 'Google Gemini',
-    category: 'LLM Assistant',
-    status: 'Approved',
-    users: 200,
-    risk: 'Low',
-    risk_score: 20,
-    genai_score: 92,
-    policies: [],
-    usage: []
-  },
-  {
-    appId: 'deepseek',
-    name: 'DeepSeek',
-    category: 'LLM Assistant',
-    status: 'Review',
-    users: 100,
-    risk: 'Medium',
-    risk_score: 55,
-    genai_score: 85,
-    policies: [],
-    usage: []
-  },
-  {
-    appId: 'perplexity',
-    name: 'Perplexity',
-    category: 'Search AI',
-    status: 'Unapproved',
-    users: 50,
-    risk: 'High',
-    risk_score: 72,
-    genai_score: 80,
-    policies: [],
-    usage: []
-  }
+  { appId: 'chatgpt', name: 'ChatGPT', category: 'LLM Assistant', status: 'Approved', users: 350, risk: 'Medium', risk_score: 42, genai_score: 88, policies: [{ name: 'Corporate AI Policy', action: 'Allow', type: 'Gateway' }], usage: [] },
+  { appId: 'microsoft-copilot', name: 'Microsoft Copilot', category: 'Productivity AI', status: 'Approved', users: 300, risk: 'Low', risk_score: 12, genai_score: 90, policies: [{ name: 'Microsoft 365 Policy', action: 'Allow', type: 'Access' }], usage: [] },
+  { appId: 'google-gemini', name: 'Google Gemini', category: 'LLM Assistant', status: 'Approved', users: 200, risk: 'Low', risk_score: 20, genai_score: 92, policies: [], usage: [] },
+  { appId: 'deepseek', name: 'DeepSeek', category: 'LLM Assistant', status: 'Review', users: 100, risk: 'Medium', risk_score: 55, genai_score: 85, policies: [], usage: [] },
+  { appId: 'perplexity', name: 'Perplexity', category: 'Search AI', status: 'Unapproved', users: 50, risk: 'High', risk_score: 72, genai_score: 80, policies: [], usage: [] }
 ];
 export function coreRoutes(app: Hono<{ Bindings: Env }>) {
   if (coreRoutesRegistered) return;
@@ -140,7 +73,6 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
   });
   app.post('/api/assess', async (c) => {
     const controller = getAppController(c.env);
-    // Generate 30 days of high-fidelity timeseries data with specific user bases
     const topAppsTrends = [];
     const now = new Date();
     const apps = [
@@ -156,11 +88,36 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       const dateStr = date.toISOString().split('T')[0];
       const dayData: Record<string, any> = { date: dateStr };
       apps.forEach(app => {
-        // Variation of +/- 50 users
         const variance = Math.floor(Math.random() * 101) - 50;
         dayData[app.name] = Math.max(0, app.base + variance);
       });
       topAppsTrends.push(dayData);
+    }
+    const summaryData = {
+      totalApps: 1420,
+      aiApps: MOCK_APP_LIBRARY.length,
+      shadowAiApps: 14,
+      shadowUsage: 4.8,
+      unapprovedApps: MOCK_APP_LIBRARY.filter(a => a.status === 'Unapproved').length,
+      dataExfiltrationKB: 4200,
+      dataExfiltrationRisk: '4.2 MB',
+      complianceScore: 78,
+      libraryCoverage: 96,
+      casbPosture: 82
+    };
+    let aiInsights: AIInsights = MOCK_AI_INSIGHTS;
+    try {
+      const handler = new ChatHandler(c.env.CF_AI_BASE_URL, c.env.CF_AI_API_KEY, 'openai/gpt-4o-mini');
+      const prompt = `Perform a Cloudflare ZTNA Risk Assessment summary based on this data: ${JSON.stringify(summaryData)}. 
+      Include a 2-sentence executive summary and 3 actionable recommendations (type: critical, policy, or optimization). 
+      Return ONLY valid JSON in format: {"summary": string, "recommendations": [{"title": string, "description": string, "type": string}]}`;
+      const res = await handler.processMessage(prompt, []);
+      const parsed = JSON.parse(res.content);
+      if (parsed.summary && Array.isArray(parsed.recommendations)) {
+        aiInsights = parsed;
+      }
+    } catch (e) {
+      console.error('AI Insight Generation Failed, using fallback:', e);
     }
     const report: AssessmentReport = {
       id: crypto.randomUUID(),
@@ -168,28 +125,15 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       status: 'Completed',
       score: 84,
       riskLevel: 'Medium',
-      summary: {
-        totalApps: 1420,
-        aiApps: MOCK_APP_LIBRARY.length,
-        shadowAiApps: 14,
-        shadowUsage: 4.8,
-        unapprovedApps: MOCK_APP_LIBRARY.filter(a => a.status === 'Unapproved').length,
-        dataExfiltrationKB: 4200,
-        dataExfiltrationRisk: '4.2 MB',
-        complianceScore: 78,
-        libraryCoverage: 96,
-        casbPosture: 82
-      },
+      summary: summaryData,
       powerUsers: [
         { email: 'ciso@enterprise.com', name: 'Security Director', prompts: 84 },
         { email: 'dev-lead@company.com', name: 'Dev Lead', prompts: 42 },
         { email: 'marketing-analyst@company.com', name: 'Analyst', prompts: 28 }
       ],
       appLibrary: MOCK_APP_LIBRARY,
-      securityCharts: {
-        topAppsTrends
-      },
-      aiInsights: MOCK_AI_INSIGHTS
+      securityCharts: { topAppsTrends },
+      aiInsights
     };
     await controller.addReport(report);
     await controller.addLog({
