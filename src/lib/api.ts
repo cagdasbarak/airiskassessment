@@ -60,8 +60,8 @@ export interface AssessmentReport {
     status: 'Approved' | 'Unapproved' | 'Review' | 'Unreviewed';
     users: number;
     risk: string;
-    risk_score: number;
-    genai_score: number;
+    risk_score: number; // Also known as appConfidence
+    genai_score: number; // Also known as genaiConfidence
     policies: AppPolicy[];
     usage: AppUsageEvent[];
   }>;
@@ -71,6 +71,11 @@ export interface AssessmentReport {
     dataVolume: Array<{ name: string; value: number }>;
     mcpActivity: Array<{ name: string; value: number }>;
     loginEvents: Array<{ name: string; value: number }>;
+    topAppsTrend?: Array<{ name: string; [key: string]: any }>;
+    statusTrend?: Array<{ name: string; Approved: number; Review: number; Unapproved: number; Unreviewed: number }>;
+    dataTrend?: Array<{ name: string; total: number; delta: number }>;
+    mcpAccessTrend?: Array<{ name: string; servers: number }>;
+    mcpLoginTrend?: Array<{ name: string; events: number }>;
   };
   aiInsights?: {
     summary: string;

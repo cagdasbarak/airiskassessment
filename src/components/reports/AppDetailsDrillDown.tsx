@@ -3,7 +3,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { ShieldCheck, History, Search, FileWarning, Terminal, Globe } from 'lucide-react';
+import { ShieldCheck, History, Search, FileWarning, Terminal, Globe, Lock, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 interface Policy {
   name: string;
@@ -26,127 +26,146 @@ interface AppDetailsDrillDownProps {
 }
 export function AppDetailsDrillDown({ app }: AppDetailsDrillDownProps) {
   const [filter, setFilter] = useState('');
-  const filteredUsage = app.usage.filter(u => 
+  const gatewayPolicies = app.policies.filter(p => p.type === 'Gateway');
+  const accessPolicies = app.policies.filter(p => p.type === 'Access');
+  const filteredUsage = app.usage.filter(u =>
     u.userEmail.toLowerCase().includes(filter.toLowerCase()) ||
-    u.clientIP.includes(filter) ||
-    u.action.toLowerCase().includes(filter.toLowerCase())
+    u.clientIP.includes(filter)
   );
-  const isPromptEvent = (event: UsageEvent) => {
-    // Simulated prompt analysis
-    return Math.random() > 0.8;
-  };
+  // Simulated detection for "Prompt Logs"
+  const promptLogs = filteredUsage.slice(0, 10).map(u => ({ ...u, prompt: "Simulated prompt data redacted for privacy." }));
   return (
-    <div className="space-y-6 bg-background/50 rounded-xl p-4 border border-border/50">
-      <div className="flex items-center justify-between border-b pb-4 border-border/50">
-        <h3 className="text-lg font-bold flex items-center gap-2">
-          <Terminal className="h-4 w-4 text-[#F38020]" /> Security Profile: {app.name}
-        </h3>
-      </div>
+    <div className="space-y-8 animate-in fade-in slide-in-from-top-4 duration-300">
       <Tabs defaultValue="policies" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 max-w-[400px]">
-          <TabsTrigger value="policies" className="text-xs">
-            <ShieldCheck className="h-3 w-3 mr-2" /> Security Policies
+        <TabsList className="bg-secondary/30 p-1 rounded-xl w-fit mb-6">
+          <TabsTrigger value="policies" className="text-xs font-bold rounded-lg px-6">
+            <ShieldCheck className="h-3.5 w-3.5 mr-2" /> Security Controls
           </TabsTrigger>
-          <TabsTrigger value="activity" className="text-xs">
-            <History className="h-3 w-3 mr-2" /> Detailed Activity
+          <TabsTrigger value="activity" className="text-xs font-bold rounded-lg px-6">
+            <History className="h-3.5 w-3.5 mr-2" /> Raw Traffic Logs
           </TabsTrigger>
         </TabsList>
-        <TabsContent value="policies" className="mt-4">
-          <div className="rounded-xl border border-border/50 overflow-hidden">
-            <Table>
-              <TableHeader className="bg-secondary/20">
-                <TableRow>
-                  <TableHead className="text-[10px] uppercase font-bold">Rule Name</TableHead>
-                  <TableHead className="text-[10px] uppercase font-bold">Scope</TableHead>
-                  <TableHead className="text-[10px] uppercase font-bold text-right">Action</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {app.policies.length > 0 ? app.policies.map((p, i) => (
-                  <TableRow key={i} className="hover:bg-secondary/5">
-                    <TableCell className="text-xs font-medium">{p.name}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="text-[10px] h-5">
-                        {p.type === 'Gateway' ? <Globe className="h-2.5 w-2.5 mr-1" /> : <ShieldCheck className="h-2.5 w-2.5 mr-1" />}
-                        {p.type}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Badge className={cn(
-                        "text-[10px] h-5",
-                        p.action === 'Allow' ? "bg-green-100 text-green-700 hover:bg-green-100" : "bg-red-100 text-red-700 hover:bg-red-100"
-                      )}>
-                        {p.action}
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                )) : (
+        <TabsContent value="policies" className="space-y-8">
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 px-1">
+              <Globe className="h-4 w-4 text-blue-500" />
+              <h4 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Gateway Filtering Policies</h4>
+            </div>
+            <div className="rounded-xl border border-border/50 bg-background/50 overflow-hidden">
+              <Table>
+                <TableHeader className="bg-secondary/20">
                   <TableRow>
-                    <TableCell colSpan={3} className="text-center py-6 text-xs text-muted-foreground italic">
-                      No specific Cloudflare rules detected for this application.
-                    </TableCell>
+                    <TableHead className="text-[10px] uppercase font-bold">Rule Name</TableHead>
+                    <TableHead className="text-[10px] uppercase font-bold text-right">Action</TableHead>
                   </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </TabsContent>
-        <TabsContent value="activity" className="mt-4 space-y-4">
-          <div className="flex items-center gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
-              <Input
-                placeholder="Search user, IP, or action..."
-                className="pl-8 h-9 text-xs bg-background/50"
-                value={filter}
-                onChange={(e) => setFilter(e.target.value)}
-              />
+                </TableHeader>
+                <TableBody>
+                  {gatewayPolicies.length > 0 ? gatewayPolicies.map((p, i) => (
+                    <TableRow key={i} className="hover:bg-secondary/5 border-b-0">
+                      <TableCell className="text-xs font-medium">{p.name}</TableCell>
+                      <TableCell className="text-right">
+                        <Badge className={cn("text-[9px] font-bold h-5", p.action === 'Allow' ? "bg-green-500/10 text-green-600 border-green-200" : "bg-red-500/10 text-red-600 border-red-200")} variant="outline">{p.action}</Badge>
+                      </TableCell>
+                    </TableRow>
+                  )) : (
+                    <TableRow><TableCell colSpan={2} className="text-center py-8 text-xs text-muted-foreground italic">No Gateway rules found.</TableCell></TableRow>
+                  )}
+                </TableBody>
+              </Table>
             </div>
           </div>
-          <div className="rounded-xl border border-border/50 overflow-hidden">
-            <Table>
-              <TableHeader className="bg-secondary/20">
-                <TableRow>
-                  <TableHead className="text-[10px] uppercase font-bold">User / IP</TableHead>
-                  <TableHead className="text-[10px] uppercase font-bold">Action</TableHead>
-                  <TableHead className="text-[10px] uppercase font-bold">Data Vol</TableHead>
-                  <TableHead className="text-[10px] uppercase font-bold text-right">Timestamp</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredUsage.length > 0 ? filteredUsage.map((u, i) => (
-                  <TableRow key={i} className={cn("hover:bg-secondary/5", isPromptEvent(u) && "bg-orange-50/10")}>
-                    <TableCell className="text-xs">
-                      <div className="font-medium">{u.userEmail}</div>
-                      <div className="text-[10px] text-muted-foreground">{u.clientIP}</div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs">{u.action}</span>
-                        {isPromptEvent(u) && (
-                          <Badge variant="outline" className="text-[8px] h-4 bg-orange-500/10 text-orange-500 border-orange-500/20">
-                            PROMPT DETECTED
-                          </Badge>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-xs font-mono">{u.bytesKB} KB</TableCell>
-                    <TableCell className="text-right text-[10px] text-muted-foreground font-mono">
-                      {new Date(u.date).toLocaleTimeString()}
-                    </TableCell>
-                  </TableRow>
-                )) : (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 px-1">
+              <Lock className="h-4 w-4 text-purple-500" />
+              <h4 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Access Authentication Policies</h4>
+            </div>
+            <div className="rounded-xl border border-border/50 bg-background/50 overflow-hidden">
+              <Table>
+                <TableHeader className="bg-secondary/20">
                   <TableRow>
-                    <TableCell colSpan={4} className="text-center py-12 text-muted-foreground">
-                      <div className="flex flex-col items-center gap-2">
-                        <FileWarning className="h-6 w-6 opacity-20" />
-                        <p className="text-xs">No matching events found in the Zero Trust logs.</p>
-                      </div>
-                    </TableCell>
+                    <TableHead className="text-[10px] uppercase font-bold">Policy Label</TableHead>
+                    <TableHead className="text-[10px] uppercase font-bold text-right">Access State</TableHead>
                   </TableRow>
-                )}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {accessPolicies.length > 0 ? accessPolicies.map((p, i) => (
+                    <TableRow key={i} className="hover:bg-secondary/5 border-b-0">
+                      <TableCell className="text-xs font-medium">{p.name}</TableCell>
+                      <TableCell className="text-right">
+                        <Badge className="text-[9px] font-bold h-5 bg-blue-500/10 text-blue-600 border-blue-200" variant="outline">Enforced</Badge>
+                      </TableCell>
+                    </TableRow>
+                  )) : (
+                    <TableRow><TableCell colSpan={2} className="text-center py-8 text-xs text-muted-foreground italic">No Access policies found.</TableCell></TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        </TabsContent>
+        <TabsContent value="activity" className="space-y-8">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between px-1">
+              <div className="flex items-center gap-2">
+                <Globe className="h-4 w-4 text-[#F38020]" />
+                <h4 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">HTTP Request Stream (Top 500)</h4>
+              </div>
+              <div className="relative w-48">
+                <Search className="absolute left-2.5 top-2.5 h-3 w-3 text-muted-foreground" />
+                <Input placeholder="Filter logs..." className="pl-8 h-8 text-[10px] bg-background/50" value={filter} onChange={(e) => setFilter(e.target.value)} />
+              </div>
+            </div>
+            <div className="rounded-xl border border-border/50 bg-background/50 overflow-hidden h-48 overflow-y-auto">
+              <Table>
+                <TableHeader className="bg-secondary/20 sticky top-0 z-10">
+                  <TableRow>
+                    <TableHead className="text-[10px] uppercase font-bold">User Context</TableHead>
+                    <TableHead className="text-[10px] uppercase font-bold">Action</TableHead>
+                    <TableHead className="text-[10px] uppercase font-bold">Volume</TableHead>
+                    <TableHead className="text-[10px] uppercase font-bold text-right">Time</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredUsage.map((u, i) => (
+                    <TableRow key={i} className="hover:bg-secondary/5 border-b-0">
+                      <TableCell className="text-[10px]">
+                        <div className="font-bold">{u.userEmail}</div>
+                        <div className="text-muted-foreground opacity-70">{u.clientIP}</div>
+                      </TableCell>
+                      <TableCell><Badge variant="outline" className="text-[8px] h-4 uppercase">{u.action}</Badge></TableCell>
+                      <TableCell className="text-[10px] font-mono">{u.bytesKB} KB</TableCell>
+                      <TableCell className="text-right text-[10px] font-mono opacity-50">{new Date(u.date).toLocaleTimeString()}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 px-1">
+              <MessageSquare className="h-4 w-4 text-orange-500" />
+              <h4 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Deep Packet Inspection (Prompt Detection)</h4>
+            </div>
+            <div className="rounded-xl border border-border/50 bg-background/50 overflow-hidden">
+              <Table>
+                <TableHeader className="bg-secondary/20">
+                  <TableRow>
+                    <TableHead className="text-[10px] uppercase font-bold w-[120px]">User</TableHead>
+                    <TableHead className="text-[10px] uppercase font-bold">Prompt Fragment / Intent</TableHead>
+                    <TableHead className="text-[10px] uppercase font-bold text-right">Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {promptLogs.map((p, i) => (
+                    <TableRow key={i} className="hover:bg-secondary/5 border-b-0">
+                      <TableCell className="text-[10px] font-bold">{p.userEmail}</TableCell>
+                      <TableCell className="text-[10px] italic text-muted-foreground">"{p.prompt}"</TableCell>
+                      <TableCell className="text-right"><Badge className="text-[8px] bg-orange-500/10 text-orange-600 border-orange-200" variant="outline">Logged</Badge></TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           </div>
         </TabsContent>
       </Tabs>
