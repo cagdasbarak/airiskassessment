@@ -81,7 +81,7 @@ export function ReportDetailsPage() {
   const filteredApps = selectedStatus
     ? safeAppLibrary.filter(a => a.status === selectedStatus)
     : safeAppLibrary;
-  const trendKeys = topAppsTrend.length > 0 ? Object.keys(topAppsTrend[0]).filter(k => k !== 'name') : [];
+  const trendKeys = (topAppsTrend?.length ?? 0) > 0 ? Object.keys(topAppsTrend[0] ?? {}).filter(k => k !== 'name') : [];
   return (
     <AppLayout container>
       <div className="space-y-10">
@@ -94,7 +94,7 @@ export function ReportDetailsPage() {
               <h1 className="text-3xl font-bold tracking-tight">Security Audit {(report.id ?? '').slice(-6)}</h1>
               <div className="flex items-center gap-2 text-muted-foreground">
                 <Globe className="h-3 w-3" />
-                <span className="text-sm">ZTNA Engine v2.5 • {report.date}</span>
+                <span className="text-sm">ZTNA Engine v2.5 • {report.date ?? 'N/A'}</span>
               </div>
             </div>
           </div>
@@ -104,21 +104,21 @@ export function ReportDetailsPage() {
           </div>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-          <Card className={cn("border-border/50 shadow-soft overflow-hidden group hover:shadow-md transition-all", (summary.shadowUsage || 0) > 50 && "ring-2 ring-red-500 ring-inset")}>
+          <Card className={cn("border-border/50 shadow-soft overflow-hidden group hover:shadow-md transition-all", (summary.shadowUsage ?? 0) > 50 && "ring-2 ring-red-500 ring-inset")}>
             <CardContent className="p-6">
               <div className="p-2 rounded-lg w-fit mb-4 bg-red-500/10">
                 <Terminal className="h-5 w-5 text-red-500" />
               </div>
               <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-1">Shadow AI Usage</p>
               <div className="flex items-baseline gap-2">
-                <p className={cn("text-3xl font-bold", (summary.shadowUsage || 0) > 50 ? "text-red-500" : "text-foreground")}>
-                  {summary.shadowUsage || 0}%
+                <p className={cn("text-3xl font-bold", (summary.shadowUsage ?? 0) > 50 ? "text-red-500" : "text-foreground")}>
+                  {summary.shadowUsage ?? 0}%
                 </p>
-                {(summary.shadowUsage || 0) > 50 && (
+                {(summary.shadowUsage ?? 0) > 50 && (
                   <Badge variant="destructive" className="text-[8px] h-4">CRITICAL</Badge>
                 )}
               </div>
-              <Progress value={summary.shadowUsage || 0} className={cn("h-1 mt-2", (summary.shadowUsage || 0) > 50 ? "[&>div]:bg-red-500" : "")} />
+              <Progress value={summary.shadowUsage ?? 0} className={cn("h-1 mt-2", (summary.shadowUsage ?? 0) > 50 ? "[&>div]:bg-red-500" : "")} />
             </CardContent>
           </Card>
           <Card className="border-border/50 shadow-soft overflow-hidden group hover:shadow-md transition-all bg-red-50/10 dark:bg-red-950/5">
@@ -128,7 +128,7 @@ export function ReportDetailsPage() {
               </div>
               <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-1">Unapproved Apps</p>
               <div className="flex items-center gap-3">
-                <p className="text-3xl font-bold text-red-600 dark:text-red-500">{summary.unapprovedApps || 0}</p>
+                <p className="text-3xl font-bold text-red-600 dark:text-red-500">{summary.unapprovedApps ?? 0}</p>
                 <Badge className="bg-red-600 text-white border-none text-[10px] h-5">BLOCKED</Badge>
               </div>
             </CardContent>
@@ -139,7 +139,7 @@ export function ReportDetailsPage() {
                 <Database className="h-5 w-5 text-blue-500" />
               </div>
               <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-1">Data Exfil Risk</p>
-              <p className="text-2xl font-bold text-blue-500">{summary.dataExfiltrationRisk || '0 MB'}</p>
+              <p className="text-2xl font-bold text-blue-500">{summary.dataExfiltrationRisk ?? '0 MB'}</p>
               <p className="text-[10px] text-muted-foreground mt-1">DLP Incident Volume</p>
             </CardContent>
           </Card>
@@ -152,8 +152,8 @@ export function ReportDetailsPage() {
               <div className="space-y-1.5 mt-2">
                 {(report.powerUsers ?? []).slice(0, 3).map((user, idx) => (
                   <div key={idx} className="flex justify-between items-center text-[10px]">
-                    <span className="font-medium text-foreground truncate max-w-[80px]">{user.name}</span>
-                    <span className="text-purple-500 font-bold">{user.prompts} reqs</span>
+                    <span className="font-medium text-foreground truncate max-w-[80px]">{user?.name ?? 'N/A'}</span>
+                    <span className="text-purple-500 font-bold">{user?.prompts ?? 0} reqs</span>
                   </div>
                 ))}
               </div>
@@ -166,9 +166,9 @@ export function ReportDetailsPage() {
               </div>
               <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-1">Posture Score</p>
               <div className="flex flex-col">
-                <p className="text-2xl font-bold text-green-500">{summary.casbPosture || 0}/100</p>
+                <p className="text-2xl font-bold text-green-500">{(summary.casbPosture ?? 0)}/100</p>
                 <div className="h-1 w-full bg-secondary mt-2 rounded-full overflow-hidden">
-                  <div className="h-full bg-green-500" style={{ width: `${summary.casbPosture || 0}%` }} />
+                  <div className="h-full bg-green-500" style={{ width: `${summary.casbPosture ?? 0}%` }} />
                 </div>
               </div>
             </CardContent>
@@ -188,32 +188,30 @@ export function ReportDetailsPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="h-[200px] w-full">
-                    {activeTab === 'library' && (
-                      <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-                        <PieChart>
-                          <Pie
-                            data={pieData}
-                            innerRadius={60}
-                            outerRadius={80}
-                            paddingAngle={5}
-                            dataKey="value"
-                            onClick={(data) => setSelectedStatus(selectedStatus === data.name ? null : data.name)}
-                            className="cursor-pointer outline-none"
-                          >
-                            {pieData.map((entry, index) => (
-                              <Cell 
-                                key={`cell-${index}`} 
-                                fill={PIE_COLORS[entry.name] || '#CBD5E1'} 
-                                strokeWidth={selectedStatus === entry.name ? 4 : 0} 
-                                stroke="currentColor" 
-                                className="text-background outline-none" 
-                              />
-                            ))}
-                          </Pie>
-                          <Tooltip />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    )}
+                    <ResponsiveContainer width="100%" height={200} minWidth={0}>
+                      <PieChart>
+                        <Pie
+                          data={pieData}
+                          innerRadius={60}
+                          outerRadius={80}
+                          paddingAngle={5}
+                          dataKey="value"
+                          onClick={(data) => setSelectedStatus(selectedStatus === data.name ? null : data.name)}
+                          className="cursor-pointer outline-none"
+                        >
+                          {pieData.map((entry, index) => (
+                            <Cell
+                              key={`cell-${index}`}
+                              fill={PIE_COLORS[entry.name] || '#CBD5E1'}
+                              strokeWidth={selectedStatus === entry.name ? 4 : 0}
+                              stroke="currentColor"
+                              className="text-background outline-none"
+                            />
+                          ))}
+                        </Pie>
+                        <Tooltip />
+                      </PieChart>
+                    </ResponsiveContainer>
                   </div>
                   <div className="space-y-1 mt-4">
                     {pieData.map((entry) => (
@@ -310,28 +308,26 @@ export function ReportDetailsPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="h-[400px]">
-                {activeTab === 'security' && (
-                  <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-                    <AreaChart data={topAppsTrend} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.1} />
-                      <XAxis dataKey="name" hide />
-                      <YAxis />
-                      <Tooltip />
-                      <Legend />
-                      {trendKeys.map((key, i) => (
-                        <Area 
-                          key={key} 
-                          type="monotone" 
-                          dataKey={key} 
-                          stackId="1" 
-                          stroke={`hsl(${i * 60}, 70%, 50%)`} 
-                          fill={`hsl(${i * 60}, 70%, 50%)`} 
-                          fillOpacity={0.4} 
-                        />
-                      ))}
-                    </AreaChart>
-                  </ResponsiveContainer>
-                )}
+                <ResponsiveContainer width="100%" height={400} minHeight={350} minWidth={0}>
+                  <AreaChart data={topAppsTrend} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.1} />
+                    <XAxis dataKey="name" hide />
+                    <YAxis />
+                    <Tooltip />
+                    <Legend />
+                    {trendKeys.map((key, i) => (
+                      <Area
+                        key={key}
+                        type="monotone"
+                        dataKey={key}
+                        stackId="1"
+                        stroke={`hsl(${i * 60}, 70%, 50%)`}
+                        fill={`hsl(${i * 60}, 70%, 50%)`}
+                        fillOpacity={0.4}
+                      />
+                    ))}
+                  </AreaChart>
+                </ResponsiveContainer>
               </CardContent>
             </Card>
           </TabsContent>
