@@ -29,8 +29,23 @@ export interface PowerUser {
   prompts: number;
 }
 export interface SecurityCharts {
-  usageOverTime?: Array<{ name: string; usage: number }>;
-  riskDistribution?: Array<{ name: string; value: number }>;
+  usageTrends?: any[];
+  statusTrends?: any[];
+  dataTrends?: any[];
+  mcpTrends?: any[];
+}
+export interface AppPolicy {
+  name: string;
+  action: string;
+  type: 'Gateway' | 'Access';
+}
+export interface AppUsageEvent {
+  clientIP: string;
+  userEmail: string;
+  action: string;
+  date: string;
+  bytesKB: number;
+  prompt?: string;
 }
 export interface AssessmentReport {
   id: string;
@@ -59,8 +74,8 @@ export interface AssessmentReport {
     risk: string;
     risk_score: number;
     genai_score: number;
-    policies: any[];
-    usage: any[];
+    policies: AppPolicy[];
+    usage: AppUsageEvent[];
   }>;
   securityCharts: SecurityCharts;
 }
@@ -79,49 +94,24 @@ async function safeApi<T>(endpoint: string, options?: RequestInit): Promise<ApiR
       }
       return { success: false, error: errorData.error, detail: errorData.detail } as ApiResponse<T>;
     }
-    if (!text || text.trim().length === 0) {
-      return { success: true } as ApiResponse<T>;
-    }
-    try {
-      return JSON.parse(text) as ApiResponse<T>;
-    } catch (e: any) {
-      console.error(`[API DIAGNOSTIC] JSON parsing failed for ${endpoint}:`, text.slice(0, 100));
-      return { success: false, error: 'Invalid server response' } as ApiResponse<T>;
-    }
+    if (!text || text.trim().length === 0) return { success: true } as ApiResponse<T>;
+    return JSON.parse(text) as ApiResponse<T>;
   } catch (error: any) {
     console.error(`[API DIAGNOSTIC] Network failure for ${endpoint}:`, error.message);
     return { success: false, error: 'Network connection failed' } as ApiResponse<T>;
   }
 }
 export const api = {
-  async getSettings(): Promise<ApiResponse<Settings>> {
-    return safeApi<Settings>('/settings');
-  },
-  async updateSettings(settings: Settings): Promise<ApiResponse<void>> {
-    return safeApi<void>('/settings', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(settings),
-    });
-  },
-  async checkLicense(): Promise<ApiResponse<LicenseInfo>> {
-    return safeApi<LicenseInfo>('/license-check', { method: 'POST' });
-  },
-  async listReports(): Promise<ApiResponse<AssessmentReport[]>> {
-    return safeApi<AssessmentReport[]>('/reports');
-  },
-  async getReport(id: string): Promise<ApiResponse<AssessmentReport>> {
-    return safeApi<AssessmentReport>(`/reports/${id}`);
-  },
-  async deleteReport(id: string): Promise<ApiResponse<void>> {
-    return safeApi<void>(`/reports/${id}`, {
-      method: 'DELETE',
-    });
-  },
-  async startAssessment(): Promise<ApiResponse<AssessmentReport>> {
-    return safeApi<AssessmentReport>('/assess', { method: 'POST' });
-  },
-  async getLogs(): Promise<ApiResponse<AuditLog[]>> {
-    return safeApi<AuditLog[]>('/logs');
-  },
+  getSettings: () => safeApi<Settings>('/settings'),
+  updateSettings: (settings: Settings) => safeApi<void>('/settings', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(settings),
+  }),
+  checkLicense: () => safeApi<LicenseInfo>('/license-check', { method: 'POST' }),
+  listReports: () => safeApi<AssessmentReport[]>('/reports'),
+  getReport: (id: string) => safeApi<AssessmentReport>(`/reports/${id}`),
+  deleteReport: (id: string) => safeApi<void>(`/reports/${id}`, { method: 'DELETE' }),
+  startAssessment: () => safeApi<AssessmentReport>('/assess', { method: 'POST' }),
+  getLogs: () => safeApi<AuditLog[]>('/logs'),
 };
