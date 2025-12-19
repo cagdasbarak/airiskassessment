@@ -1,4 +1,3 @@
-// NO HOOKS WINDOW SAFE PERMANENT NO SYNTH DUP
 import React from "react";
 import { Home, FileText, History, Settings, ShieldAlert, LogOut, User } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -14,9 +13,10 @@ import {
 } from "@/components/ui/sidebar";
 import { useAppStore } from "@/lib/store";
 export function AppSidebar(): JSX.Element {
-  // Accessing store values directly from state to avoid dispatcher null errors during HMR/Hydration
-  const username = useAppStore.getState().username ?? 'Guest';
+  // REACTIVE SELECTION: Components re-render when username changes
+  const username = useAppStore(s => s.username) ?? 'Guest';
   const handleLogout = () => {
+    // Action call remains stable using getState to avoid unnecessary re-renders
     useAppStore.getState().logout();
     window.location.href = '/login';
   };
@@ -26,7 +26,7 @@ export function AppSidebar(): JSX.Element {
     { title: "Audit Logs", icon: History, path: "/logs" },
     { title: "Settings", icon: Settings, path: "/settings" },
   ];
-  // Using window.location.pathname for sync active state detection
+  // Sync active state detection for high-fidelity UI response
   const currentPath = typeof window !== 'undefined' ? window.location.pathname : '/';
   return (
     <Sidebar collapsible="none" className="border-r border-border/50">
@@ -37,7 +37,7 @@ export function AppSidebar(): JSX.Element {
           </div>
           <div className="flex flex-col">
             <span className="text-lg font-bold tracking-tight text-foreground">RiskGuard AI</span>
-            <span className="text-xs text-muted-foreground">Cloudflare ZTNA</span>
+            <span className="text-xs text-muted-foreground uppercase tracking-widest font-bold">Cloudflare ZTNA</span>
           </div>
         </div>
       </SidebarHeader>
@@ -73,7 +73,7 @@ export function AppSidebar(): JSX.Element {
         </div>
         <SidebarMenuButton
           onClick={handleLogout}
-          className="w-full justify-start gap-3 text-destructive hover:text-destructive hover:bg-destructive/10"
+          className="w-full justify-start gap-3 text-destructive hover:text-destructive hover:bg-destructive/10 transition-colors"
         >
           <LogOut className="h-5 w-5" />
           <span className="font-medium">Sign Out</span>

@@ -38,16 +38,18 @@ const ChartContainer = React.forwardRef<
     const observer = new ResizeObserver((entries) => {
       const entry = entries[0]
       if (entry && entry.contentRect.width > 0 && entry.contentRect.height > 0) {
-        setDims({
-          width: Math.floor(entry.contentRect.width),
-          height: Math.floor(entry.contentRect.height),
+        // Debounce with requestAnimationFrame to prevent rendering loops
+        window.requestAnimationFrame(() => {
+          setDims({
+            width: Math.floor(entry.contentRect.width),
+            height: Math.floor(entry.contentRect.height),
+          })
         })
       }
     })
     observer.observe(containerRef.current)
     return () => observer.disconnect()
   }, [])
-  // Strict check: dimensions must be positive to render ResponsiveContainer
   const shouldRenderChart = mounted && dims.width > 0 && dims.height > 0
   return (
     <ChartContext.Provider value={{ config }}>
@@ -59,7 +61,7 @@ const ChartContainer = React.forwardRef<
           {
             "--chart-style-id": `chart-style-${chartId}`,
             minWidth: "0px",
-            minHeight: "350px", // Provide a non-zero base height to prevent -1 measurement
+            minHeight: "350px", // Baseline height to prevent -1 measurement crashes
             height: height,
             display: 'flex',
             flexDirection: 'column'
@@ -74,13 +76,13 @@ const ChartContainer = React.forwardRef<
         <ChartStyle id={chartId} config={config} />
         {shouldRenderChart ? (
           <div className="flex-1 w-full h-full min-h-[1px]">
-            <RechartsPrimitive.ResponsiveContainer width="100%" height="100%" debounce={50}>
+            <RechartsPrimitive.ResponsiveContainer width="100%" height="100%" debounce={100}>
               {children as any}
             </RechartsPrimitive.ResponsiveContainer>
           </div>
         ) : (
-          <div className="flex-1 w-full h-full flex items-center justify-center bg-secondary/5 rounded-xl border border-dashed border-border/20">
-             <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/40">Calibrating Viewport...</span>
+          <div className="flex-1 w-full h-full flex items-center justify-center bg-secondary/5 rounded-2xl border-2 border-dashed border-border/20 animate-pulse">
+             <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/40">Calibrating Analytics Viewport...</span>
           </div>
         )}
       </div>
@@ -89,8 +91,8 @@ const ChartContainer = React.forwardRef<
 })
 ChartContainer.displayName = "Chart"
 const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
-  if (!id) return null
-  const colorEntries = Object.entries(config).filter(([_, c]) => c.theme || c.color)
+  if (!id || !config) return null
+  const colorEntries = Object.entries(config).filter(([_, c]) => c && (c.theme || c.color))
   if (!colorEntries.length) return null
   return (
     <style
@@ -115,17 +117,17 @@ const ChartTooltipContent = React.forwardRef<HTMLDivElement, any>(
     const { config } = useChart()
     if (!active || !payload?.length) return null
     return (
-      <div ref={ref} className={cn("grid min-w-[10rem] items-start gap-1.5 rounded-lg border border-border/50 bg-background px-3 py-2 text-xs shadow-xl backdrop-blur-md", className)}>
-        {!hideLabel && <div className={cn("font-bold mb-1 border-b border-border/50 pb-1", labelClassName)}>{label}</div>}
-        <div className="grid gap-1.5">
+      <div ref={ref} className={cn("grid min-w-[12rem] items-start gap-1.5 rounded-xl border border-border/50 bg-background/95 px-4 py-3 text-xs shadow-2xl backdrop-blur-md", className)}>
+        {!hideLabel && <div className={cn("font-black mb-2 border-b border-border/50 pb-1 uppercase tracking-wider", labelClassName)}>{label}</div>}
+        <div className="grid gap-2">
           {payload.map((item: any, index: number) => {
             const configKey = item.name || item.dataKey
             const configItem = config[configKey as string]
             return (
               <div key={index} className="flex w-full items-center gap-2">
-                <div className="h-2 w-2 rounded-full" style={{ backgroundColor: item?.color || item?.fill }} />
-                <span className="text-muted-foreground flex-1 font-medium">{configItem?.label || item?.name || configKey}</span>
-                <span className="font-mono font-bold">{(item?.value ?? 0).toLocaleString()}</span>
+                <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item?.color || item?.fill }} />
+                <span className="text-muted-foreground flex-1 font-bold">{configItem?.label || item?.name || configKey}</span>
+                <span className="font-mono font-black">{(item?.value ?? 0).toLocaleString()}</span>
               </div>
             );
           })}
