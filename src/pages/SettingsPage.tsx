@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,9 +10,29 @@ import { ShieldCheck, Key, User, Save, RefreshCw, Loader2, Building2, Briefcase,
 import { toast } from 'sonner';
 import { useAppStore } from '@/lib/store';
 import { api, LicenseInfo } from '@/lib/api';
+const FeatureCheck = ({ label, enabled }: { label: string, enabled: boolean }) => (
+  <div className="flex items-center justify-between py-2 border-b last:border-0 border-border/30">
+    <span className="text-sm font-medium">{label}</span>
+    {enabled ? (
+      <CheckCircle className="h-4 w-4 text-green-500" />
+    ) : (
+      <XCircle className="h-4 w-4 text-muted-foreground/40" />
+    )}
+  </div>
+);
 export function SettingsPage() {
-  const settings = useAppStore((s) => s.settings);
-  const updateStoreSettings = useAppStore((s) => s.updateSettings);
+  const accountId = useAppStore(s => s.settings.accountId);
+  const email = useAppStore(s => s.settings.email);
+  const apiKey = useAppStore(s => s.settings.apiKey);
+  const cfContactName = useAppStore(s => s.settings.cloudflareContact.name);
+  const cfContactRole = useAppStore(s => s.settings.cloudflareContact.role);
+  const cfContactEmail = useAppStore(s => s.settings.cloudflareContact.email);
+  const cfContactTeam = useAppStore(s => s.settings.cloudflareContact.team);
+  const custContactName = useAppStore(s => s.settings.customerContact.name);
+  const custContactRole = useAppStore(s => s.settings.customerContact.role);
+  const custContactEmail = useAppStore(s => s.settings.customerContact.email);
+  const custCustomerName = useAppStore(s => s.settings.customerContact.customerName);
+  const updateStoreSettings = useAppStore(s => s.updateSettings);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [license, setLicense] = useState<LicenseInfo | null>(null);
@@ -25,6 +45,7 @@ export function SettingsPage() {
           updateStoreSettings(res.data);
         }
       } catch (err) {
+        console.error('Failed to load settings', err);
         toast.error('Failed to load settings from server');
       } finally {
         setIsLoading(false);
@@ -35,7 +56,8 @@ export function SettingsPage() {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const res = await api.updateSettings(settings);
+      const currentSettings = useAppStore.getState().settings;
+      const res = await api.updateSettings(currentSettings);
       if (res.success) {
         toast.success('Settings saved securely');
       } else {
@@ -63,16 +85,6 @@ export function SettingsPage() {
       setIsCheckingLicense(false);
     }
   };
-  const FeatureCheck = ({ label, enabled }: { label: string, enabled: boolean }) => (
-    <div className="flex items-center justify-between py-2 border-b last:border-0 border-border/30">
-      <span className="text-sm font-medium">{label}</span>
-      {enabled ? (
-        <CheckCircle className="h-4 w-4 text-green-500" />
-      ) : (
-        <XCircle className="h-4 w-4 text-muted-foreground/40" />
-      )}
-    </div>
-  );
   if (isLoading) {
     return (
       <AppLayout container>
@@ -104,23 +116,23 @@ export function SettingsPage() {
                 <div className="space-y-4">
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-muted-foreground font-medium">ZTNA Plan/User</span>
-                    <span className="font-bold text-[#F38020]">{license.plan}</span>
+                    <span className="font-bold text-[#F38020]">{license.plan ?? 'N/A'}</span>
                   </div>
                   <div className="space-y-2">
                     <div className="flex justify-between items-center text-sm">
                       <span className="text-muted-foreground font-medium">Licenses</span>
-                      <span className="font-bold">{license.usedLicenses}/{license.totalLicenses} used</span>
+                      <span className="font-bold">{(license.usedLicenses ?? 0)}/{(license.totalLicenses ?? 1)} used</span>
                     </div>
-                    <Progress value={(license.usedLicenses / (license.totalLicenses || 1)) * 100} className="h-2" />
+                    <Progress value={((license.usedLicenses ?? 0) / (license.totalLicenses || 1)) * 100} className="h-2" />
                   </div>
                 </div>
                 <div className="pt-4 border-t border-border/50">
                   <h4 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-3">Feature Checklist</h4>
-                  <FeatureCheck label="Access Subscription" enabled={license.accessSub} />
-                  <FeatureCheck label="Gateway Subscription" enabled={license.gatewaySub} />
-                  <FeatureCheck label="Add-on CASB" enabled={license.casb} />
-                  <FeatureCheck label="Add-on DLP" enabled={license.dlp} />
-                  <FeatureCheck label="Add-on RBI" enabled={license.rbi} />
+                  <FeatureCheck label="Access Subscription" enabled={!!license.accessSub} />
+                  <FeatureCheck label="Gateway Subscription" enabled={!!license.gatewaySub} />
+                  <FeatureCheck label="Add-on CASB" enabled={!!license.casb} />
+                  <FeatureCheck label="Add-on DLP" enabled={!!license.dlp} />
+                  <FeatureCheck label="Add-on RBI" enabled={!!license.rbi} />
                 </div>
               </CardContent>
             </Card>
@@ -147,7 +159,7 @@ export function SettingsPage() {
                     <Label htmlFor="accountId">Account ID</Label>
                     <Input
                       id="accountId"
-                      value={settings.accountId}
+                      value={accountId}
                       onChange={(e) => updateStoreSettings({ accountId: e.target.value })}
                       placeholder="e.g. 1a2b3c4d5e6f7g8h9i0j"
                       className="bg-secondary/50"
@@ -158,7 +170,7 @@ export function SettingsPage() {
                     <Input
                       id="email"
                       type="email"
-                      value={settings.email}
+                      value={email}
                       onChange={(e) => updateStoreSettings({ email: e.target.value })}
                       placeholder="admin@company.com"
                       className="bg-secondary/50"
@@ -169,7 +181,7 @@ export function SettingsPage() {
                     <Input
                       id="apiKey"
                       type="password"
-                      value={settings.apiKey}
+                      value={apiKey}
                       onChange={(e) => updateStoreSettings({ apiKey: e.target.value })}
                       placeholder="••••••••••••••••••••••••"
                       className="bg-secondary/50"
@@ -206,32 +218,32 @@ export function SettingsPage() {
                   <div className="space-y-2">
                     <Label>Full Name</Label>
                     <Input
-                      value={settings.cloudflareContact.name}
-                      onChange={(e) => updateStoreSettings({ cloudflareContact: { ...settings.cloudflareContact, name: e.target.value } })}
+                      value={cfContactName}
+                      onChange={(e) => updateStoreSettings({ cloudflareContact: { name: e.target.value, role: cfContactRole, email: cfContactEmail, team: cfContactTeam } })}
                       className="bg-secondary/50"
                     />
                   </div>
                   <div className="space-y-2">
                     <Label>Role</Label>
                     <Input
-                      value={settings.cloudflareContact.role}
-                      onChange={(e) => updateStoreSettings({ cloudflareContact: { ...settings.cloudflareContact, role: e.target.value } })}
+                      value={cfContactRole}
+                      onChange={(e) => updateStoreSettings({ cloudflareContact: { role: e.target.value, name: cfContactName, email: cfContactEmail, team: cfContactTeam } })}
                       className="bg-secondary/50"
                     />
                   </div>
                   <div className="space-y-2">
                     <Label>Email</Label>
                     <Input
-                      value={settings.cloudflareContact.email}
-                      onChange={(e) => updateStoreSettings({ cloudflareContact: { ...settings.cloudflareContact, email: e.target.value } })}
+                      value={cfContactEmail}
+                      onChange={(e) => updateStoreSettings({ cloudflareContact: { email: e.target.value, name: cfContactName, role: cfContactRole, team: cfContactTeam } })}
                       className="bg-secondary/50"
                     />
                   </div>
                   <div className="space-y-2">
                     <Label>Team</Label>
                     <Input
-                      value={settings.cloudflareContact.team}
-                      onChange={(e) => updateStoreSettings({ cloudflareContact: { ...settings.cloudflareContact, team: e.target.value } })}
+                      value={cfContactTeam}
+                      onChange={(e) => updateStoreSettings({ cloudflareContact: { team: e.target.value, name: cfContactName, role: cfContactRole, email: cfContactEmail } })}
                       className="bg-secondary/50"
                     />
                   </div>
@@ -249,32 +261,32 @@ export function SettingsPage() {
                   <div className="space-y-2">
                     <Label>Customer Name</Label>
                     <Input
-                      value={settings.customerContact.customerName}
-                      onChange={(e) => updateStoreSettings({ customerContact: { ...settings.customerContact, customerName: e.target.value } })}
+                      value={custCustomerName}
+                      onChange={(e) => updateStoreSettings({ customerContact: { customerName: e.target.value, name: custContactName, role: custContactRole, email: custContactEmail } })}
                       className="bg-secondary/50"
                     />
                   </div>
                   <div className="space-y-2">
                     <Label>Full Name</Label>
                     <Input
-                      value={settings.customerContact.name}
-                      onChange={(e) => updateStoreSettings({ customerContact: { ...settings.customerContact, name: e.target.value } })}
+                      value={custContactName}
+                      onChange={(e) => updateStoreSettings({ customerContact: { name: e.target.value, customerName: custCustomerName, role: custContactRole, email: custContactEmail } })}
                       className="bg-secondary/50"
                     />
                   </div>
                   <div className="space-y-2">
                     <Label>Role</Label>
                     <Input
-                      value={settings.customerContact.role}
-                      onChange={(e) => updateStoreSettings({ customerContact: { ...settings.customerContact, role: e.target.value } })}
+                      value={custContactRole}
+                      onChange={(e) => updateStoreSettings({ customerContact: { role: e.target.value, customerName: custCustomerName, name: custContactName, email: custContactEmail } })}
                       className="bg-secondary/50"
                     />
                   </div>
                   <div className="space-y-2">
                     <Label>Email</Label>
                     <Input
-                      value={settings.customerContact.email}
-                      onChange={(e) => updateStoreSettings({ customerContact: { ...settings.customerContact, email: e.target.value } })}
+                      value={custContactEmail}
+                      onChange={(e) => updateStoreSettings({ customerContact: { email: e.target.value, customerName: custCustomerName, name: custContactName, role: custContactRole } })}
                       className="bg-secondary/50"
                     />
                   </div>

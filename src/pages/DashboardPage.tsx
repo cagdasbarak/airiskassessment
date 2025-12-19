@@ -120,7 +120,7 @@ export function DashboardPage() {
               <div>
                 <CardTitle>Latest Security Insight</CardTitle>
                 <CardDescription>
-                  {lastReport ? `Summary from report generated on ${lastReport.date}` : 'No assessments generated yet'}
+                  {lastReport ? `Summary from report generated on ${lastReport.date ?? 'Unknown'}` : 'No assessments generated yet'}
                 </CardDescription>
               </div>
               <Activity className="h-5 w-5 text-[#F38020]" />
@@ -134,10 +134,10 @@ export function DashboardPage() {
                 <div className="space-y-6">
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                     {[
-                      { label: 'Health Score', value: `${lastReport.score}%`, color: 'text-foreground' },
-                      { label: 'AI Apps', value: lastReport.summary.aiApps, color: 'text-orange-500' },
-                      { label: 'Shadow AI', value: lastReport.summary.shadowAiApps, color: 'text-red-500' },
-                      { label: 'Risk Level', value: lastReport.riskLevel, color: 'text-blue-500' },
+                      { label: 'Health Score', value: `${lastReport?.score ?? 0}%`, color: 'text-foreground' },
+                      { label: 'AI Apps', value: lastReport?.summary?.aiApps ?? 0, color: 'text-orange-500' },
+                      { label: 'Shadow AI', value: lastReport?.summary?.shadowAiApps ?? 0, color: 'text-red-500' },
+                      { label: 'Risk Level', value: lastReport?.riskLevel ?? 'N/A', color: 'text-blue-500' },
                     ].map((stat, i) => (
                       <div key={i} className="p-4 rounded-2xl bg-secondary/50 text-center space-y-1">
                         <span className={`text-2xl font-bold ${stat.color}`}>{stat.value}</span>

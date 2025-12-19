@@ -57,6 +57,9 @@ export function ReportDetailsPage() {
       </AppLayout>
     );
   }
+  const riskDistribution = report?.securityCharts?.riskDistribution ?? [];
+  const usageOverTime = report?.securityCharts?.usageOverTime ?? [];
+  const appLibrary = report?.appLibrary ?? [];
   return (
     <AppLayout container>
       <div className="space-y-8">
@@ -66,8 +69,8 @@ export function ReportDetailsPage() {
               <ChevronLeft className="h-5 w-5" />
             </Button>
             <div>
-              <h1 className="text-3xl font-bold tracking-tight">Report {report.id.slice(-6)}</h1>
-              <p className="text-muted-foreground">Generated on {report.date} • Enterprise Audit</p>
+              <h1 className="text-3xl font-bold tracking-tight">Report {report?.id?.slice(-6) ?? '...'}</h1>
+              <p className="text-muted-foreground">Generated on {report?.date ?? 'Unknown'} • Enterprise Audit</p>
             </div>
           </div>
           <Button className="btn-gradient">
@@ -76,11 +79,11 @@ export function ReportDetailsPage() {
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           {[
-            { label: 'Total Apps', value: report.summary.totalApps, icon: BrainCircuit, color: 'text-blue-500' },
-            { label: 'AI Apps', value: report.summary.aiApps, icon: Users, color: 'text-[#F38020]' },
-            { label: 'Shadow AI', value: report.summary.shadowAiApps, icon: ShieldAlert, color: 'text-red-500' },
-            { label: 'Risk Level', value: report.riskLevel, icon: AlertTriangle, color: 'text-orange-500' },
-            { label: 'Compliance', value: `${report.summary.complianceScore}%`, icon: Lock, color: 'text-green-500' },
+            { label: 'Total Apps', value: report?.summary?.totalApps ?? 0, icon: BrainCircuit, color: 'text-blue-500' },
+            { label: 'AI Apps', value: report?.summary?.aiApps ?? 0, icon: Users, color: 'text-[#F38020]' },
+            { label: 'Shadow AI', value: report?.summary?.shadowAiApps ?? 0, icon: ShieldAlert, color: 'text-red-500' },
+            { label: 'Risk Level', value: report?.riskLevel ?? 'N/A', icon: AlertTriangle, color: 'text-orange-500' },
+            { label: 'Compliance', value: `${report?.summary?.complianceScore ?? 0}%`, icon: Lock, color: 'text-green-500' },
           ].map((stat, i) => (
             <Card key={i} className="border-border/50 shadow-soft">
               <CardContent className="p-6 flex flex-col items-center text-center space-y-2">
@@ -107,7 +110,7 @@ export function ReportDetailsPage() {
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
-                        data={report.securityCharts.riskDistribution}
+                        data={riskDistribution}
                         cx="50%"
                         cy="50%"
                         innerRadius={60}
@@ -115,7 +118,7 @@ export function ReportDetailsPage() {
                         paddingAngle={5}
                         dataKey="value"
                       >
-                        {report.securityCharts.riskDistribution.map((entry: any, index: number) => (
+                        {riskDistribution.map((entry: any, index: number) => (
                           <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                         ))}
                       </Pie>
@@ -139,18 +142,22 @@ export function ReportDetailsPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {report.appLibrary.map((app: any, i: number) => (
+                      {appLibrary.length > 0 ? appLibrary.map((app: any, i: number) => (
                         <TableRow key={i}>
-                          <TableCell className="font-medium">{app.name}</TableCell>
-                          <TableCell>{app.category}</TableCell>
+                          <TableCell className="font-medium">{app?.name ?? 'Unknown'}</TableCell>
+                          <TableCell>{app?.category ?? 'N/A'}</TableCell>
                           <TableCell>
-                            <Badge variant={app.status === 'Approved' ? 'outline' : app.status === 'Unapproved' ? 'destructive' : 'secondary'}>
-                              {app.status}
+                            <Badge variant={app?.status === 'Approved' ? 'outline' : app?.status === 'Unapproved' ? 'destructive' : 'secondary'}>
+                              {app?.status ?? 'Pending'}
                             </Badge>
                           </TableCell>
-                          <TableCell className="text-right">{app.users}</TableCell>
+                          <TableCell className="text-right">{app?.users ?? 0}</TableCell>
                         </TableRow>
-                      ))}
+                      )) : (
+                        <TableRow>
+                          <TableCell colSpan={4} className="text-center text-muted-foreground py-4">No applications listed.</TableCell>
+                        </TableRow>
+                      )}
                     </TableBody>
                   </Table>
                 </CardContent>
@@ -165,7 +172,7 @@ export function ReportDetailsPage() {
                 </CardHeader>
                 <CardContent className="h-[300px]">
                   <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={report.securityCharts.usageOverTime}>
+                    <AreaChart data={usageOverTime}>
                       <defs>
                         <linearGradient id="colorUsage" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="5%" stopColor="#F38020" stopOpacity={0.3}/>
@@ -187,7 +194,7 @@ export function ReportDetailsPage() {
                 </CardHeader>
                 <CardContent className="h-[300px]">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={report.securityCharts.usageOverTime}>
+                    <BarChart data={usageOverTime}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} />
                       <XAxis dataKey="name" />
                       <YAxis />

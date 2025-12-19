@@ -80,19 +80,19 @@ export function ReportsPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {reports.map((report) => (
-              <Card key={report.id} className="group border-border/50 shadow-soft hover:shadow-lg transition-all duration-300">
+              <Card key={report?.id ?? Math.random()} className="group border-border/50 shadow-soft hover:shadow-lg transition-all duration-300">
                 <CardHeader className="pb-4">
                   <div className="flex items-center justify-between mb-2">
                     <div className="p-2 rounded-lg bg-[#F38020]/10">
                       <FileText className="h-5 w-5 text-[#F38020]" />
                     </div>
                     <div className="flex items-center gap-2">
-                      <Badge variant={report.riskLevel === 'High' ? 'destructive' : report.riskLevel === 'Medium' ? 'secondary' : 'outline'}>
-                        {report.riskLevel} Risk
+                      <Badge variant={report?.riskLevel === 'High' ? 'destructive' : report?.riskLevel === 'Medium' ? 'secondary' : 'outline'}>
+                        {report?.riskLevel ?? 'Unknown'} Risk
                       </Badge>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
+                      <Button
+                        variant="ghost"
+                        size="icon"
                         className="h-8 w-8 text-muted-foreground hover:text-destructive"
                         onClick={(e) => handleDelete(report.id, e)}
                       >
@@ -100,21 +100,21 @@ export function ReportsPage() {
                       </Button>
                     </div>
                   </div>
-                  <CardTitle className="text-xl">Report {report.id.slice(-6)}</CardTitle>
+                  <CardTitle className="text-xl">Report {report?.id?.slice(-6) ?? '...'}</CardTitle>
                   <div className="flex items-center text-sm text-muted-foreground mt-1">
-                    <Calendar className="h-3 w-3 mr-1" /> {report.date}
+                    <Calendar className="h-3 w-3 mr-1" /> {report?.date ?? 'N/A'}
                   </div>
                 </CardHeader>
                 <CardContent>
                   <div className="flex items-end justify-between">
                     <div className="space-y-1">
                       <p className="text-xs text-muted-foreground uppercase tracking-wider">Health Score</p>
-                      <p className="text-3xl font-bold text-foreground">{report.score}%</p>
+                      <p className="text-3xl font-bold text-foreground">{report?.score ?? 0}%</p>
                     </div>
                     <div className="h-12 w-12 rounded-full border-4 border-secondary flex items-center justify-center overflow-hidden">
                       <div
                         className="h-full w-full bg-[#F38020]"
-                        style={{ height: `${report.score}%`, marginTop: 'auto' }}
+                        style={{ height: `${report?.score ?? 0}%`, marginTop: 'auto' }}
                       />
                     </div>
                   </div>
