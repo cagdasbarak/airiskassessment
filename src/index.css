@@ -77,10 +77,15 @@
     color: black !important;
     font-size: 10pt;
   }
+  /* Remove layout decorations for clean prints */
+  main::before, .bg-gradient-mesh, [class*="before:fixed"] {
+    display: none !important;
+    content: none !important;
+  }
   .glass, .bg-white\/40, .bg-black\/20 {
     background: transparent !important;
     backdrop-filter: none !important;
-    border: 1px solid #eee !important;
+    border: 1px solid #d1d5db !important; /* Neutral gray border for print */
     box-shadow: none !important;
   }
   .max-w-7xl {
@@ -103,7 +108,7 @@
   }
 }
 .bg-gradient-mesh {
-  background-image: 
+  background-image:
     radial-gradient(at 0% 0%, hsla(24,100%,76%,0.1) 0px, transparent 50%),
     radial-gradient(at 50% 0%, hsla(222,100%,81%,0.05) 0px, transparent 50%),
     radial-gradient(at 100% 0%, hsla(16,100%,70%,0.1) 0px, transparent 50%),

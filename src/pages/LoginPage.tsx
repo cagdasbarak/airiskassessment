@@ -31,7 +31,7 @@ export function LoginPage() {
       <Card className="w-full max-w-md relative z-10 shadow-2xl border-border/50">
         <CardHeader className="space-y-4 text-center">
           <div className="flex justify-center">
-            <div className="h-16 w-16 rounded-2xl bg-[#F38020] flex items-center justify-center shadow-lg floating">
+            <div className="h-16 w-16 rounded-2xl bg-[#F38020] flex items-center justify-center shadow-lg animate-float">
               <ShieldAlert className="h-10 w-10 text-white" />
             </div>
           </div>
@@ -76,7 +76,7 @@ export function LoginPage() {
           </CardFooter>
         </form>
       </Card>
-      <div className="absolute bottom-8 text-center text-sm text-muted-foreground px-4">
+      <div className="absolute bottom-8 text-center text-sm text-muted-foreground/50 px-8 max-w-lg">
         <p>Note: Although this project has AI capabilities, there is a limit on the number of requests that can be made to the AI servers across all user apps in a given time period.</p>
       </div>
     </div>

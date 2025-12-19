@@ -58,6 +58,12 @@ export function DashboardPage() {
     hidden: { opacity: 0, y: 20 },
     show: { opacity: 1, y: 0 }
   };
+  // Defensive accessors for summary data
+  const safeScore = lastReport?.score ?? 0;
+  const safeShadowUsage = lastReport?.summary?.shadowUsage ?? 0;
+  const safeUnapprovedApps = lastReport?.summary?.unapprovedApps ?? 0;
+  const safeRiskLevel = lastReport?.riskLevel ?? 'N/A';
+  const safeDate = lastReport?.date ?? 'No recent history';
   return (
     <AppLayout container>
       <motion.div
@@ -118,7 +124,7 @@ export function DashboardPage() {
               <div>
                 <CardTitle className="text-2xl font-black tracking-tight">Latest Security Insight</CardTitle>
                 <CardDescription className="font-medium">
-                  {lastReport ? `Telemetry snapshot from ${lastReport.date}` : 'No active audit records found'}
+                  {lastReport ? `Telemetry snapshot from ${safeDate}` : 'No active audit records found'}
                 </CardDescription>
               </div>
               <div className="h-12 w-12 rounded-2xl bg-[#F38020]/10 flex items-center justify-center">
@@ -134,10 +140,10 @@ export function DashboardPage() {
                 <div className="space-y-8">
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                     {[
-                      { label: 'Posture Score', value: `${lastReport.score}%`, color: 'text-foreground' },
-                      { label: 'Shadow Usage', value: `${lastReport.summary.shadowUsage.toFixed(2)}%`, color: 'text-[#F38020]' },
-                      { label: 'Risk Assets', value: lastReport.summary.unapprovedApps, color: 'text-red-500' },
-                      { label: 'Forensic Risk', value: lastReport.riskLevel, color: 'text-blue-500' },
+                      { label: 'Posture Score', value: `${safeScore}%`, color: 'text-foreground' },
+                      { label: 'Shadow Usage', value: `${safeShadowUsage.toFixed(2)}%`, color: 'text-[#F38020]' },
+                      { label: 'Risk Assets', value: safeUnapprovedApps, color: 'text-red-500' },
+                      { label: 'Forensic Risk', value: safeRiskLevel, color: 'text-blue-500' },
                     ].map((stat, i) => (
                       <div key={i} className="p-6 rounded-3xl bg-white/50 dark:bg-white/5 border border-border/5 text-center space-y-2 group hover:bg-white transition-colors cursor-default">
                         <span className={cn("text-3xl font-black", stat.color)}>{stat.value}</span>
@@ -145,12 +151,12 @@ export function DashboardPage() {
                       </div>
                     ))}
                   </div>
-                  <Button 
-                    variant="ghost" 
-                    className="w-full h-14 text-lg font-bold group rounded-2xl border border-border/10 hover:bg-secondary/50" 
+                  <Button
+                    variant="ghost"
+                    className="w-full h-14 text-lg font-bold group rounded-2xl border border-border/10 hover:bg-secondary/50"
                     onClick={() => navigate(`/reports/${lastReport.id}`)}
                   >
-                    Drill Down into Full Analysis 
+                    Drill Down into Full Analysis
                     <ArrowRight className="ml-3 h-5 w-5 transition-transform group-hover:translate-x-2" />
                   </Button>
                 </div>
@@ -173,8 +179,7 @@ export function DashboardPage() {
             Powered by Cloudflare Workers & AI
           </p>
           <p className="max-w-xl mx-auto px-6 text-xs text-muted-foreground/60 font-medium leading-relaxed italic">
-            Disclaimer: There is a system-wide limit on the number of AI requests across all instances. 
-            Assessments are prioritized based on service availability.
+            Disclaimer: Although this project has AI capabilities, there is a limit on the number of requests that can be made to the AI servers across all user apps in a given time period.
           </p>
         </motion.footer>
       </motion.div>
