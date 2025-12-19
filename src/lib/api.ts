@@ -75,7 +75,6 @@ export interface AssessmentReport {
     totalApps: number;
     aiApps: number;
     shadowAiApps: number;
-    /** 3-decimal precision float for client requirements */
     shadowUsage: number;
     unapprovedApps: number;
     dataExfiltrationKB: number;
