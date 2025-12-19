@@ -5,12 +5,12 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ShieldCheck, Zap, ArrowRight, Activity, Loader2, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
-import { api } from '@/lib/api';
+import { api, AssessmentReport } from '@/lib/api';
 import { motion } from 'framer-motion';
 export function DashboardPage() {
   const navigate = useNavigate();
   const [isAssessing, setIsAssessing] = useState(false);
-  const [lastReport, setLastReport] = useState<any>(null);
+  const [lastReport, setLastReport] = useState<AssessmentReport | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   useEffect(() => {
     const fetchLastReport = async () => {
@@ -135,8 +135,8 @@ export function DashboardPage() {
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                     {[
                       { label: 'Health Score', value: `${lastReport?.score ?? 0}%`, color: 'text-foreground' },
-                      { label: 'AI Apps', value: lastReport?.summary?.aiApps ?? 0, color: 'text-orange-500' },
-                      { label: 'Shadow AI', value: lastReport?.summary?.shadowAiApps ?? 0, color: 'text-red-500' },
+                      { label: 'Shadow Usage', value: `${lastReport?.summary?.shadowUsage ?? 0}%`, color: 'text-orange-500' },
+                      { label: 'Unapproved Apps', value: lastReport?.summary?.unapprovedApps ?? 0, color: 'text-red-500' },
                       { label: 'Risk Level', value: lastReport?.riskLevel ?? 'N/A', color: 'text-blue-500' },
                     ].map((stat, i) => (
                       <div key={i} className="p-4 rounded-2xl bg-secondary/50 text-center space-y-1">

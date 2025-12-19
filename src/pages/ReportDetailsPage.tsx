@@ -12,7 +12,7 @@ import {
   PieChart, Pie, Cell, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, LineChart, Line, Legend
 } from 'recharts';
 import {
-  ChevronLeft, Download, ShieldAlert, Users, Lock, Loader2, Activity, ShieldCheck, Database, Globe, Terminal, Sparkles, Printer
+  ChevronLeft, Download, ShieldAlert, Users, Lock, Loader2, Activity, ShieldCheck, Database, Globe, Terminal, Sparkles, Printer, XCircle
 } from 'lucide-react';
 import { api, AssessmentReport, SecurityCharts } from '@/lib/api';
 import { AIInsightsSection } from '@/components/reports/AIInsightsSection';
@@ -65,13 +65,9 @@ export function ReportDetailsPage() {
     </AppLayout>
   );
   const safeAppLibrary = report.appLibrary ?? [];
-  const summary = report.summary;
+  const summary = report.summary ?? {};
   const charts = (report.securityCharts || {}) as SecurityCharts;
   const topAppsTrend = charts.topAppsTrend ?? [];
-  const statusTrend = charts.statusTrend ?? [];
-  const dataTrend = charts.dataTrend ?? [];
-  const mcpAccessTrend = charts.mcpAccessTrend ?? [];
-  const mcpLoginTrend = charts.mcpLoginTrend ?? [];
   const statusCounts = safeAppLibrary.reduce((acc: Record<string, number>, app) => {
     const status = app.status ?? 'Unreviewed';
     acc[status] = (acc[status] || 0) + 1;
@@ -84,7 +80,6 @@ export function ReportDetailsPage() {
   const filteredApps = selectedStatus
     ? safeAppLibrary.filter(a => a.status === selectedStatus)
     : safeAppLibrary;
-  // Defensive keys for trend charts
   const trendKeys = topAppsTrend.length > 0 ? Object.keys(topAppsTrend[0]).filter(k => k !== 'name') : [];
   return (
     <AppLayout container>
@@ -115,20 +110,25 @@ export function ReportDetailsPage() {
               </div>
               <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-1">Shadow AI Usage</p>
               <div className="flex items-baseline gap-2">
-                <p className="text-3xl font-bold text-red-500">{summary.shadowAiApps ?? 0}</p>
-                <span className="text-xs text-muted-foreground">Endpoints</span>
+                <p className={cn("text-3xl font-bold", (summary.shadowUsage ?? 0) > 50 ? "text-red-500" : "text-foreground")}>
+                  {summary.shadowUsage ?? 0}%
+                </p>
+                {(summary.shadowUsage ?? 0) > 50 && (
+                  <Badge variant="destructive" className="text-[8px] h-4">HighRisk</Badge>
+                )}
               </div>
+              <Progress value={summary.shadowUsage ?? 0} className={cn("h-1 mt-2", (summary.shadowUsage ?? 0) > 50 ? "[&>div]:bg-red-500" : "")} />
             </CardContent>
           </Card>
           <Card className="border-border/50 shadow-soft overflow-hidden group hover:shadow-md transition-all">
             <CardContent className="p-6">
-              <div className="p-2 rounded-lg w-fit mb-4 bg-green-500/10">
-                <Lock className="h-5 w-5 text-green-500" />
+              <div className="p-2 rounded-lg w-fit mb-4 bg-orange-500/10">
+                <ShieldAlert className="h-5 w-5 text-orange-500" />
               </div>
-              <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-1">Library Coverage</p>
-              <div className="space-y-2">
-                <p className="text-2xl font-bold text-green-500">{summary.libraryCoverage ?? 0}%</p>
-                <Progress value={summary.libraryCoverage ?? 0} className="h-1.5" />
+              <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-1">Unapproved Apps</p>
+              <div className="flex items-baseline gap-2">
+                <p className="text-3xl font-bold text-orange-500">{summary.unapprovedApps ?? 0}</p>
+                <span className="text-xs text-muted-foreground">Blocked</span>
               </div>
             </CardContent>
           </Card>
@@ -160,17 +160,14 @@ export function ReportDetailsPage() {
           </Card>
           <Card className="border-border/50 shadow-soft overflow-hidden group hover:shadow-md transition-all">
             <CardContent className="p-6">
-              <div className="p-2 rounded-lg w-fit mb-4 bg-orange-500/10">
-                <Activity className="h-5 w-5 text-[#F38020]" />
+              <div className="p-2 rounded-lg w-fit mb-4 bg-green-500/10">
+                <ShieldCheck className="h-5 w-5 text-green-500" />
               </div>
-              <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-1">CASB Posture Score</p>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-1">Posture Score</p>
               <div className="flex flex-col">
-                <p className="text-2xl font-bold text-[#F38020]">{summary.casbPosture ?? 0}/100</p>
+                <p className="text-2xl font-bold text-green-500">{summary.casbPosture ?? 0}/100</p>
                 <div className="h-1 w-full bg-secondary mt-2 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-[#F38020]"
-                    style={{ width: `${summary.casbPosture ?? 0}%` }}
-                  />
+                  <div className="h-full bg-green-500" style={{ width: `${summary.casbPosture ?? 0}%` }} />
                 </div>
               </div>
             </CardContent>
@@ -318,40 +315,6 @@ export function ReportDetailsPage() {
                 </ResponsiveContainer>
               </CardContent>
             </Card>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <Card className="border-border/50 shadow-soft">
-                <CardHeader><CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">App Status Distribution Trend</CardTitle></CardHeader>
-                <CardContent className="h-[300px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={statusTrend}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.1} />
-                      <XAxis dataKey="name" hide />
-                      <YAxis />
-                      <Tooltip />
-                      <Bar dataKey="Approved" stackId="a" fill={PIE_COLORS['Approved']} />
-                      <Bar dataKey="Review" stackId="a" fill={PIE_COLORS['Review']} />
-                      <Bar dataKey="Unapproved" stackId="a" fill={PIE_COLORS['Unapproved']} />
-                      <Bar dataKey="Unreviewed" stackId="a" fill={PIE_COLORS['Unreviewed']} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
-              <Card className="border-border/50 shadow-soft">
-                <CardHeader><CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Data Upload Vol (Total vs Delta)</CardTitle></CardHeader>
-                <CardContent className="h-[300px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={dataTrend}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.1} />
-                      <XAxis dataKey="name" hide />
-                      <YAxis />
-                      <Tooltip />
-                      <Line type="monotone" dataKey="total" stroke="#3182CE" strokeWidth={2} dot={false} />
-                      <Line type="stepAfter" dataKey="delta" stroke="#F38020" strokeWidth={2} dot={false} />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
-            </div>
           </TabsContent>
           <TabsContent value="recommendations">
             {report.aiInsights ? <AIInsightsSection insights={report.aiInsights} /> : (

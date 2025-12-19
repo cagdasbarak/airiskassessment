@@ -104,23 +104,39 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         if (!settings.accountId || !settings.apiKey) return c.json({ success: false, error: 'Credentials missing' }, { status: 400 });
         try {
             const headers = getCFHeaders(settings.email, settings.apiKey);
-            const [appsR, dlpR, accessR, gtwPolR, accPolR] = await Promise.all([
+            // Refined FETCH Sequence for precise AI Metrics
+            const [typesR, reviewR, appsR, dlpR, accessR, gtwPolR, accPolR] = await Promise.all([
+                fetch(`https://api.cloudflare.com/client/v4/accounts/${settings.accountId}/gateway/app_types?per_page=1000`, { headers }),
+                fetch(`https://api.cloudflare.com/client/v4/accounts/${settings.accountId}/gateway/apps/review_status`, { headers }),
                 fetch(`https://api.cloudflare.com/client/v4/accounts/${settings.accountId}/gateway/apps`, { headers }),
                 fetch(`https://api.cloudflare.com/client/v4/accounts/${settings.accountId}/dlp/incidents`, { headers }),
                 fetch(`https://api.cloudflare.com/client/v4/accounts/${settings.accountId}/access/events?per_page=1000`, { headers }),
                 fetch(`https://api.cloudflare.com/client/v4/accounts/${settings.accountId}/gateway/rules`, { headers }),
                 fetch(`https://api.cloudflare.com/client/v4/accounts/${settings.accountId}/access/policies`, { headers })
             ]);
+            const typesData = (await typesR.json() as any).result || [];
+            const reviewData = (await reviewR.json() as any).result || { approved_apps: [], in_review: [], unapproved_apps: [] };
             const appsData = (await appsR.json() as any).result || [];
             const dlpData = (await dlpR.json() as any).result || [];
             const eventsData = (await accessR.json() as any).result || [];
             const gtwPols = (await gtwPolR.json() as any).result || [];
             const accPols = (await accPolR.json() as any).result || [];
-            const aiApps = appsData.filter((a: any) => a.categories?.some((cat: string) => cat.toLowerCase().includes('ai')));
-            const shadowAiApps = aiApps.filter((a: any) => a.status === 'Unapproved');
-            const approvedApps = aiApps.filter((a: any) => a.status === 'Approved');
-            // Precise Metrics
-            const libCoverage = aiApps.length > 0 ? (approvedApps.length / aiApps.length) * 100 : 0;
+            // FETCH1: Identify GenAI App IDs (Type 25)
+            const aiIds = typesData.filter((t: any) => t.application_type_id === 25).map((t: any) => t.id);
+            const aiApps = appsData.filter((a: any) => aiIds.includes(a.id) || a.categories?.some((cat: string) => cat.toLowerCase().includes('ai')));
+            // FETCH2: Managed Statuses
+            const managedIds = [
+                ...(reviewData.approved_apps || []),
+                ...(reviewData.in_review || []),
+                ...(reviewData.unapproved_apps || [])
+            ].map((a: any) => a.id);
+            // Metric 1: Shadow AI %
+            const shadowCount = aiIds.filter((id: any) => !managedIds.includes(id)).length;
+            const shadowUsage = aiIds.length > 0 ? Number((shadowCount / aiIds.length * 100).toFixed(1)) : 0;
+            // Metric 2: Unapproved Applications
+            const unapprovedAppsCount = (reviewData.unapproved_apps || []).filter((a: any) => aiIds.includes(a.id)).length;
+            const approvedAppsCount = aiApps.filter((a: any) => a.status === 'Approved').length;
+            const libCoverage = aiApps.length > 0 ? (approvedAppsCount / aiApps.length) * 100 : 0;
             const totalExfilMB = Math.floor(dlpData.reduce((acc: number, cur: any) => acc + (cur.fileSize || 0), 0) / (1024 * 1024));
             const casbPost = aiApps.length > 0 ? aiApps.reduce((acc: number, cur: any) => acc + (cur.risk_score || 0), 0) / aiApps.length : 0;
             const userFreq = eventsData.reduce((acc: Record<string, number>, e: any) => {
@@ -128,10 +144,10 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
                 return acc;
             }, {});
             const powerUsers = Object.entries(userFreq)
-                .map(([email, prompts]) => ({ 
-                    email, 
-                    name: email.split('@')[0], 
-                    prompts: prompts as number 
+                .map(([email, prompts]) => ({
+                    email,
+                    name: email.split('@')[0],
+                    prompts: prompts as number
                 }))
                 .sort((a: any, b: any) => b.prompts - a.prompts)
                 .slice(0, 3);
@@ -187,17 +203,19 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
                 mcpAccessTrend: generateTrend(30, () => ({ servers: Math.floor(Math.random() * 5) })),
                 mcpLoginTrend: generateTrend(30, () => ({ events: Math.floor(Math.random() * 10) }))
             };
-            const riskLevel = shadowAiApps.length > 5 ? 'High' as const : shadowAiApps.length > 0 ? 'Medium' as const : 'Low' as const;
+            const riskLevel = shadowUsage > 50 || unapprovedAppsCount > 5 ? 'High' as const : shadowUsage > 20 ? 'Medium' as const : 'Low' as const;
             const report = {
                 id: `rep_${Date.now()}`,
                 date: new Date().toISOString().split('T')[0],
                 status: 'Completed' as const,
-                score: Math.max(0, 100 - (shadowAiApps.length * 10)),
+                score: Math.max(0, 100 - (shadowUsage / 2)),
                 riskLevel,
                 summary: {
                     totalApps: appsData.length,
                     aiApps: aiApps.length,
-                    shadowAiApps: shadowAiApps.length,
+                    shadowAiApps: shadowCount,
+                    shadowUsage,
+                    unapprovedApps: unapprovedAppsCount,
                     dataExfiltrationRisk: `${totalExfilMB} MB`,
                     complianceScore: Math.floor(libCoverage),
                     libraryCoverage: Math.floor(libCoverage),
@@ -214,12 +232,12 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
                 (report as any).aiInsights = { summary: "Critical analysis of shadow AI usage.", recommendations: [{ title: "Block Shadow AI", description: "Implement block policies.", type: "critical" }] };
             }
             await controller.addReport(report as any);
-            await controller.addLog({ 
-                timestamp: new Date().toISOString(), 
-                action: 'Advanced Assessment Generated', 
-                user: settings.email, 
+            await controller.addLog({
+                timestamp: new Date().toISOString(),
+                action: 'Advanced Assessment Generated',
+                user: settings.email,
                 status: 'Success',
-                description: `Risk Level: ${riskLevel}, Shadow Apps Detected: ${shadowAiApps.length}`
+                description: `Risk Level: ${riskLevel}, Shadow Usage: ${shadowUsage}%, Unapproved: ${unapprovedAppsCount}`
             } as any);
             return c.json({ success: true, data: report });
         } catch (error: any) {
