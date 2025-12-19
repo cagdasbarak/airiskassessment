@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, Fragment } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import {
-  ChevronLeft, Globe, Printer, BarChart3, PieChart, Zap
+  ChevronLeft, Globe, Printer, BarChart3, PieChart, Zap, Loader2
 } from 'lucide-react';
 import { api, AssessmentReport } from '@/lib/api';
 import {
@@ -48,8 +48,11 @@ export function ReportDetailsPage() {
   const [selectedStatusFilter, setSelectedStatusFilter] = useState<string | null>(null);
   const [expandedApp, setExpandedApp] = useState<string | null>(null);
   useEffect(() => {
+    if (!id) {
+      setIsLoading(false);
+      return;
+    }
     const fetchReport = async () => {
-      if (!id) return;
       try {
         const res = await api.getReport(id);
         if (res.success && res.data) setReport(res.data);
@@ -106,7 +109,7 @@ export function ReportDetailsPage() {
               <h1 className="text-3xl font-bold tracking-tight text-foreground">Cloudflare ZTNA Audit</h1>
               <div className="flex items-center gap-2 text-muted-foreground">
                 <Globe className="h-3 w-3" />
-                <span className="text-xs font-mono">Snapshot ID: {report.id} • Date: {report.date}</span>
+                <span className="text-xs font-mono">Snapshot ID: {report?.id ?? 'N/A'} • Date: {report.date}</span>
               </div>
             </div>
           </div>
@@ -184,7 +187,7 @@ export function ReportDetailsPage() {
                     <CardTitle className="text-sm font-bold">Data Upload Trends (KB)</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <ChartContainer config={dataChartConfig} className="h-[250px]">
+                    <ChartContainer config={dataChartConfig} className="h-[350px]">
                       <AreaChart data={report.securityCharts?.dataTrends ?? []}>
                         <CartesianGrid strokeDasharray="3 3" opacity={0.1} vertical={false} />
                         <XAxis dataKey="date" hide />
@@ -208,7 +211,7 @@ export function ReportDetailsPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="flex flex-col items-center">
-                  <ChartContainer config={pieChartConfig} className="h-[240px] w-full">
+                  <ChartContainer config={pieChartConfig} className="h-[350px] w-full">
                     <RePieChart>
                       <Pie
                         data={pieData}
@@ -264,7 +267,7 @@ export function ReportDetailsPage() {
                     </TableHeader>
                     <TableBody>
                       {filteredInventory.map((app) => (
-                        <React.Fragment key={app.appId}>
+                        <Fragment key={app.appId}>
                           <TableRow
                             className={cn("cursor-pointer hover:bg-secondary/20 transition-colors", expandedApp === app.appId && "bg-secondary/10")}
                             onClick={() => setExpandedApp(expandedApp === app.appId ? null : app.appId)}
@@ -289,7 +292,7 @@ export function ReportDetailsPage() {
                               </TableCell>
                             </TableRow>
                           )}
-                        </React.Fragment>
+                        </Fragment>
                       ))}
                     </TableBody>
                   </Table>
