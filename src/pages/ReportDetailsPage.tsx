@@ -139,7 +139,7 @@ export function ReportDetailsPage() {
             />
           </div>
         </section>
-        <Tabs defaultValue="summary" className="w-full space-y-10">
+        <Tabs defaultValue="forensics" className="w-full space-y-10">
           <div className="flex justify-center no-print">
             <TabsList className="bg-white/40 dark:bg-black/20 backdrop-blur-xl border border-border/50 p-1 h-auto rounded-2xl shadow-soft">
               <TabsTrigger value="library" className="flex items-center gap-2 px-6 py-2.5 rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm dark:data-[state=active]:bg-secondary">
@@ -160,7 +160,7 @@ export function ReportDetailsPage() {
             <AppLibraryTab />
           </TabsContent>
           <TabsContent value="forensics" className="focus-visible:outline-none">
-            <SecurityForensicsTab />
+            <SecurityForensicsTab report={report} />
           </TabsContent>
           <TabsContent value="summary" className="focus-visible:outline-none">
             <SummaryRemediationTab report={report} />
