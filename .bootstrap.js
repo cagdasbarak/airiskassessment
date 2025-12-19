@@ -77,7 +77,9 @@ function updateWranglerJsonc() {
 }
 
 function runSetupCommands() {
-    const commands = [];
+    const commands = [
+    "bun add recharts lucide-react framer-motion sonner zustand@5.0.6"
+];
     
     if (commands.length === 0) {
         console.log('⊘ No setup commands to run');
