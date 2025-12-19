@@ -2,9 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, Printer, Loader2, FileText } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { ChevronLeft, Printer, Loader2, FileText, ShieldAlert, FileCheck, Zap, AlertCircle } from 'lucide-react';
 import { api, AssessmentReport } from '@/lib/api';
 import { ExecutiveScorecard } from '@/components/reports/ExecutiveScorecard';
+import { cn } from '@/lib/utils';
+import { motion } from 'framer-motion';
 export function ReportDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -97,14 +100,6 @@ export function ReportDetailsPage() {
             <Printer className="h-4 w-4 mr-2" /> Download Executive PDF
           </Button>
         </div>
-        {/* Professional Print Branding */}
-        <div className="print:block hidden mb-12 text-center border-b border-black pb-10">
-          <h1 className="text-5xl font-black mb-2 uppercase tracking-tighter">RiskGuard AI Precision Audit</h1>
-          <p className="text-xl font-medium text-gray-600">Automated Zero Trust Governance & AI Risk Discovery</p>
-          <div className="mt-4 text-sm font-mono text-gray-500 uppercase">
-            Snapshot: {report.id} | Date: {report.date} | Confidential
-          </div>
-        </div>
         {/* The Core Analytical Grid */}
         <div className="space-y-12">
           <div className="text-center space-y-2 no-print">
@@ -113,14 +108,66 @@ export function ReportDetailsPage() {
           </div>
           <ExecutiveScorecard summary={report.summary} score={report.score} />
         </div>
-        {/* Executive Summary Note */}
-        <div className="bg-secondary/30 rounded-3xl p-10 border border-border/50 text-center space-y-4 max-w-4xl mx-auto shadow-sm">
-          <h3 className="text-lg font-bold tracking-tight">Executive Assessment Note</h3>
-          <p className="text-muted-foreground leading-relaxed italic text-sm sm:text-base">
-            "This report provides a high-fidelity snapshot of Generative AI usage patterns across your Zero Trust environment. 
-            The metrics highlight critical shadow usage densities that bypass standard organizational review. 
-            Immediate remediation is recommended for all endpoints marked as high-risk or unapproved."
-          </p>
+        {/* Executive Summary Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-1">
+            <Card className="border-border/50 shadow-soft h-full bg-[#F38020]/5 overflow-hidden relative">
+              <div className="absolute top-0 right-0 p-4 opacity-10">
+                <ShieldAlert className="h-24 w-24" />
+              </div>
+              <CardHeader>
+                <CardTitle className="text-xl font-bold">Executive Summary</CardTitle>
+                <CardDescription>AI-generated posture analysis</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-foreground leading-relaxed italic text-base">
+                  "{report.aiInsights?.summary || "This report provides a high-fidelity snapshot of Generative AI usage patterns across your Zero Trust environment. The metrics highlight critical shadow usage densities that bypass standard organizational review."}"
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+          <div className="lg:col-span-2">
+            <div className="space-y-4">
+              <h3 className="text-lg font-bold tracking-tight px-1 flex items-center gap-2">
+                <Zap className="h-5 w-5 text-[#F38020]" />
+                Actionable Remediation Steps
+              </h3>
+              <div className="grid gap-4">
+                {(report.aiInsights?.recommendations || []).map((rec, i) => (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.2 + i * 0.1 }}
+                  >
+                    <Card className={cn(
+                      "border-l-4 border-y-border border-r-border shadow-soft",
+                      rec.type === 'critical' ? "border-l-red-500 bg-red-500/[0.02]" : 
+                      rec.type === 'policy' ? "border-l-blue-500 bg-blue-500/[0.02]" : 
+                      "border-l-emerald-500 bg-emerald-500/[0.02]"
+                    )}>
+                      <CardContent className="p-5 flex gap-4">
+                        <div className={cn(
+                          "h-10 w-10 shrink-0 rounded-xl flex items-center justify-center",
+                          rec.type === 'critical' ? "bg-red-500/10 text-red-500" : 
+                          rec.type === 'policy' ? "bg-blue-500/10 text-blue-500" : 
+                          "bg-emerald-500/10 text-emerald-500"
+                        )}>
+                          {rec.type === 'critical' ? <ShieldAlert className="h-5 w-5" /> : 
+                           rec.type === 'policy' ? <FileCheck className="h-5 w-5" /> : 
+                           <AlertCircle className="h-5 w-5" />}
+                        </div>
+                        <div className="space-y-1">
+                          <h4 className="font-bold text-foreground">{rec.title}</h4>
+                          <p className="text-sm text-muted-foreground">{rec.description}</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
         <footer className="pt-16 text-center text-[10px] text-muted-foreground uppercase tracking-[0.2em] font-medium opacity-50 no-print">
           Internal Enterprise Compliance Use Only • Cloudflare Zero Trust Precision Analytics v1.0

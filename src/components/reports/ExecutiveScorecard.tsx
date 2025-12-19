@@ -19,26 +19,24 @@ interface ScorecardProps {
   score: number;
 }
 export function ExecutiveScorecard({ summary, score }: ScorecardProps) {
-  // Defensive fallbacks for all metrics
   const shadowUsageValue = summary?.shadowUsage ?? 0;
   const unapprovedCount = summary?.unapprovedApps ?? 0;
   const healthScore = score ?? 0;
   const dataRisk = summary?.dataExfiltrationRisk ?? '0 MB';
   const compliance = summary?.complianceScore ?? 0;
-  // Risk triggers based on precision logic
   const isHighRiskShadow = shadowUsageValue > 50;
   const isCriticalUnapproved = unapprovedCount > 0;
   const cards = [
     {
       title: "Shadow AI Usage",
-      value: `${shadowUsageValue.toFixed(3)}%`, // Reflect 3-decimal precision
+      value: `${shadowUsageValue.toFixed(3)}%`,
       description: "Traffic via unmanaged endpoints.",
       icon: Activity,
       color: isHighRiskShadow ? "text-red-500" : "text-[#F38020]",
       bg: isHighRiskShadow ? "bg-red-500/10" : "bg-[#F38020]/10",
       highlight: isHighRiskShadow,
       badge: isHighRiskShadow ? "High Risk" : null,
-      tooltip: "Percentage of detected AI applications not found in Approved, Review, or Unapproved lists. Calculated via precise JQ-inspired telemetry matching."
+      tooltip: "Percentage of detected AI applications not found in managed lists. High density suggests bypass of security controls."
     },
     {
       title: "Unapproved Apps",
@@ -47,17 +45,18 @@ export function ExecutiveScorecard({ summary, score }: ScorecardProps) {
       icon: AlertTriangle,
       color: isCriticalUnapproved ? "text-red-500" : "text-green-500",
       bg: isCriticalUnapproved ? "bg-red-500/10" : "bg-green-500/10",
+      highlight: isCriticalUnapproved,
       badge: isCriticalUnapproved ? "Critical" : null,
-      tooltip: "Number of Generative AI applications explicitly marked as 'Unapproved' with active traffic detected."
+      tooltip: "Number of applications explicitly marked as 'Unapproved' with active traffic detected in Gateway logs."
     },
     {
       title: "Health Score",
       value: `${healthScore.toFixed(0)}%`,
       description: "Aggregate security posture.",
       icon: ShieldCheck,
-      color: "text-blue-500",
-      bg: "bg-blue-500/10",
-      tooltip: "Composite score based on your Zero Trust policy coverage and shadow AI density metrics."
+      color: healthScore < 70 ? "text-amber-500" : "text-blue-500",
+      bg: healthScore < 70 ? "bg-amber-500/10" : "bg-blue-500/10",
+      tooltip: "Composite indicator of Zero Trust policy coverage and shadow AI usage density."
     },
     {
       title: "Data Risk",
@@ -75,7 +74,7 @@ export function ExecutiveScorecard({ summary, score }: ScorecardProps) {
       icon: FileCheck,
       color: "text-emerald-500",
       bg: "bg-emerald-500/10",
-      tooltip: "Ratio of managed AI applications (Approved/Review/Unapproved) against total detected AI footprint."
+      tooltip: "Ratio of managed AI applications against the total detected environment footprint."
     }
   ];
   return (
@@ -84,21 +83,25 @@ export function ExecutiveScorecard({ summary, score }: ScorecardProps) {
         {cards.map((card, idx) => (
           <motion.div
             key={card.title}
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: idx * 0.1 }}
+            transition={{ 
+              delay: idx * 0.12,
+              duration: 0.5,
+              ease: [0.23, 1, 0.32, 1]
+            }}
           >
             <Card className={cn(
-              "border-border/50 shadow-soft h-full transition-all relative overflow-hidden",
-              card.highlight && "ring-2 ring-red-500 shadow-lg shadow-red-500/20"
+              "border-border/50 shadow-soft h-full transition-all duration-300 relative overflow-hidden group",
+              card.highlight && "ring-2 ring-red-500/50 shadow-lg shadow-red-500/10 bg-red-500/[0.01]"
             )}>
               <CardContent className="p-8 flex flex-col items-center text-center justify-between h-full space-y-6">
                 <div className="relative">
-                  <div className={cn("p-4 rounded-2xl", card.bg)}>
+                  <div className={cn("p-4 rounded-2xl transition-transform group-hover:scale-110 duration-300", card.bg)}>
                     <card.icon className={cn("h-8 w-8", card.color)} />
                   </div>
                   {card.badge && (
-                    <Badge variant="destructive" className="absolute -top-3 -right-3 text-[8px] uppercase font-bold animate-pulse px-1.5 py-0 h-4">
+                    <Badge variant="destructive" className="absolute -top-3 -right-3 text-[8px] uppercase font-bold animate-pulse px-1.5 py-0 h-4 ring-2 ring-background">
                       {card.badge}
                     </Badge>
                   )}
@@ -108,14 +111,19 @@ export function ExecutiveScorecard({ summary, score }: ScorecardProps) {
                     <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{card.title}</h3>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Info className="h-3 w-3 text-muted-foreground/30 cursor-help" />
+                        <button className="focus:outline-none" aria-label={`Information about ${card.title}`}>
+                          <Info className="h-3 w-3 text-muted-foreground/30 cursor-help" />
+                        </button>
                       </TooltipTrigger>
-                      <TooltipContent side="top" className="text-xs bg-popover/90 backdrop-blur-sm">
+                      <TooltipContent side="top" className="text-xs max-w-[200px] bg-popover/90 backdrop-blur-sm border border-border/50 shadow-xl">
                         {card.tooltip}
                       </TooltipContent>
                     </Tooltip>
                   </div>
-                  <span className={cn("text-4xl font-bold tracking-tighter", card.highlight ? "text-red-600" : "text-foreground")}>
+                  <span className={cn(
+                    "text-4xl font-bold tracking-tighter",
+                    card.highlight ? "text-red-600" : "text-foreground"
+                  )}>
                     {card.value}
                   </span>
                 </div>

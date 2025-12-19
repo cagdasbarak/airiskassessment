@@ -6,22 +6,37 @@ interface ProtectedRouteProps {
 }
 /**
  * Compliance Guard for Stable Navigation.
- * Uses reactive store selectors to ensure UI stays in sync with auth state.
+ * Checks authentication status and ensures persistence hydration is complete.
  */
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const isAuthenticated = useAppStore((s) => s.isAuthenticated);
   const location = useLocation();
   const [isHydrated, setIsHydrated] = useState(false);
-  // Ensure we wait for Zustand persist hydration if necessary
-  // In this simple implementation, we assume immediate availability or handle flickering via Navigate
   useEffect(() => {
-    setIsHydrated(true);
+    // Check if the store has hydrated from persistent storage
+    const checkHydration = () => {
+      const hydrated = useAppStore.persist.hasHydrated();
+      if (hydrated) {
+        setIsHydrated(true);
+      } else {
+        // Retry shortly if not yet hydrated
+        setTimeout(checkHydration, 10);
+      }
+    };
+    checkHydration();
   }, []);
   if (!isHydrated) {
-    return null; // Prevent flash during hydration
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-pulse flex flex-col items-center gap-4">
+          <div className="h-12 w-12 rounded-2xl bg-muted" />
+          <div className="h-4 w-32 bg-muted rounded" />
+        </div>
+      </div>
+    );
   }
   if (!isAuthenticated) {
-    // Redirect to login but save the current location they were trying to go to
+    // Redirect to login but save the current location to redirect back after login
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
   return <>{children}</>;

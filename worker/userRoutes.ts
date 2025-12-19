@@ -2,10 +2,10 @@ import { Hono } from "hono";
 import { getAgentByName } from 'agents';
 import { ChatAgent } from './agent';
 import { Env, getAppController, registerSession } from "./core-utils";
-import type { AssessmentReport } from './app-controller';
+import { ChatHandler } from './chat';
+import type { AssessmentReport, AIInsights } from './app-controller';
 let coreRoutesRegistered = false;
 let userRoutesRegistered = false;
-// Helper for safe JSON parsing
 const safeJSON = (text: string) => {
   try {
     return JSON.parse(text);
@@ -13,7 +13,6 @@ const safeJSON = (text: string) => {
     return {};
   }
 };
-// Helper for authenticated Cloudflare API calls
 const safeFetch = async (endpoint: string, settings: any) => {
   const { accountId, email, apiKey } = settings;
   const baseUrl = `https://api.cloudflare.com/client/v4/accounts/${accountId}`;
@@ -107,16 +106,14 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     try {
       // 1. Fetch App Types (Filter for AI which is type 25)
       const appTypesResp = await safeFetch('/gateway/app_types?per_page=1000', settings);
-      const appTypesText = await appTypesResp.text();
-      const appTypesJson = safeJSON(appTypesText);
+      const appTypesJson = safeJSON(await appTypesResp.text());
       const aiIds = appTypesJson?.result?.filter((t: any) => t.application_type_id === 25).map((t: any) => t.id) || [];
       const totalAI = aiIds.length;
       // 2. Fetch Review Statuses
       const reviewResp = await safeFetch('/gateway/apps/review_status', settings);
-      const reviewText = await reviewResp.text();
-      const reviewJson = safeJSON(reviewText);
+      const reviewJson = safeJSON(await reviewResp.text());
       const statuses = reviewJson?.result || {};
-      // 3. Precision Shadow AI Usage Calculation (JQ-Inspired)
+      // 3. Precision Shadow AI Usage Calculation
       const managedIds = [
         ...(statuses.approved_apps || []),
         ...(statuses.in_review_apps || []),
@@ -124,23 +121,50 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       ];
       const managedCount = aiIds.filter((id: string) => managedIds.includes(id)).length;
       const shadowCount = totalAI - managedCount;
-      // Calculate with 3-decimal precision (e.g. 98.122)
-      const shadowUsage = totalAI > 0 
-        ? Math.round((shadowCount / totalAI) * 100 * 1000) / 1000 
-        : 0;
-      // 4. Calculate Unapproved Apps (filtered against detected AI list)
+      const shadowUsage = totalAI > 0 ? Math.round((shadowCount / totalAI) * 100 * 1000) / 1000 : 0;
       const unapprovedAppsCount = (statuses.unapproved_apps || []).filter((id: string) => aiIds.includes(id)).length;
+      const healthScore = Math.max(0, Math.min(100, 100 - (shadowUsage / 1.5)));
+      // 4. Generate AI Insights
+      let aiInsights: AIInsights | undefined;
+      try {
+        const chatHandler = new ChatHandler(c.env.CF_AI_BASE_URL, c.env.CF_AI_API_KEY, 'google-ai-studio/gemini-2.0-flash');
+        const aiPrompt = `Perform an executive security analysis based on these Cloudflare ZTNA metrics:
+        - Shadow AI Usage: ${shadowUsage.toFixed(3)}%
+        - Unapproved AI Apps Detected: ${unapprovedAppsCount}
+        - Overall Security Health Score: ${healthScore.toFixed(0)}%
+        - Total Detected AI Apps: ${totalAI}
+        Provide your analysis in EXACTLY this JSON format:
+        {
+          "summary": "A 2-sentence executive summary of the risk posture.",
+          "recommendations": [
+            { "title": "Actionable Title", "description": "Specific remediation steps.", "type": "critical|policy|optimization" },
+            ... (exactly 3 recommendations)
+          ]
+        }`;
+        const aiResponse = await chatHandler.processMessage(aiPrompt, []);
+        aiInsights = JSON.parse(aiResponse.content);
+      } catch (aiErr) {
+        console.warn('AI Insight Generation Failed, using fallback:', aiErr);
+        aiInsights = {
+          summary: "Shadow AI usage represents a significant blind spot in the current Zero Trust posture. Immediate management of unreviewed AI endpoints is recommended to prevent data leakage.",
+          recommendations: [
+            { title: "Block Unapproved Endpoints", description: "Apply Cloudflare Gateway block policies to the ${unapprovedAppsCount} detected unapproved apps.", type: "critical" },
+            { title: "Enforce Data Loss Prevention", description: "Deploy DLP profiles to monitor sensitive strings in Generative AI prompts.", type: "policy" },
+            { title: "Review Application Library", description: "Onboard the ${shadowCount} shadow apps into the formal review workflow.", type: "optimization" }
+          ]
+        };
+      }
       const report: AssessmentReport = {
         id: `rep_${Date.now()}`,
         date: now.toISOString().split('T')[0],
         status: 'Completed',
-        score: Math.max(0, Math.min(100, 100 - (shadowUsage / 1.5))), 
+        score: healthScore,
         riskLevel: shadowUsage > 50 ? 'High' : shadowUsage > 20 ? 'Medium' : 'Low',
         summary: {
-          totalApps: 184, // Mocked total across all types
+          totalApps: 184, 
           aiApps: totalAI,
           shadowAiApps: shadowCount,
-          shadowUsage: shadowUsage, // Precision float
+          shadowUsage: shadowUsage,
           unapprovedApps: unapprovedAppsCount,
           dataExfiltrationRisk: shadowUsage > 40 ? '420 MB' : '12 MB',
           complianceScore: Math.round((managedCount / (totalAI || 1)) * 100),
@@ -149,7 +173,8 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         },
         powerUsers: [],
         appLibrary: [],
-        securityCharts: {}
+        securityCharts: {},
+        aiInsights
       };
       await controller.addReport(report);
       await controller.addLog({
