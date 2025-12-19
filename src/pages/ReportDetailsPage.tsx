@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import {
   PieChart, Pie, Cell, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, LineChart, Line
 } from 'recharts';
@@ -67,11 +68,14 @@ export function ReportDetailsPage() {
     );
   }
   const { summary, appLibrary, securityCharts } = report;
-  const statusCounts = appLibrary.reduce((acc: any, app) => {
+  const statusCounts = appLibrary.reduce((acc: Record<string, number>, app) => {
     acc[app.status] = (acc[app.status] || 0) + 1;
     return acc;
   }, {});
-  const pieData = Object.entries(statusCounts).map(([name, value]) => ({ name, value }));
+  const pieData = Object.entries(statusCounts).map(([name, value]) => ({ 
+    name, 
+    value: Number(value) 
+  }));
   const filteredApps = selectedStatus ? appLibrary.filter(a => a.status === selectedStatus) : appLibrary;
   return (
     <AppLayout container>
@@ -90,7 +94,6 @@ export function ReportDetailsPage() {
             <Download className="h-4 w-4 mr-2" /> Export PDF
           </Button>
         </div>
-        {/* 5-Card Executive Scorecard */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           {[
             { label: 'Total Apps', value: summary.totalApps, icon: BrainCircuit, color: 'text-blue-500', bg: 'bg-blue-500/10' },
@@ -190,7 +193,7 @@ export function ReportDetailsPage() {
                     <TableBody>
                       {filteredApps.map((app) => (
                         <React.Fragment key={app.appId}>
-                          <TableRow 
+                          <TableRow
                             className="cursor-pointer hover:bg-secondary/10 transition-colors border-l-2 border-transparent data-[state=expanded]:border-l-[#F38020] data-[state=expanded]:bg-secondary/30"
                             data-state={expandedRow === app.appId ? "expanded" : "collapsed"}
                             onClick={() => setExpandedRow(expandedRow === app.appId ? null : app.appId)}
