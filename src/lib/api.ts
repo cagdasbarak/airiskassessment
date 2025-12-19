@@ -15,9 +15,11 @@ export interface LicenseInfo {
   plan: string;
   totalLicenses: number;
   usedLicenses: number;
-  dlp: 'VAR' | 'YOK';
-  casb: 'VAR' | 'YOK';
-  rbi: 'VAR' | 'YOK';
+  accessSub: boolean;
+  gatewaySub: boolean;
+  dlp: boolean;
+  casb: boolean;
+  rbi: boolean;
 }
 export const api = {
   async getSettings(): Promise<ApiResponse<Settings>> {

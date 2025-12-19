@@ -5,7 +5,8 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { ShieldCheck, Key, User, Save, RefreshCw, Loader2, Building2, Briefcase } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { ShieldCheck, Key, User, Save, RefreshCw, Loader2, Building2, Briefcase, CheckCircle, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAppStore } from '@/lib/store';
 import { api, LicenseInfo } from '@/lib/api';
@@ -62,6 +63,16 @@ export function SettingsPage() {
       setIsCheckingLicense(false);
     }
   };
+  const FeatureCheck = ({ label, enabled }: { label: string, enabled: boolean }) => (
+    <div className="flex items-center justify-between py-2 border-b last:border-0 border-border/30">
+      <span className="text-sm font-medium">{label}</span>
+      {enabled ? (
+        <CheckCircle className="h-4 w-4 text-green-500" />
+      ) : (
+        <XCircle className="h-4 w-4 text-muted-foreground/40" />
+      )}
+    </div>
+  );
   if (isLoading) {
     return (
       <AppLayout container>
@@ -74,36 +85,42 @@ export function SettingsPage() {
   return (
     <AppLayout container>
       <div className="max-w-5xl mx-auto space-y-8">
-        <div className="flex justify-between items-start">
-          <div>
+        <div className="flex flex-col md:flex-row justify-between items-start gap-6">
+          <div className="flex-1">
             <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
             <p className="text-muted-foreground">Manage your Cloudflare integration and report preferences.</p>
           </div>
           {license && (
-            <Card className="w-72 border-[#F38020]/20 shadow-soft bg-secondary/30">
-              <CardHeader className="py-3 px-4 border-b">
-                <CardTitle className="text-xs font-bold uppercase tracking-widest flex items-center gap-2">
-                  <ShieldCheck className="h-3 w-3 text-[#F38020]" />
-                  License Status
-                </CardTitle>
+            <Card className="w-full md:w-80 border-[#F38020]/20 shadow-soft bg-secondary/30">
+              <CardHeader className="py-4 px-5 border-b">
+                <div className="flex items-center gap-2 mb-1">
+                  <ShieldCheck className="h-4 w-4 text-[#F38020]" />
+                  <span className="text-sm font-bold uppercase tracking-wider">License Status</span>
+                </div>
+                <CardTitle className="text-lg">Cloudflare Zero Trust Licenses</CardTitle>
+                <CardDescription className="text-xs">Summary of your Cloudflare Zero Trust licenses.</CardDescription>
               </CardHeader>
-              <CardContent className="p-4 space-y-2">
-                <div className="flex justify-between text-xs">
-                  <span className="text-muted-foreground">Plan:</span>
-                  <span className="font-bold">{license.plan}</span>
+              <CardContent className="p-5 space-y-6">
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-muted-foreground font-medium">ZTNA Plan/User</span>
+                    <span className="font-bold text-[#F38020]">{license.plan}</span>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-muted-foreground font-medium">Licenses</span>
+                      <span className="font-bold">{license.usedLicenses}/{license.totalLicenses} used</span>
+                    </div>
+                    <Progress value={(license.usedLicenses / (license.totalLicenses || 1)) * 100} className="h-2" />
+                  </div>
                 </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-muted-foreground">Total:</span>
-                  <span className="font-bold">{license.totalLicenses}</span>
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-muted-foreground">Used:</span>
-                  <span className="font-bold">{license.usedLicenses}</span>
-                </div>
-                <div className="pt-2 border-t grid grid-cols-3 gap-1 text-[10px] text-center font-bold">
-                  <div className={license.dlp === 'VAR' ? 'text-green-600' : 'text-muted-foreground'}>DLP: {license.dlp}</div>
-                  <div className={license.casb === 'VAR' ? 'text-green-600' : 'text-muted-foreground'}>CASB: {license.casb}</div>
-                  <div className={license.rbi === 'VAR' ? 'text-green-600' : 'text-muted-foreground'}>RBI: {license.rbi}</div>
+                <div className="pt-4 border-t border-border/50">
+                  <h4 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-3">Feature Checklist</h4>
+                  <FeatureCheck label="Access Subscription" enabled={license.accessSub} />
+                  <FeatureCheck label="Gateway Subscription" enabled={license.gatewaySub} />
+                  <FeatureCheck label="Add-on CASB" enabled={license.casb} />
+                  <FeatureCheck label="Add-on DLP" enabled={license.dlp} />
+                  <FeatureCheck label="Add-on RBI" enabled={license.rbi} />
                 </div>
               </CardContent>
             </Card>
@@ -188,32 +205,32 @@ export function SettingsPage() {
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
                     <Label>Full Name</Label>
-                    <Input 
-                      value={settings.cloudflareContact.name} 
+                    <Input
+                      value={settings.cloudflareContact.name}
                       onChange={(e) => updateStoreSettings({ cloudflareContact: { ...settings.cloudflareContact, name: e.target.value } })}
                       className="bg-secondary/50"
                     />
                   </div>
                   <div className="space-y-2">
                     <Label>Role</Label>
-                    <Input 
-                      value={settings.cloudflareContact.role} 
+                    <Input
+                      value={settings.cloudflareContact.role}
                       onChange={(e) => updateStoreSettings({ cloudflareContact: { ...settings.cloudflareContact, role: e.target.value } })}
                       className="bg-secondary/50"
                     />
                   </div>
                   <div className="space-y-2">
                     <Label>Email</Label>
-                    <Input 
-                      value={settings.cloudflareContact.email} 
+                    <Input
+                      value={settings.cloudflareContact.email}
                       onChange={(e) => updateStoreSettings({ cloudflareContact: { ...settings.cloudflareContact, email: e.target.value } })}
                       className="bg-secondary/50"
                     />
                   </div>
                   <div className="space-y-2">
                     <Label>Team</Label>
-                    <Input 
-                      value={settings.cloudflareContact.team} 
+                    <Input
+                      value={settings.cloudflareContact.team}
                       onChange={(e) => updateStoreSettings({ cloudflareContact: { ...settings.cloudflareContact, team: e.target.value } })}
                       className="bg-secondary/50"
                     />
@@ -231,32 +248,32 @@ export function SettingsPage() {
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
                     <Label>Customer Name</Label>
-                    <Input 
-                      value={settings.customerContact.customerName} 
+                    <Input
+                      value={settings.customerContact.customerName}
                       onChange={(e) => updateStoreSettings({ customerContact: { ...settings.customerContact, customerName: e.target.value } })}
                       className="bg-secondary/50"
                     />
                   </div>
                   <div className="space-y-2">
                     <Label>Full Name</Label>
-                    <Input 
-                      value={settings.customerContact.name} 
+                    <Input
+                      value={settings.customerContact.name}
                       onChange={(e) => updateStoreSettings({ customerContact: { ...settings.customerContact, name: e.target.value } })}
                       className="bg-secondary/50"
                     />
                   </div>
                   <div className="space-y-2">
                     <Label>Role</Label>
-                    <Input 
-                      value={settings.customerContact.role} 
+                    <Input
+                      value={settings.customerContact.role}
                       onChange={(e) => updateStoreSettings({ customerContact: { ...settings.customerContact, role: e.target.value } })}
                       className="bg-secondary/50"
                     />
                   </div>
                   <div className="space-y-2">
                     <Label>Email</Label>
-                    <Input 
-                      value={settings.customerContact.email} 
+                    <Input
+                      value={settings.customerContact.email}
                       onChange={(e) => updateStoreSettings({ customerContact: { ...settings.customerContact, email: e.target.value } })}
                       className="bg-secondary/50"
                     />

@@ -58,16 +58,31 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
             if (!subData.success) {
                 return c.json({ success: false, error: subData.errors?.[0]?.message || 'Cloudflare API error' }, { status: 401 });
             }
-            const ztSub = subData.result?.find((s: any) => s.public_name?.includes('Zero Trust'));
+            const results = subData.result || [];
+            // 1. Plan Detection
+            const ztSub = results.find((s: any) => s.public_name?.includes('Cloudflare Zero Trust'));
+            const plan = ztSub?.public_name || 'Zero Trust Free';
+            // 2. Total Licenses
+            const totalLicenses = ztSub?.component_values?.find((c: any) => c.name === 'users')?.value || 50;
+            // 3. Used Licenses
             const usersRes = await fetch(`https://api.cloudflare.com/client/v4/accounts/${settings.accountId}/access/users?per_page=1`, { headers });
             const usersData: any = await usersRes.json();
-            const dlp = subData.result?.some((s: any) => s.component_values?.some((c: any) => c.name === 'dlp' && c.value > 0)) ? 'VAR' : 'YOK';
-            const casb = subData.result?.some((s: any) => s.component_values?.some((c: any) => c.name === 'casb' && c.value > 0)) ? 'VAR' : 'YOK';
-            const rbi = subData.result?.some((s: any) => s.component_values?.some((c: any) => c.name === 'browser_isolation_adv' && c.value > 0)) ? 'VAR' : 'YOK';
+            const usedLicenses = usersData.result_info?.total_count || 0;
+            // 4. Feature Flags
+            const accessSub = results.some((s: any) => s.public_name?.includes('Access'));
+            const gatewaySub = results.some((s: any) => s.public_name?.includes('Gateway'));
+            const hasComponent = (name: string) => results.some((s: any) => 
+                s.component_values?.some((cv: any) => cv.name === name && cv.value > 0)
+            );
+            const dlp = hasComponent('dlp');
+            const casb = hasComponent('casb');
+            const rbi = hasComponent('browser_isolation_adv');
             const result = {
-                plan: ztSub?.public_name || 'Zero Trust Free',
-                totalLicenses: ztSub?.component_values?.find((c: any) => c.name === 'users')?.value || 50,
-                usedLicenses: usersData.result_info?.total_count || 0,
+                plan,
+                totalLicenses,
+                usedLicenses,
+                accessSub,
+                gatewaySub,
                 dlp,
                 casb,
                 rbi
@@ -165,7 +180,6 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
             const aiResponse = await chatHandler.processMessage(prompt, []);
             let aiInsights;
             try {
-                // Robust parsing for AI output that might include markdown or extra text
                 const content = aiResponse.content;
                 const jsonMatch = content.match(/\{[\s\S]*\}/);
                 const jsonStr = jsonMatch ? jsonMatch[0] : content;
