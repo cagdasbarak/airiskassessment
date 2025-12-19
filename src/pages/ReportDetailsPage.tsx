@@ -12,7 +12,7 @@ import {
   PieChart, Pie, Cell, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, LineChart, Line, Legend
 } from 'recharts';
 import {
-  ChevronLeft, Download, ShieldAlert, Users, Lock, Loader2, Activity, ShieldCheck, Database, Globe, Terminal, Sparkles
+  ChevronLeft, Download, ShieldAlert, Users, Lock, Loader2, Activity, ShieldCheck, Database, Globe, Terminal, Sparkles, Printer
 } from 'lucide-react';
 import { api, AssessmentReport, SecurityCharts } from '@/lib/api';
 import { AIInsightsSection } from '@/components/reports/AIInsightsSection';
@@ -45,6 +45,9 @@ export function ReportDetailsPage() {
     };
     fetchReport();
   }, [id]);
+  const handlePrint = () => {
+    window.print();
+  };
   if (isLoading) return (
     <AppLayout container>
       <div className="flex flex-col items-center justify-center h-96 space-y-4">
@@ -70,7 +73,8 @@ export function ReportDetailsPage() {
   const mcpAccessTrend = charts.mcpAccessTrend ?? [];
   const mcpLoginTrend = charts.mcpLoginTrend ?? [];
   const statusCounts = safeAppLibrary.reduce((acc: Record<string, number>, app) => {
-    acc[app.status] = (acc[app.status] || 0) + 1;
+    const status = app.status ?? 'Unreviewed';
+    acc[status] = (acc[status] || 0) + 1;
     return acc;
   }, {});
   const pieData = Object.entries(statusCounts).map(([name, value]) => ({
@@ -80,12 +84,14 @@ export function ReportDetailsPage() {
   const filteredApps = selectedStatus
     ? safeAppLibrary.filter(a => a.status === selectedStatus)
     : safeAppLibrary;
+  // Defensive keys for trend charts
+  const trendKeys = topAppsTrend.length > 0 ? Object.keys(topAppsTrend[0]).filter(k => k !== 'name') : [];
   return (
     <AppLayout container>
       <div className="space-y-10">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="flex items-center gap-4">
-            <Button variant="outline" size="icon" onClick={() => navigate('/reports')} className="rounded-xl">
+            <Button variant="outline" size="icon" onClick={() => navigate('/reports')} className="rounded-xl no-print">
               <ChevronLeft className="h-5 w-5" />
             </Button>
             <div>
@@ -96,12 +102,11 @@ export function ReportDetailsPage() {
               </div>
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 no-print">
             <Button variant="outline" className="rounded-xl"><Download className="h-4 w-4 mr-2" /> Raw Logs</Button>
-            <Button className="btn-gradient rounded-xl"><Download className="h-4 w-4 mr-2" /> PDF Report</Button>
+            <Button onClick={handlePrint} className="btn-gradient rounded-xl"><Printer className="h-4 w-4 mr-2" /> Generate PDF</Button>
           </div>
         </div>
-        {/* Executive Scorecard Refinement */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           <Card className="border-border/50 shadow-soft overflow-hidden group hover:shadow-md transition-all">
             <CardContent className="p-6">
@@ -110,7 +115,7 @@ export function ReportDetailsPage() {
               </div>
               <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-1">Shadow AI Usage</p>
               <div className="flex items-baseline gap-2">
-                <p className="text-3xl font-bold text-red-500">{summary.shadowAiApps}</p>
+                <p className="text-3xl font-bold text-red-500">{summary.shadowAiApps ?? 0}</p>
                 <span className="text-xs text-muted-foreground">Endpoints</span>
               </div>
             </CardContent>
@@ -122,8 +127,8 @@ export function ReportDetailsPage() {
               </div>
               <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-1">Library Coverage</p>
               <div className="space-y-2">
-                <p className="text-2xl font-bold text-green-500">{summary.libraryCoverage}%</p>
-                <Progress value={summary.libraryCoverage} className="h-1.5" />
+                <p className="text-2xl font-bold text-green-500">{summary.libraryCoverage ?? 0}%</p>
+                <Progress value={summary.libraryCoverage ?? 0} className="h-1.5" />
               </div>
             </CardContent>
           </Card>
@@ -133,7 +138,7 @@ export function ReportDetailsPage() {
                 <Database className="h-5 w-5 text-blue-500" />
               </div>
               <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-1">Data Exfil Risk</p>
-              <p className="text-2xl font-bold text-blue-500">{summary.dataExfiltrationRisk}</p>
+              <p className="text-2xl font-bold text-blue-500">{summary.dataExfiltrationRisk ?? 'Low'}</p>
               <p className="text-[10px] text-muted-foreground mt-1">DLP Incident Volume</p>
             </CardContent>
           </Card>
@@ -144,7 +149,7 @@ export function ReportDetailsPage() {
               </div>
               <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-1">Top Power Users</p>
               <div className="space-y-1.5 mt-2">
-                {report.powerUsers.map((user, idx) => (
+                {(report.powerUsers ?? []).map((user, idx) => (
                   <div key={idx} className="flex justify-between items-center text-[10px]">
                     <span className="font-medium text-foreground truncate max-w-[80px]">{user.name}</span>
                     <span className="text-purple-500 font-bold">{user.prompts} reqs</span>
@@ -160,11 +165,11 @@ export function ReportDetailsPage() {
               </div>
               <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-1">CASB Posture Score</p>
               <div className="flex flex-col">
-                <p className="text-2xl font-bold text-[#F38020]">{summary.casbPosture}/100</p>
+                <p className="text-2xl font-bold text-[#F38020]">{summary.casbPosture ?? 0}/100</p>
                 <div className="h-1 w-full bg-secondary mt-2 rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-[#F38020]" 
-                    style={{ width: `${summary.casbPosture}%` }} 
+                  <div
+                    className="h-full bg-[#F38020]"
+                    style={{ width: `${summary.casbPosture ?? 0}%` }}
                   />
                 </div>
               </div>
@@ -172,7 +177,7 @@ export function ReportDetailsPage() {
           </Card>
         </div>
         <Tabs defaultValue="library" className="w-full">
-          <TabsList className="w-full justify-start border-b rounded-none bg-transparent h-auto p-0 mb-8 space-x-8">
+          <TabsList className="w-full justify-start border-b rounded-none bg-transparent h-auto p-0 mb-8 space-x-8 no-print">
             <TabsTrigger value="library" className="rounded-none border-b-2 border-transparent data-[state=active]:border-[#F38020] data-[state=active]:bg-transparent px-0 py-4 font-bold text-sm">Application Inventory</TabsTrigger>
             <TabsTrigger value="security" className="rounded-none border-b-2 border-transparent data-[state=active]:border-[#F38020] data-[state=active]:bg-transparent px-0 py-4 font-bold text-sm">Security Analytics</TabsTrigger>
             <TabsTrigger value="recommendations" className="rounded-none border-b-2 border-transparent data-[state=active]:border-[#F38020] data-[state=active]:bg-transparent px-0 py-4 font-bold text-sm">Executive Recommendations</TabsTrigger>
@@ -230,7 +235,7 @@ export function ReportDetailsPage() {
                     <CardTitle className="text-lg">AI Discovery Log</CardTitle>
                     <CardDescription className="text-xs">Granular analysis of detected generative AI endpoints.</CardDescription>
                   </div>
-                  {selectedStatus && <Button variant="ghost" size="sm" onClick={() => setSelectedStatus(null)} className="h-8 rounded-lg text-xs">Clear Filter</Button>}
+                  {selectedStatus && <Button variant="ghost" size="sm" onClick={() => setSelectedStatus(null)} className="h-8 rounded-lg text-xs no-print">Clear Filter</Button>}
                 </CardHeader>
                 <CardContent className="p-0">
                   <Table>
@@ -257,18 +262,18 @@ export function ReportDetailsPage() {
                             <TableCell>
                               <div className="flex items-center gap-2">
                                 <div className="h-1.5 w-16 bg-secondary rounded-full overflow-hidden">
-                                  <div className={cn("h-full", app.risk_score > 70 ? 'bg-red-500' : 'bg-green-500')} style={{ width: `${app.risk_score}%` }} />
+                                  <div className={cn("h-full", (app.risk_score ?? 0) > 70 ? 'bg-red-500' : 'bg-green-500')} style={{ width: `${app.risk_score ?? 0}%` }} />
                                 </div>
-                                <span className="text-[10px] font-bold">{app.risk_score}%</span>
+                                <span className="text-[10px] font-bold">{app.risk_score ?? 0}%</span>
                               </div>
                             </TableCell>
-                            <TableCell className="text-[10px] font-mono font-bold text-blue-500">{app.genai_score}%</TableCell>
+                            <TableCell className="text-[10px] font-mono font-bold text-blue-500">{app.genai_score ?? 0}%</TableCell>
                             <TableCell>
-                              <Badge variant="secondary" className="text-[9px] h-5" style={{ backgroundColor: `${PIE_COLORS[app.status]}20`, color: PIE_COLORS[app.status], border: `1px solid ${PIE_COLORS[app.status]}40` }}>
+                              <Badge variant="secondary" className="text-[9px] h-5" style={{ backgroundColor: `${PIE_COLORS[app.status] || '#808080'}20`, color: PIE_COLORS[app.status] || '#808080', border: `1px solid ${PIE_COLORS[app.status] || '#808080'}40` }}>
                                 {app.status}
                               </Badge>
                             </TableCell>
-                            <TableCell className="text-right font-mono text-xs font-bold">{app.users}</TableCell>
+                            <TableCell className="text-right font-mono text-xs font-bold">{app.users ?? 0}</TableCell>
                           </TableRow>
                           <AnimatePresence>
                             {expandedRow === app.appId && (
@@ -306,7 +311,7 @@ export function ReportDetailsPage() {
                     <YAxis />
                     <Tooltip />
                     <Legend />
-                    {topAppsTrend.length > 0 && Object.keys(topAppsTrend[0]).filter(k => k !== 'name').map((key, i) => (
+                    {trendKeys.map((key, i) => (
                       <Area key={key} type="monotone" dataKey={key} stackId="1" stroke={`hsl(${i * 60}, 70%, 50%)`} fill={`hsl(${i * 60}, 70%, 50%)`} fillOpacity={0.4} />
                     ))}
                   </AreaChart>
@@ -342,34 +347,6 @@ export function ReportDetailsPage() {
                       <Tooltip />
                       <Line type="monotone" dataKey="total" stroke="#3182CE" strokeWidth={2} dot={false} />
                       <Line type="stepAfter" dataKey="delta" stroke="#F38020" strokeWidth={2} dot={false} />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
-              <Card className="border-border/50 shadow-soft">
-                <CardHeader><CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">MCP Server Visibility (Unique Targets)</CardTitle></CardHeader>
-                <CardContent className="h-[300px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={mcpAccessTrend}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.1} />
-                      <XAxis dataKey="name" hide />
-                      <YAxis />
-                      <Tooltip />
-                      <Bar dataKey="servers" fill="#F38020" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
-              <Card className="border-border/50 shadow-soft">
-                <CardHeader><CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">MCP Protocol Login Events</CardTitle></CardHeader>
-                <CardContent className="h-[300px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={mcpLoginTrend}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.1} />
-                      <XAxis dataKey="name" hide />
-                      <YAxis />
-                      <Tooltip />
-                      <Line type="monotone" dataKey="events" stroke="#805AD5" strokeWidth={3} dot={{ r: 4 }} />
                     </LineChart>
                   </ResponsiveContainer>
                 </CardContent>
