@@ -221,22 +221,27 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         .filter((ev: any) => aiKeywords.test(ev.gatewayApp?.name || '') && !managedIdsSet.has(String(ev.gatewayApp?.id)))
         .reduce((sum: number, ev: any) => sum + (Number(ev.bytesSent || 0) / 1024), 0));
       const healthScore = Math.max(0, Math.min(100, 100 - (shadowUsage / 1.5) - (unapprovedAppsCount * 2)));
-      let aiInsights: AIInsights;
-      try {
-        const chatHandler = new ChatHandler(c.env.CF_AI_BASE_URL, c.env.CF_AI_API_KEY, 'google-ai-studio/gemini-2.0-flash');
-        const aiPrompt = `Perform an executive security analysis:
-        - Shadow AI Usage: ${shadowUsage.toFixed(3)}%
-        - Unapproved AI Apps: ${unapprovedAppsCount}
-        - Health Score: ${healthScore.toFixed(0)}%
-        - Data Risk Volume: ${formatRiskVolume(dataExfiltrationKB)}
-        Provide JSON: { "summary": "string", "recommendations": [{ "title": "string", "description": "string", "type": "critical|policy|optimization" }] }`;
-        const aiResponse = await chatHandler.processMessage(aiPrompt, []);
-        aiInsights = JSON.parse(cleanAIResponse(aiResponse.content));
-      } catch {
-        aiInsights = {
-          summary: "Heuristic analysis: Shadow AI adoption is outpacing policy enforcement.",
-          recommendations: [{ title: "Audit Unmanaged Traffic", description: "Review top 5 AI trends for policy gaps.", type: "critical" }]
-        };
+      const mockInsights: AIInsights = {
+        summary: "Heuristic analysis: Shadow AI adoption is outpacing policy enforcement.",
+        recommendations: [{ title: "Audit Unmanaged Traffic", description: "Review top 5 AI trends for policy gaps.", type: "critical" }]
+      };
+      let aiInsights: AIInsights = mockInsights;
+      
+      if (c.env.CF_AI_BASE_URL && c.env.CF_AI_API_KEY && c.env.CF_AI_BASE_URL.startsWith('https://gateway.ai.cloudflare.com')) {
+        try {
+          const chatHandler = new ChatHandler(c.env.CF_AI_BASE_URL, c.env.CF_AI_API_KEY, 'google-ai-studio/gemini-2.0-flash');
+          const aiPrompt = `Perform an executive security analysis:
+          - Shadow AI Usage: ${shadowUsage.toFixed(3)}%
+          - Unapproved AI Apps: ${unapprovedAppsCount}
+          - Health Score: ${healthScore.toFixed(0)}%
+          - Data Risk Volume: ${formatRiskVolume(dataExfiltrationKB)}
+          Provide JSON: { "summary": "string", "recommendations": [{ "title": "string", "description": "string", "type": "critical|policy|optimization" }] }`;
+          const aiResponse = await chatHandler.processMessage(aiPrompt, []);
+          aiInsights = JSON.parse(cleanAIResponse(aiResponse.content));
+        } catch (error) {
+          console.error('AI unavailable:', error);
+          aiInsights = mockInsights;
+        }
       }
       const report: AssessmentReport = {
         id: `rep_${Date.now()}`,
