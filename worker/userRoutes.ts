@@ -53,39 +53,49 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         }
         try {
             const headers = getCFHeaders(settings.email, settings.apiKey);
+            // 1. Fetch Subscriptions (Main source of truth)
             const subRes = await fetch(`https://api.cloudflare.com/client/v4/accounts/${settings.accountId}/subscriptions`, { headers });
-            const subData: any = await subRes.json();
-            if (!subData.success) {
-                return c.json({ success: false, error: subData.errors?.[0]?.message || 'Cloudflare API error' }, { status: 401 });
+            const rawText = await subRes.text();
+            let subData: any;
+            try {
+                subData = JSON.parse(rawText);
+            } catch (e) {
+                return c.json({ success: false, error: 'Malformed API response' }, { status: 500 });
+            }
+            if (!subRes.ok || !subData.success) {
+                return c.json({ success: false, error: subData.errors?.[0]?.message || 'Invalid Cloudflare Credentials' }, { status: 401 });
             }
             const results = subData.result || [];
-            // 1. Plan Detection
-            const ztSub = results.find((s: any) => s.public_name?.includes('Cloudflare Zero Trust'));
-            const plan = ztSub?.public_name || 'Zero Trust Free';
-            // 2. Total Licenses
-            const totalLicenses = ztSub?.component_values?.find((c: any) => c.name === 'users')?.value || 50;
-            // 3. Used Licenses
+            // A. Plan Detection (Regex Index split)
+            const planMatch = rawText.match(/"public_name":"Cloudflare Zero Trust[^"]*"/);
+            const plan = planMatch ? planMatch[0].split('"')[3] : 'Zero Trust Free';
+            // B. Total Licenses (Regex search)
+            const totalMatch = rawText.match(/"name":"users","value":(\d+)/);
+            const totalLicenses = totalMatch ? parseInt(totalMatch[1]) : 50;
+            // C. Used Licenses (Fetch actual active user count)
             const usersRes = await fetch(`https://api.cloudflare.com/client/v4/accounts/${settings.accountId}/access/users?per_page=1`, { headers });
             const usersData: any = await usersRes.json();
             const usedLicenses = usersData.result_info?.total_count || 0;
-            // 4. Feature Flags
-            const accessSub = results.some((s: any) => s.public_name?.includes('Access'));
-            const gatewaySub = results.some((s: any) => s.public_name?.includes('Gateway'));
-            const hasComponent = (name: string) => results.some((s: any) => 
-                s.component_values?.some((cv: any) => cv.name === name && cv.value > 0)
+            // D. Feature Flags (Rate Plan ID check)
+            const accessSub = results.some((s: any) => 
+                s.rate_plan?.id?.includes('teams') || s.rate_plan?.id?.includes('access')
             );
-            const dlp = hasComponent('dlp');
-            const casb = hasComponent('casb');
-            const rbi = hasComponent('browser_isolation_adv');
+            const gatewaySub = results.some((s: any) => 
+                s.rate_plan?.id?.includes('teams') || s.rate_plan?.id?.includes('gateway')
+            );
+            // E. Add-ons (Component value check)
+            const checkAddon = (name: string) => results.some((s: any) =>
+                s.component_values?.some((cv: any) => cv.name === name && cv.value >= 1)
+            );
             const result = {
                 plan,
                 totalLicenses,
                 usedLicenses,
                 accessSub,
                 gatewaySub,
-                dlp,
-                casb,
-                rbi
+                dlp: checkAddon('dlp'),
+                casb: checkAddon('casb'),
+                rbi: checkAddon('browser_isolation_adv')
             };
             await controller.addLog({
                 timestamp: new Date().toISOString(),
@@ -95,6 +105,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
             });
             return c.json({ success: true, data: result });
         } catch (error) {
+            console.error('License Check Error:', error);
             return c.json({ success: false, error: 'Cloudflare API connection failed' }, { status: 500 });
         }
     });
