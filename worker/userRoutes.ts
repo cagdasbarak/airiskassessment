@@ -34,7 +34,12 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         return c.json({ success: true, data: settings });
     });
     app.post('/api/settings', async (c) => {
-        const body = await c.req.json();
+        let body;
+        try {
+            body = await c.req.json();
+        } catch {
+            return c.json({success: false, error: 'Invalid JSON'}, {status: 400});
+        }
         const controller = getAppController(c.env);
         await controller.updateSettings(body);
         await controller.addLog({
@@ -55,16 +60,16 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
             const subData = await subRes.json() as any;
             if (!subRes.ok || !subData.success) return c.json({ success: false, error: subData.errors?.[0]?.message || 'Invalid Credentials' }, { status: 401 });
             const results = subData.result || [];
-            const plan = results.find((s: any) => s.rate_plan?.public_name?.includes('Zero Trust'))?.rate_plan?.public_name || 'Zero Trust Free';
-            const totalLicenses = results.find((s: any) => s.component_values?.some((cv: any) => cv.name === 'users'))?.component_values?.find((cv: any) => cv.name === 'users')?.value || 50;
+            const plan = results.find((s: {rate_plan?: {public_name?: string}}) => s.rate_plan?.public_name?.includes('Zero Trust'))?.rate_plan?.public_name || 'Zero Trust Free';
+            const totalLicenses = results.find((s: {component_values?: Array<{name: string; value: number}>}) => s.component_values?.some((cv: {name: string}) => cv.name === 'users'))?.component_values?.find((cv: {name: string; value: number}) => cv.name === 'users')?.value || 50;
             const usersRes = await fetch(`https://api.cloudflare.com/client/v4/accounts/${settings.accountId}/access/users?per_page=1`, { headers });
             const usersData = await usersRes.json() as any;
             const usedLicenses = usersData.result_info?.total_count || 0;
-            const checkAddon = (name: string) => results.some((s: any) => s.component_values?.some((cv: any) => cv.name === name && cv.value >= 1));
+            const checkAddon = (name: string) => results.some((s: {component_values?: Array<{name: string; value: number}>}) => s.component_values?.some((cv: {name: string; value: number}) => cv.name === name && cv.value >= 1));
             const result = {
                 plan, totalLicenses, usedLicenses,
-                accessSub: results.some((s: any) => s.rate_plan?.id?.includes('teams') || s.rate_plan?.id?.includes('access')),
-                gatewaySub: results.some((s: any) => s.rate_plan?.id?.includes('teams') || s.rate_plan?.id?.includes('gateway')),
+                accessSub: results.some((s: {rate_plan?: {id?: string}}) => s.rate_plan?.id?.includes('teams') || s.rate_plan?.id?.includes('access')),
+                gatewaySub: results.some((s: {rate_plan?: {id?: string}}) => s.rate_plan?.id?.includes('teams') || s.rate_plan?.id?.includes('gateway')),
                 dlp: checkAddon('dlp'),
                 casb: checkAddon('casb'),
                 rbi: checkAddon('browser_isolation_adv')
@@ -111,34 +116,34 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
             const eventsData = (await accessR.json() as any).result || [];
             const gtwPols = (await gtwPolR.json() as any).result || [];
             const accPols = (await accPolR.json() as any).result || [];
-            const aiApps = appsData.filter((a: any) => a.categories?.some((cat: string) => cat.toLowerCase().includes('ai')));
-            const shadowAiApps = aiApps.filter((a: any) => a.status === 'Unapproved');
-            const approvedApps = aiApps.filter((a: any) => a.status === 'Approved');
+            const aiApps = appsData.filter((a: {categories?: string[]}) => a.categories?.some((cat: string) => cat.toLowerCase().includes('ai')));
+            const shadowAiApps = aiApps.filter((a: {status: string}) => a.status === 'Unapproved');
+            const approvedApps = aiApps.filter((a: {status: string}) => a.status === 'Approved');
             const libCoverage = aiApps.length > 0 ? (approvedApps.length / aiApps.length) * 100 : 0;
-            const totalExfilMB = dlpData.reduce((acc: number, cur: any) => acc + (cur.fileSize || 0), 0) / (1024 * 1024);
-            const casbPost = aiApps.length > 0 ? aiApps.reduce((acc: number, cur: any) => acc + (cur.risk_score || 0), 0) / aiApps.length : 0;
-            const userFreq = eventsData.reduce((acc: Record<string, number>, e: any) => {
+            const totalExfilMB = dlpData.reduce((acc: number, cur: {fileSize?: number}) => acc + (cur.fileSize || 0), 0) / (1024 * 1024);
+            const casbPost = aiApps.length > 0 ? aiApps.reduce((acc: number, cur: {risk_score?: number}) => acc + (cur.risk_score || 0), 0) / aiApps.length : 0;
+            const userFreq = eventsData.reduce((acc: Record<string, number>, e: {userEmail?: string}) => {
                 if (e.userEmail) acc[e.userEmail] = (acc[e.userEmail] || 0) + 1;
                 return acc;
             }, {});
             const powerUsers = Object.entries(userFreq)
                 .map(([email, events]) => ({ email, events: events as number }))
-                .sort((a, b) => b.events - a.events)
+                .sort((a: {email: string; events: number}, b: {email: string; events: number}) => b.events - a.events)
                 .slice(0, 3);
-            const appLibrary = aiApps.map((a: any) => ({
+            const appLibrary = aiApps.map((a: {id?: string; name?: string; status?: string; risk_score?: number; genai_score?: number}) => ({
                 appId: a.id || crypto.randomUUID(),
                 name: a.name || 'Unknown AI',
                 category: 'Generative AI',
                 status: (a.status || 'Unreviewed') as 'Approved' | 'Unapproved' | 'Review' | 'Unreviewed',
-                users: eventsData.filter((e: any) => e.appID === a.id).length || Math.floor(Math.random() * 20),
+                users: eventsData.filter((e: {appID?: string}) => e.appID === a.id).length || Math.floor(Math.random() * 20),
                 risk: (a.risk_score || 50) > 70 ? 'High' : (a.risk_score || 50) > 30 ? 'Medium' : 'Low',
                 risk_score: a.risk_score || 50,
                 genai_score: a.genai_score || 75,
                 policies: [
-                    ...gtwPols.filter((p: any) => JSON.stringify(p).includes(a.name)).map((p: any) => ({ name: p.name, action: p.action, type: 'Gateway' as const })),
-                    ...accPols.filter((p: any) => JSON.stringify(p).includes(a.name)).map((p: any) => ({ name: p.name, action: 'Allow', type: 'Access' as const }))
+                    ...gtwPols.filter((p: {name?: string}) => JSON.stringify(p).includes(a.name || '')).map((p: {name?: string; action?: string}) => ({ name: p.name || '', action: p.action || '', type: 'Gateway' as const })),
+                    ...accPols.filter((p: {name?: string}) => JSON.stringify(p).includes(a.name || '')).map((p: {name?: string}) => ({ name: p.name || '', action: 'Allow', type: 'Access' as const }))
                 ],
-                usage: eventsData.filter((e: any) => e.appID === a.id).slice(0, 50).map((e: any) => ({
+                usage: eventsData.filter((e: {appID?: string}) => e.appID === a.id).slice(0, 50).map((e: {ipAddress?: string; userEmail?: string; action?: string; timestamp?: string}) => ({
                     clientIP: e.ipAddress || '0.0.0.0',
                     userEmail: e.userEmail || 'anonymous',
                     action: e.action || 'Allowed',
@@ -150,20 +155,20 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
                 name: new Date(Date.now() - (days - i) * 86400000).toISOString().split('T')[0],
                 ...fn(i)
             }));
-            const top5 = appLibrary.sort((a, b) => b.users - a.users).slice(0, 5);
+            const top5 = [...appLibrary].sort((a: {users: number}, b: {users: number}) => b.users - a.users).slice(0, 5);
             const securityCharts = {
                 usageOverTime: generateTrend(30, () => ({ usage: Math.floor(Math.random() * 500) })),
                 riskDistribution: [
-                    { name: 'Low', value: aiApps.filter((a: any) => (a.risk_score || 0) < 30).length },
-                    { name: 'Medium', value: aiApps.filter((a: any) => (a.risk_score || 0) >= 30 && (a.risk_score || 0) < 70).length },
-                    { name: 'High', value: aiApps.filter((a: any) => (a.risk_score || 0) >= 70).length }
+                    { name: 'Low', value: aiApps.filter((a: {risk_score?: number}) => (a.risk_score || 0) < 30).length },
+                    { name: 'Medium', value: aiApps.filter((a: {risk_score?: number}) => (a.risk_score || 0) >= 30 && (a.risk_score || 0) < 70).length },
+                    { name: 'High', value: aiApps.filter((a: {risk_score?: number}) => (a.risk_score || 0) >= 70).length }
                 ],
                 dataVolume: generateTrend(30, () => ({ value: Math.random() * 200 })),
                 mcpActivity: generateTrend(30, () => ({ value: Math.random() * 100 })),
                 loginEvents: generateTrend(30, () => ({ value: Math.floor(Math.random() * 50) })),
                 topAppsTrend: generateTrend(30, () => {
                     const obj: Record<string, number> = {};
-                    top5.forEach((app: any) => {
+                    top5.forEach((app: {name: string}) => {
                         obj[app.name] = Math.floor(Math.random() * 100);
                     });
                     return obj;
