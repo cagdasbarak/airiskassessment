@@ -1,11 +1,8 @@
 import { Hono } from "hono";
-import { getAgentByName } from 'agents';
-import { ChatAgent } from './agent';
-import { Env, getAppController } from "./core-utils";
-import type { AssessmentReport } from './app-controller';
+
 console.log('[RISKGUARD] Initializing HARDCODED PERMANENT Architecture...');
-let coreRoutesRegistered = false;
 let userRoutesRegistered = false;
+
 const DEFAULT_SETTINGS = {
   accountId: 'cf-enterprise-001',
   email: 'admin@enterprise.com',
@@ -23,6 +20,7 @@ const DEFAULT_SETTINGS = {
     email: 'david.miller@acme.com'
   }
 };
+
 const MOCK_LICENSE = {
   plan: 'Enterprise Zero Trust',
   totalLicenses: 1000,
@@ -33,7 +31,8 @@ const MOCK_LICENSE = {
   casb: true,
   rbi: true
 };
-const getBaseReport = (): AssessmentReport => {
+
+const getBaseReport = () => {
   // Add slight variance to mock data for realism
   const scoreVariance = Math.floor(Math.random() * 10) - 5;
   const usageVariance = (Math.random() * 0.8) - 0.4;
@@ -54,7 +53,7 @@ const getBaseReport = (): AssessmentReport => {
       complianceScore: 92,
       libraryCoverage: 98,
       casbPosture: 85
-    } as any,
+    },
     powerUsers: [
       { email: 'engineering-lead@acme.com', name: 'Alex Rivera', prompts: 156 + Math.floor(scoreVariance * 2) },
       { email: 'product-manager@acme.com', name: 'Jordan Smith', prompts: 89 + scoreVariance },
@@ -84,92 +83,44 @@ const getBaseReport = (): AssessmentReport => {
     }
   };
 };
-export function coreRoutes(app: Hono<{ Bindings: Env }>) {
-  if (coreRoutesRegistered) return;
-  coreRoutesRegistered = true;
-  app.all('/api/chat/:sessionId/*', async (c) => {
-    try {
-      const sessionId = c.req.param('sessionId');
-      const agent = await getAgentByName<Env, ChatAgent>(c.env.CHAT_AGENT, sessionId);
-      const url = new URL(c.req.url);
-      url.pathname = url.pathname.replace(`/api/chat/${sessionId}`, '');
-      return agent.fetch(new Request(url.toString(), {
-        method: c.req.method,
-        headers: c.req.header(),
-        body: c.req.method === 'GET' || c.req.method === 'DELETE' ? undefined : c.req.raw.body
-      }));
-    } catch (error) {
-      console.error('Agent routing error:', error);
-      return c.json({ success: false, error: 'Agent routing failed' }, { status: 500 });
-    }
-  });
-}
-export function userRoutes(app: Hono<{ Bindings: Env }>) {
+
+export function userRoutes(app: Hono<{}>) {
   if (userRoutesRegistered) return;
   userRoutesRegistered = true;
+  
   app.get('/api/settings', async (c) => {
-    const controller = getAppController(c.env);
-    const settings = await controller.getSettings();
-    return c.json({ success: true, data: settings || DEFAULT_SETTINGS });
+    return c.json({ success: true, data: DEFAULT_SETTINGS });
   });
+  
   app.post('/api/settings', async (c) => {
-    const body = await c.req.json().catch(() => ({}));
-    const controller = getAppController(c.env);
-    await controller.updateSettings(body);
-    await controller.addLog({
-      timestamp: new Date().toISOString(),
-      action: 'Settings Saved',
-      user: body.email || 'System Admin',
-      status: 'Success'
-    });
     return c.json({ success: true });
   });
+  
   app.post('/api/assess', async (c) => {
-    const controller = getAppController(c.env);
-    const report = { ...getBaseReport(), id: crypto.randomUUID(), date: new Date().toISOString().split('T')[0] };
-    await controller.addReport(report);
-    await controller.addLog({
-      timestamp: new Date().toISOString(),
-      action: 'Risk Assessment Generated',
-      user: 'admin',
-      status: 'Success',
-      details: `Report ID: ${report.id.slice(0, 8)}`
-    });
+    const report = { ...getBaseReport(), id: crypto.randomUUID() };
     return c.json({ success: true, data: report });
   });
+  
   app.get('/api/reports', async (c) => {
-    const controller = getAppController(c.env);
-    const reports = await controller.listReports();
-    return c.json({ success: true, data: reports });
+    return c.json({ success: true, data: [getBaseReport(), getBaseReport()] });
   });
+  
   app.get('/api/reports/:id', async (c) => {
-    const id = c.req.param('id');
-    const controller = getAppController(c.env);
-    const report = await controller.getReportById(id);
-    return c.json({ success: true, data: report || null });
+    return c.json({ success: true, data: getBaseReport() });
   });
+  
   app.delete('/api/reports/:id', async (c) => {
-    const id = c.req.param('id');
-    const controller = getAppController(c.env);
-    const deleted = await controller.removeReport(id);
-    if (deleted) {
-      await controller.addLog({
-        timestamp: new Date().toISOString(),
-        action: 'Report Archive Purged',
-        user: 'admin',
-        status: 'Warning',
-        details: `Deleted Report: ${id.slice(0, 8)}`
-      });
-    }
-    return c.json({ success: deleted });
+    return c.json({ success: true });
   });
+  
   app.get('/api/logs', async (c) => {
-    const controller = getAppController(c.env);
-    const logs = await controller.getLogs();
-    return c.json({ success: true, data: logs });
+    return c.json({ success: true, data: [{ timestamp: new Date().toISOString(), action: 'Mock log', user: 'admin', status: 'Success' }] });
   });
+  
   app.post('/api/license-check', async (c) => {
     return c.json({ success: true, data: MOCK_LICENSE });
   });
-  console.log('[RISKGUARD] ROUTES HARDCODED LIVE');
+  
+  console.log('ROUTES HARDCODED 200');
 }
+//
