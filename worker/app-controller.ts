@@ -46,11 +46,18 @@ export interface AppUsageEvent {
   action: string;
   date: string;
   bytesKB: number;
+  prompt?: string;
 }
 export interface PowerUser {
   email: string;
   name: string;
   prompts: number;
+}
+export interface SecurityCharts {
+  usageTrends?: any[];
+  statusTrends?: any[];
+  dataTrends?: any[];
+  mcpTrends?: any[];
 }
 export interface AssessmentReport {
   id: string;
@@ -82,7 +89,7 @@ export interface AssessmentReport {
     policies: AppPolicy[];
     usage: AppUsageEvent[];
   }>;
-  securityCharts: any;
+  securityCharts: SecurityCharts;
   aiInsights?: AIInsights;
 }
 export class AppController extends DurableObject<Env> {

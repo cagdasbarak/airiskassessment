@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { getAgentByName } from 'agents';
 import { ChatAgent } from './agent';
 import { Env, getAppController, registerSession } from "./core-utils";
-import type { AssessmentReport, PowerUser, AppPolicy } from './app-controller';
+import type { AssessmentReport, PowerUser, AppPolicy, AppUsageEvent } from './app-controller';
 let coreRoutesRegistered = false;
 let userRoutesRegistered = false;
 export function coreRoutes(app: Hono<{ Bindings: Env }>) {
@@ -25,19 +25,6 @@ export function coreRoutes(app: Hono<{ Bindings: Env }>) {
     }
   });
 }
-const generate30DayTrend = (baseValue: number, variance: number) => {
-  const data = [];
-  const now = new Date();
-  for (let i = 29; i >= 0; i--) {
-    const d = new Date(now);
-    d.setDate(d.getDate() - i);
-    data.push({
-      date: d.toISOString().split('T')[0],
-      value: Math.max(0, baseValue + (Math.random() * variance - variance / 2))
-    });
-  }
-  return data;
-};
 export function userRoutes(app: Hono<{ Bindings: Env }>) {
   if (userRoutesRegistered) return;
   userRoutesRegistered = true;
@@ -141,6 +128,14 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
           complianceScore: 72,
           libraryCoverage: 62,
           casbPosture: 88
+        },
+        aiInsights: {
+          summary: "Significant shadow AI usage detected across engineering and marketing teams. While core AI platforms are approved, secondary image generators and unvetted assistants are accessing internal documentation.",
+          recommendations: [
+            { title: "Enforce Gateway Block on Midjourney", description: "Unapproved image generator used for internal marketing assets. High risk of IP leakage.", type: "critical" },
+            { title: "Review Claude Prompt Logs", description: "Engineering teams are using Claude for SQL optimization. Ensure DLP policies are active for PII.", type: "policy" },
+            { title: "Consolidate to Approved Assistants", description: "84% of shadow usage can be migrated to approved Enterprise ChatGPT instances.", type: "optimization" }
+          ]
         },
         powerUsers: [
           { email: 'ciso@enterprise.com', name: 'Security Director', prompts: 124 },

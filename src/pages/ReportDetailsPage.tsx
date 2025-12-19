@@ -6,16 +6,17 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
-import { 
-  ChevronLeft, Download, Users, Loader2, ShieldCheck, Database, Globe, Terminal, Printer, AlertTriangle, TrendingUp, BarChart3, PieChart
+import {
+  ChevronLeft, Download, Loader2, Globe, Printer, BarChart3, PieChart, Users, Zap
 } from 'lucide-react';
 import { api, AssessmentReport } from '@/lib/api';
-import { 
+import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, AreaChart, Area, Cell, PieChart as RePieChart, Pie
 } from 'recharts';
 import { AppDetailsDrillDown } from '@/components/reports/AppDetailsDrillDown';
+import { AIInsightsSection } from '@/components/reports/AIInsightsSection';
+import { ExecutiveScorecard } from '@/components/reports/ExecutiveScorecard';
 const PIE_COLORS: Record<string, string> = {
   'Unreviewed': '#808080',
   'Review': '#FDBA74',
@@ -72,7 +73,7 @@ export function ReportDetailsPage() {
     <AppLayout container>
       <div className="text-center py-24">
         <h2 className="text-2xl font-bold">Report not found</h2>
-        <Button onClick={() => navigate('/reports')}>Back to Archive</Button>
+        <Button onClick={() => navigate('/reports')} className="mt-4">Back to Archive</Button>
       </div>
     </AppLayout>
   );
@@ -88,128 +89,113 @@ export function ReportDetailsPage() {
               <h1 className="text-3xl font-bold tracking-tight text-foreground">Cloudflare ZTNA Audit</h1>
               <div className="flex items-center gap-2 text-muted-foreground">
                 <Globe className="h-3 w-3" />
-                <span className="text-xs font-mono">v2.5.8 ��� Snapshot: {report.date}</span>
+                <span className="text-xs font-mono">Snapshot ID: {report.id} • Date: {report.date}</span>
               </div>
             </div>
           </div>
           <div className="flex gap-2 no-print">
-            <Button variant="outline" className="rounded-xl"><Download className="h-4 w-4 mr-2" /> Export JSON</Button>
-            <Button onClick={() => window.print()} className="btn-gradient rounded-xl"><Printer className="h-4 w-4 mr-2" /> Executive PDF</Button>
+            <Button variant="outline" className="rounded-xl" onClick={() => window.print()}>
+              <Printer className="h-4 w-4 mr-2" /> Executive PDF
+            </Button>
           </div>
         </div>
+        <ExecutiveScorecard summary={report.summary} score={report.score} />
         <Tabs defaultValue="trends" className="w-full">
           <TabsList className="w-full justify-start bg-transparent border-b rounded-none p-0 h-12 mb-8 space-x-8">
-            <TabsTrigger value="trends" className="data-[state=active]:border-[#F38020] border-b-2 border-transparent rounded-none px-0 h-full font-bold">AI Security Report (30d)</TabsTrigger>
-            <TabsTrigger value="inventory" className="data-[state=active]:border-[#F38020] border-b-2 border-transparent rounded-none px-0 h-full font-bold">Application Inventory</TabsTrigger>
+            <TabsTrigger value="trends" className="data-[state=active]:border-[#F38020] border-b-2 border-transparent rounded-none px-0 h-full font-bold">Security Trends</TabsTrigger>
+            <TabsTrigger value="inventory" className="data-[state=active]:border-[#F38020] border-b-2 border-transparent rounded-none px-0 h-full font-bold">Inventory & Logs</TabsTrigger>
           </TabsList>
-          <TabsContent value="trends" className="space-y-8 animate-in fade-in slide-in-from-bottom-2">
-            <Card className="border-border/50 shadow-soft">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <BarChart3 className="h-5 w-5 text-[#F38020]" /> Top 5 AI Applications by User Count
-                </CardTitle>
-                <CardDescription>30-day user engagement distribution for primary GenAI endpoints.</CardDescription>
-              </CardHeader>
-              <CardContent className="h-[400px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={report.securityCharts?.usageTrends}>
-                    <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
-                    <XAxis dataKey="date" tick={{ fontSize: 10 }} />
-                    <YAxis tick={{ fontSize: 10 }} />
-                    <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} />
-                    <Legend />
-                    <Bar dataKey="ChatGPT" stackId="a" fill="#10B981" />
-                    <Bar dataKey="Claude" stackId="a" fill="#FDBA74" />
-                    <Bar dataKey="GitHub Copilot" stackId="a" fill="#3B82F6" />
-                    <Bar dataKey="Midjourney" stackId="a" fill="#EF4444" />
-                    <Bar dataKey="Perplexity" stackId="a" fill="#8B5CF6" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <TabsContent value="trends" className="space-y-10 animate-in fade-in slide-in-from-bottom-2">
+            {report.aiInsights && (
+              <AIInsightsSection insights={report.aiInsights} />
+            )}
+            <div className="grid grid-cols-1 gap-8">
               <Card className="border-border/50 shadow-soft">
-                <CardHeader><CardTitle className="text-sm font-bold">App Status Trends</CardTitle></CardHeader>
-                <CardContent className="h-[300px]">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <BarChart3 className="h-5 w-5 text-[#F38020]" /> AI Usage distribution (Users)
+                  </CardTitle>
+                  <CardDescription>30-day user engagement across GenAI platforms.</CardDescription>
+                </CardHeader>
+                <CardContent className="h-[350px]">
                   <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={report.securityCharts?.statusTrends}>
+                    <BarChart data={report.securityCharts?.usageTrends}>
                       <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
-                      <XAxis dataKey="date" hide />
+                      <XAxis dataKey="date" tick={{ fontSize: 10 }} hide />
                       <YAxis tick={{ fontSize: 10 }} />
                       <Tooltip />
-                      <Legend iconType="circle" />
-                      <Line type="monotone" dataKey="Approved" stroke="#10B981" strokeWidth={2} dot={false} />
-                      <Line type="monotone" dataKey="Review" stroke="#FDBA74" strokeWidth={2} dot={false} />
-                      <Line type="monotone" dataKey="Unapproved" stroke="#EF4444" strokeWidth={2} dot={false} />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
-              <Card className="border-border/50 shadow-soft">
-                <CardHeader><CardTitle className="text-sm font-bold">Data Uploads by Status (KB)</CardTitle></CardHeader>
-                <CardContent className="h-[300px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={report.securityCharts?.dataTrends}>
-                      <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
-                      <XAxis dataKey="date" hide />
-                      <YAxis tick={{ fontSize: 10 }} />
-                      <Tooltip />
-                      <Area type="monotone" dataKey="Approved" stackId="1" stroke="#10B981" fill="#10B981" fillOpacity={0.2} />
-                      <Area type="monotone" dataKey="Unapproved" stackId="1" stroke="#EF4444" fill="#EF4444" fillOpacity={0.2} />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
-            </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              <Card className="border-border/50 shadow-soft">
-                <CardHeader><CardTitle className="text-sm font-bold">MCP Server Access Performance (ms)</CardTitle></CardHeader>
-                <CardContent className="h-[250px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={report.securityCharts?.mcpTrends}>
-                      <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
-                      <XAxis dataKey="date" hide />
-                      <YAxis tick={{ fontSize: 10 }} />
-                      <Tooltip />
-                      <Line type="stepAfter" dataKey="Access Time" stroke="#8B5CF6" strokeWidth={2} dot={false} />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
-              <Card className="border-border/50 shadow-soft">
-                <CardHeader><CardTitle className="text-sm font-bold">MCP Model Connection Events</CardTitle></CardHeader>
-                <CardContent className="h-[250px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={report.securityCharts?.mcpTrends}>
-                      <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
-                      <XAxis dataKey="date" hide />
-                      <YAxis tick={{ fontSize: 10 }} />
-                      <Tooltip />
-                      <Bar dataKey="Login Events" fill="#F38020" radius={[4, 4, 0, 0]} />
+                      <Legend />
+                      <Bar dataKey="ChatGPT" stackId="a" fill="#10B981" />
+                      <Bar dataKey="Claude" stackId="a" fill="#FDBA74" />
+                      <Bar dataKey="GitHub Copilot" stackId="a" fill="#3B82F6" />
+                      <Bar dataKey="Midjourney" stackId="a" fill="#EF4444" />
                     </BarChart>
                   </ResponsiveContainer>
                 </CardContent>
               </Card>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <Card className="border-border/50 shadow-soft">
+                  <CardHeader><CardTitle className="text-sm font-bold flex items-center gap-2"><Zap className="h-4 w-4 text-blue-500" /> Top Power Users</CardTitle></CardHeader>
+                  <CardContent>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="text-[10px] font-bold uppercase">User</TableHead>
+                          <TableHead className="text-[10px] font-bold uppercase text-right">Prompts</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {report.powerUsers?.map((u) => (
+                          <TableRow key={u.email}>
+                            <TableCell>
+                              <div className="font-bold text-sm">{u.name}</div>
+                              <div className="text-[10px] text-muted-foreground">{u.email}</div>
+                            </TableCell>
+                            <TableCell className="text-right font-mono font-bold text-[#F38020]">
+                              {u.prompts}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+                <Card className="border-border/50 shadow-soft">
+                  <CardHeader><CardTitle className="text-sm font-bold">Data Upload Trends (KB)</CardTitle></CardHeader>
+                  <CardContent className="h-[250px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={report.securityCharts?.dataTrends}>
+                        <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
+                        <XAxis dataKey="date" hide />
+                        <YAxis tick={{ fontSize: 10 }} />
+                        <Tooltip />
+                        <Area type="monotone" dataKey="Approved" stackId="1" stroke="#10B981" fill="#10B981" fillOpacity={0.2} />
+                        <Area type="monotone" dataKey="Unapproved" stackId="1" stroke="#EF4444" fill="#EF4444" fillOpacity={0.2} />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+              </div>
             </div>
           </TabsContent>
           <TabsContent value="inventory" className="space-y-8 animate-in fade-in slide-in-from-bottom-2">
             <div className="flex flex-col lg:flex-row gap-8">
               <Card className="flex-1 border-border/50 shadow-soft h-fit">
-                <CardHeader><CardTitle className="flex items-center gap-2"><PieChart className="h-5 w-5 text-[#F38020]" /> Status Distribution</CardTitle></CardHeader>
+                <CardHeader><CardTitle className="flex items-center gap-2"><PieChart className="h-5 w-5 text-[#F38020]" /> Status Breakdown</CardTitle></CardHeader>
                 <CardContent className="flex flex-col items-center">
                   <div className="h-[240px] w-full">
                     <ResponsiveContainer width="100%" height="100%">
                       <RePieChart>
-                        <Pie 
-                          data={pieData} 
-                          innerRadius={60} 
-                          outerRadius={80} 
-                          paddingAngle={5} 
+                        <Pie
+                          data={pieData}
+                          innerRadius={60}
+                          outerRadius={80}
+                          paddingAngle={5}
                           dataKey="value"
                           onClick={(data) => setSelectedStatusFilter(selectedStatusFilter === data.name ? null : data.name)}
                         >
                           {pieData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.fill} cursor="pointer" strokeWidth={selectedStatusFilter === entry.name ? 4 : 1} stroke={selectedStatusFilter === entry.name ? '#000' : 'none'} />
+                            <Cell key={`cell-${index}`} fill={entry.fill} cursor="pointer" />
                           ))}
                         </Pie>
                         <Tooltip />
@@ -218,11 +204,11 @@ export function ReportDetailsPage() {
                   </div>
                   <div className="grid grid-cols-2 gap-4 mt-4 w-full">
                     {pieData.map((d) => (
-                      <button 
-                        key={d.name} 
+                      <button
+                        key={d.name}
                         onClick={() => setSelectedStatusFilter(selectedStatusFilter === d.name ? null : d.name)}
                         className={cn(
-                          "flex items-center justify-between p-2 rounded-lg border transition-all",
+                          "flex items-center justify-between p-2 rounded-lg border transition-all text-left",
                           selectedStatusFilter === d.name ? "bg-secondary border-primary" : "border-border/50 hover:bg-secondary/50"
                         )}
                       >
@@ -238,25 +224,25 @@ export function ReportDetailsPage() {
               </Card>
               <div className="lg:w-[65%] space-y-4">
                 <div className="flex items-center justify-between px-2">
-                  <h3 className="font-bold flex items-center gap-2">
-                    <Terminal className="h-4 w-4" /> Detected Applications
+                  <h3 className="font-bold flex items-center gap-2 text-sm uppercase tracking-wider">
+                    <BarChart3 className="h-4 w-4" /> Detected Inventory
                     {selectedStatusFilter && <Badge variant="secondary" className="ml-2">Filter: {selectedStatusFilter}</Badge>}
                   </h3>
-                  {selectedStatusFilter && <Button variant="link" size="sm" onClick={() => setSelectedStatusFilter(null)}>Clear Filter</Button>}
+                  {selectedStatusFilter && <Button variant="link" size="sm" onClick={() => setSelectedStatusFilter(null)}>Reset</Button>}
                 </div>
-                <div className="rounded-xl border border-border/50 overflow-hidden shadow-soft">
+                <div className="rounded-xl border border-border/50 overflow-hidden shadow-soft bg-background">
                   <Table>
                     <TableHeader className="bg-secondary/30">
                       <TableRow>
                         <TableHead className="text-[10px] font-bold uppercase">Application</TableHead>
                         <TableHead className="text-[10px] font-bold uppercase">Status</TableHead>
-                        <TableHead className="text-[10px] font-bold uppercase text-right">Risk Score</TableHead>
+                        <TableHead className="text-[10px] font-bold uppercase text-right">Risk</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {filteredInventory.map((app) => (
                         <React.Fragment key={app.appId}>
-                          <TableRow 
+                          <TableRow
                             className={cn("cursor-pointer hover:bg-secondary/20 transition-colors", expandedApp === app.appId && "bg-secondary/10")}
                             onClick={() => setExpandedApp(expandedApp === app.appId ? null : app.appId)}
                           >
@@ -272,9 +258,9 @@ export function ReportDetailsPage() {
                             </TableCell>
                           </TableRow>
                           {expandedApp === app.appId && (
-                            <TableRow className="bg-secondary/5 hover:bg-secondary/5">
-                              <TableCell colSpan={3} className="p-0">
-                                <div className="p-6 border-t border-border/50 bg-background/30">
+                            <TableRow className="bg-secondary/5">
+                              <TableCell colSpan={3} className="p-0 border-t-0">
+                                <div className="p-6 bg-background/50 border-t border-border/30">
                                   <AppDetailsDrillDown app={app} />
                                 </div>
                               </TableCell>
