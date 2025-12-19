@@ -48,7 +48,7 @@ const ProgressRing = ({ value, colorKey }: { value: number; colorKey: ColorKey }
           strokeDasharray={circumference}
           initial={{ strokeDashoffset: circumference }}
           animate={{ strokeDashoffset: offset }}
-          transition={{ duration: 1.5, ease: "easeOut" }}
+          transition={{ duration: 1.5, ease: "easeOut", delay: 0.2 }}
           style={{ filter: `drop-shadow(0 0 8px ${color}40)`, strokeLinecap: "round" }}
         />
       </svg>

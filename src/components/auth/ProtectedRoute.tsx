@@ -6,14 +6,18 @@ interface ProtectedRouteProps {
 }
 /**
  * Hardened Reactive Security Guard for Application Access.
- * Adheres to React Router best practices with declarative redirects.
+ * Prevents flicker by waiting for Zustand store hydration.
  */
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const isAuthenticated = useAppStore(s => s.isAuthenticated);
+  const isHydrated = useAppStore(s => s._hasHydrated);
   const location = useLocation();
+  // If the store hasn't hydrated from localStorage yet, 
+  // we hold the render to prevent false-negative redirects.
+  if (!isHydrated) {
+    return null; 
+  }
   if (!isAuthenticated) {
-    // We use a declarative Navigate component to ensure the redirect
-    // happens during the correct phase of the React lifecycle.
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
   return <>{children}</>;

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { produce } from 'immer';
 /** Recursive DeepPartial utility to allow nested updates */
 export type DeepPartial<T> = T extends object ? {
@@ -28,8 +28,10 @@ interface AppState {
   isAuthenticated: boolean;
   username: string | null;
   settings: Settings;
+  _hasHydrated: boolean;
   setAuthenticated: (val: boolean, username: string) => void;
   updateSettings: (settings: DeepPartial<Settings>) => void;
+  setHasHydrated: (state: boolean) => void;
   logout: () => void;
 }
 const DEFAULT_SETTINGS: Settings = {
@@ -55,7 +57,9 @@ export const useAppStore = create<AppState>()(
       isAuthenticated: false,
       username: null,
       settings: DEFAULT_SETTINGS,
+      _hasHydrated: false,
       setAuthenticated: (val, username) => set({ isAuthenticated: val, username }),
+      setHasHydrated: (state) => set({ _hasHydrated: state }),
       updateSettings: (newSettings) =>
         set(
           produce((state: AppState) => {
@@ -80,6 +84,10 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: 'riskguard-storage',
+      storage: createJSONStorage(() => localStorage),
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true);
+      },
     }
   )
 );

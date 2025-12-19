@@ -4,6 +4,7 @@ import { ChatAgent } from './agent';
 import { Env, getAppController } from "./core-utils";
 import { ChatHandler } from "./chat";
 import type { AssessmentReport, AIInsights } from './app-controller';
+import { extractJson } from "./utils";
 console.log('[RISKGUARD] Registering user routes...');
 let coreRoutesRegistered = false;
 let userRoutesRegistered = false;
@@ -108,12 +109,12 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     let aiInsights: AIInsights = MOCK_AI_INSIGHTS;
     try {
       const handler = new ChatHandler(c.env.CF_AI_BASE_URL, c.env.CF_AI_API_KEY, 'openai/gpt-4o-mini');
-      const prompt = `Perform a Cloudflare ZTNA Risk Assessment summary based on this data: ${JSON.stringify(summaryData)}. 
-      Include a 2-sentence executive summary and 3 actionable recommendations (type: critical, policy, or optimization). 
+      const prompt = `Perform a Cloudflare ZTNA Risk Assessment summary based on this data: ${JSON.stringify(summaryData)}.
+      Include a 2-sentence executive summary and 3 actionable recommendations (type: critical, policy, or optimization).
       Return ONLY valid JSON in format: {"summary": string, "recommendations": [{"title": string, "description": string, "type": string}]}`;
       const res = await handler.processMessage(prompt, []);
-      const parsed = JSON.parse(res.content);
-      if (parsed.summary && Array.isArray(parsed.recommendations)) {
+      const parsed = extractJson<AIInsights>(res.content);
+      if (parsed && parsed.summary && Array.isArray(parsed.recommendations)) {
         aiInsights = parsed;
       }
     } catch (e) {

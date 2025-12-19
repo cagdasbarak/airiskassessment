@@ -40,10 +40,7 @@ export function SecurityForensicsTab({ report }: SecurityForensicsTabProps) {
           <ChartContainer config={chartConfig} className="h-full w-full">
             <BarChart
               data={trendData}
-              margin={{ top: 20, right: 140, left: 10, bottom: 40 }}
-              barCategoryGap={12}
-              barSize={24}
-              width={800} // Recharts will override this via ResponsiveContainer, but serves as initial hint
+              margin={{ top: 20, right: 140, left: 10, bottom: 60 }}
             >
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" opacity={0.3} />
               <XAxis
@@ -55,6 +52,7 @@ export function SecurityForensicsTab({ report }: SecurityForensicsTabProps) {
                   const d = new Date(val);
                   return `${d.getMonth() + 1}/${d.getDate()}`;
                 }}
+                interval="preserveStartEnd"
                 dy={10}
                 angle={-45}
                 textAnchor="end"
@@ -69,7 +67,7 @@ export function SecurityForensicsTab({ report }: SecurityForensicsTabProps) {
                 wrapperStyle={{ paddingLeft: '40px', fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', width: '130px', right: 0, top: 20 }}
               />
               {appKeys.map((key, idx) => (
-                <Bar key={key} dataKey={key} stackId="a" fill={COLORS[idx % COLORS.length]} radius={[0, 0, 0, 0]} animationDuration={1500} />
+                <Bar key={key} dataKey={key} stackId="a" fill={COLORS[idx % COLORS.length]} radius={[0, 0, 0, 0]} animationDuration={1500} minPointSize={2} />
               ))}
             </BarChart>
           </ChartContainer>
