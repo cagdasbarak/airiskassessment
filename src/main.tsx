@@ -19,7 +19,6 @@ import { ReportsPage } from '@/pages/ReportsPage'
 import { ReportDetailsPage } from '@/pages/ReportDetailsPage'
 import { LogsPage } from '@/pages/LogsPage'
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
-import { ThemeProvider } from 'next-themes';
 const queryClient = new QueryClient();
 const router = createBrowserRouter([
   {
@@ -54,12 +53,10 @@ const router = createBrowserRouter([
   },
 ]);
 createRoot(document.getElementById('root')!).render(
-  <ThemeProvider attribute='class' defaultTheme='system' enableSystem>
-    <QueryClientProvider client={queryClient}>
-      <ErrorBoundary>
-        <RouterProvider router={router} />
-      </ErrorBoundary>
+  <QueryClientProvider client={queryClient}>
+    <ErrorBoundary>
+      <RouterProvider router={router} />
       <Toaster richColors closeButton position="top-right" />
-    </QueryClientProvider>
-  </ThemeProvider>
+    </ErrorBoundary>
+  </QueryClientProvider>
 )
