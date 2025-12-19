@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -9,40 +10,42 @@ import { AppLibraryTab } from '@/components/reports/AppLibraryTab';
 import { SecurityForensicsTab } from '@/components/reports/SecurityForensicsTab';
 import { SummaryRemediationTab } from '@/components/reports/SummaryRemediationTab';
 import { useAppStore } from '@/lib/store';
-import { motion } from 'framer-motion';
 export function ReportDetailsPage() {
-  const pathname = window.location.pathname;
-  const id = pathname.split('/').pop() || '';
-  const goBack = () => { window.location.href = '/reports'; };
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [report, setReport] = useState<AssessmentReport | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const cfContact = useAppStore(s => s.settings.cloudflareContact);
-  const custContact = useAppStore(s => s.settings.customerContact);
+  const cfContactName = useAppStore(s => s.settings.cloudflareContact.name);
+  const cfContactTeam = useAppStore(s => s.settings.cloudflareContact.team);
+  const cfContactRole = useAppStore(s => s.settings.cloudflareContact.role);
+  const custName = useAppStore(s => s.settings.customerContact.customerName);
+  const custContactName = useAppStore(s => s.settings.customerContact.name);
+  const custContactRole = useAppStore(s => s.settings.customerContact.role);
   useEffect(() => {
-        let isMounted = true;
-        const fetchReport = async () => {
-          if (!id) {
-            setIsLoading(false);
-            return;
-          }
-          try {
-            setIsLoading(true);
-            const res = await api.getReport(id);
-            if (isMounted && res.success && res.data) {
-              setReport(res.data);
-            }
-          } catch (err) {
+    let isMounted = true;
+    const fetchReport = async () => {
+      if (!id) {
+        setIsLoading(false);
+        return;
+      }
+      try {
+        setIsLoading(true);
+        const res = await api.getReport(id);
+        if (isMounted && res.success && res.data) {
+          setReport(res.data);
+        }
+      } catch (err) {
         console.error('[ReportDetails] Fetch failed:', err);
       } finally {
         if (isMounted) setIsLoading(false);
       }
     };
     fetchReport();
-    return () => { 
+    return () => {
       isMounted = false;
     };
   }, [id]);
-  const handleBack = goBack;
+  const handleBack = () => navigate('/reports');
   const handlePrint = () => window.print();
   if (isLoading) {
     return (
@@ -60,7 +63,7 @@ export function ReportDetailsPage() {
       </AppLayout>
     );
   }
-  if (!report) {
+  if (!report || !id) {
     return (
       <AppLayout container>
         <div className="text-center py-24 space-y-6">
@@ -112,7 +115,7 @@ export function ReportDetailsPage() {
               RiskGuard AI Report
             </h1>
             <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[10px] font-mono text-muted-foreground uppercase tracking-[0.3em] border-y border-border/50 py-3 px-6 print:border-black print:text-black">
-              <span>ID: {report.id.slice(-8).toUpperCase()}</span>
+              <span>ID: {id.slice(-8).toUpperCase()}</span>
               <span className="hidden sm:inline">•</span>
               <span>Date: {report.date}</span>
               <span className="hidden sm:inline">•</span>
@@ -159,7 +162,7 @@ export function ReportDetailsPage() {
             </TabsList>
           </div>
           <TabsContent value="library" className="focus-visible:outline-none">
-            <AppLibraryTab />
+            <AppLibraryTab report={report} />
           </TabsContent>
           <TabsContent value="forensics" className="focus-visible:outline-none">
             <SecurityForensicsTab report={report} />
@@ -168,18 +171,17 @@ export function ReportDetailsPage() {
             <SummaryRemediationTab report={report} />
           </TabsContent>
         </Tabs>
-        {/* Print Only Executive Footer */}
         <div className="hidden print:flex flex-col border-t border-black pt-8 space-y-4">
           <div className="flex justify-between items-end">
             <div className="space-y-1">
               <p className="text-[8px] font-black uppercase tracking-widest text-gray-500">Prepared For</p>
-              <p className="text-sm font-bold">{custContact.customerName}</p>
-              <p className="text-xs">{custContact.name} — {custContact.role}</p>
+              <p className="text-sm font-bold">{custName}</p>
+              <p className="text-xs">{custContactName} — {custContactRole}</p>
             </div>
             <div className="text-right space-y-1">
               <p className="text-[8px] font-black uppercase tracking-widest text-gray-500">Cloudflare Representative</p>
-              <p className="text-sm font-bold">{cfContact.name}</p>
-              <p className="text-xs">{cfContact.team} — {cfContact.role}</p>
+              <p className="text-sm font-bold">{cfContactName}</p>
+              <p className="text-xs">{cfContactTeam} — {cfContactRole}</p>
             </div>
           </div>
           <p className="text-[8px] text-center text-gray-400 font-mono pt-4">

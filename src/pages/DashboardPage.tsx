@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,6 +9,7 @@ import { api, AssessmentReport } from '@/lib/api';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 export function DashboardPage() {
+  const navigate = useNavigate();
   const [isAssessing, setIsAssessing] = useState(false);
   const [lastReport, setLastReport] = useState<AssessmentReport | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -35,8 +37,7 @@ export function DashboardPage() {
         if (res.success && res.data) {
           setTimeout(() => {
             setIsAssessing(false);
-            const goToReport = (reportId: string) => { window.location.href = `/reports/${reportId}`; };
-            goToReport(res.data.id);
+            navigate(`/reports/${res.data.id}`);
           }, 800);
           return 'Precision assessment generated.';
         }
@@ -57,7 +58,6 @@ export function DashboardPage() {
     hidden: { opacity: 0, y: 20 },
     show: { opacity: 1, y: 0 }
   };
-  // Defensive accessors for summary data
   const safeScore = lastReport?.score ?? 0;
   const safeShadowUsage = lastReport?.summary?.shadowUsage ?? 0;
   const safeUnapprovedApps = lastReport?.summary?.unapprovedApps ?? 0;
@@ -153,10 +153,7 @@ export function DashboardPage() {
                   <Button
                     variant="ghost"
                     className="w-full h-14 text-lg font-bold group rounded-2xl border border-border/10 hover:bg-secondary/50"
-                    onClick={() => {
-                      const goToReport = (reportId: string) => { window.location.href = `/reports/${reportId}`; };
-                      goToReport(lastReport?.id || '');
-                    }}
+                    onClick={() => navigate(`/reports/${lastReport?.id || ''}`)}
                   >
                     Drill Down into Full Analysis
                     <ArrowRight className="ml-3 h-5 w-5 transition-transform group-hover:translate-x-2" />
