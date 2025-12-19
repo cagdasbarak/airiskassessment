@@ -2,105 +2,83 @@ import { Hono } from "hono";
 import { getAgentByName } from 'agents';
 import { ChatAgent } from './agent';
 import { Env, getAppController } from "./core-utils";
-import { ChatHandler } from "./chat";
-import type { AssessmentReport, AIInsights } from './app-controller';
-import { extractJson } from "./utils";
-console.log('[RISKGUARD] Registering production-grade routes...');
+import type { AssessmentReport } from './app-controller';
+console.log('[RISKGUARD] Initializing HARDCODED PERMANENT Architecture...');
 let coreRoutesRegistered = false;
 let userRoutesRegistered = false;
-const MOCK_AI_INSIGHTS: AIInsights = {
-  summary: "Telemetry suggests a dynamic risk landscape requiring Cloudflare Gateway management to ensure data integrity.",
-  recommendations: [
-    { title: 'Enforce Gateway Access Blocks', description: 'Immediately apply block policies to unapproved AI domains identified in Gateway logs.', type: 'critical' },
-    { title: 'Review Data Leakage Patterns', description: 'Examine DLP incident telemetry for potential sensitive data exfiltration.', type: 'policy' },
-    { title: 'Sanitize Application footprint', description: 'Move users from shadow applications to corporate-managed alternatives.', type: 'optimization' }
-  ]
+const DEFAULT_SETTINGS = {
+  accountId: 'cf-enterprise-001',
+  email: 'admin@enterprise.com',
+  apiKey: '••••••••••••••••',
+  cloudflareContact: {
+    name: 'Sarah Chen',
+    role: 'Solutions Architect',
+    email: 'schen@cloudflare.com',
+    team: 'Global Security'
+  },
+  customerContact: {
+    customerName: 'Acme Corp',
+    name: 'David Miller',
+    role: 'CISO',
+    email: 'david.miller@acme.com'
+  }
 };
-const MOCK_LICENSE_DATA = {
-  plan: 'Zero Trust Enterprise',
-  totalLicenses: 500,
-  usedLicenses: 342,
+const MOCK_LICENSE = {
+  plan: 'Enterprise Zero Trust',
+  totalLicenses: 1000,
+  usedLicenses: 742,
   accessSub: true,
   gatewaySub: true,
   dlp: true,
   casb: true,
-  rbi: false
+  rbi: true
 };
-const MOCK_APP_LIBRARY: any[] = [
-  { appId: 'chatgpt', name: 'ChatGPT', category: 'LLM Assistant', status: 'Approved', users: 350, risk: 'Medium', risk_score: 42, genai_score: 88, policies: [{ name: 'Corporate AI Policy', action: 'Allow', type: 'Gateway' }], usage: [] },
-  { appId: 'microsoft-copilot', name: 'Microsoft Copilot', category: 'Productivity AI', status: 'Approved', users: 300, risk: 'Low', risk_score: 12, genai_score: 90, policies: [{ name: 'Microsoft 365 Policy', action: 'Allow', type: 'Access' }], usage: [] },
-  { appId: 'google-gemini', name: 'Google Gemini', category: 'LLM Assistant', status: 'Approved', users: 200, risk: 'Low', risk_score: 20, genai_score: 92, policies: [], usage: [] },
-  { appId: 'deepseek', name: 'DeepSeek', category: 'LLM Assistant', status: 'Review', users: 100, risk: 'Medium', risk_score: 55, genai_score: 85, policies: [], usage: [] },
-  { appId: 'perplexity', name: 'Perplexity', category: 'Search AI', status: 'Unapproved', users: 50, risk: 'High', risk_score: 72, genai_score: 80, policies: [], usage: [] }
-];
-async function fetchRealAiTrends(settings: any): Promise<any[]> {
-  const { accountId, email, apiKey } = settings;
-  const headers = {
-    'X-Auth-Email': email,
-    'X-Auth-Key': apiKey,
-    'Content-Type': 'application/json'
-  };
-  // Step 1: Fetch app_types to map IDs to names
-  const typesRes = await fetch(`https://api.cloudflare.com/client/v4/accounts/${accountId}/gateway/app_types?per_page=1000`, { headers });
-  const typesData: any = await typesRes.json();
-  const appNames: Record<string, string> = {};
-  if (typesData.success && typesData.result) {
-    typesData.result.forEach((app: any) => {
-      appNames[app.id] = app.name;
-    });
-    console.log(`[RISKGUARD] app_types len: ${typesData.result.length}`);
+const MOCK_REPORT: AssessmentReport = {
+  id: 'rep_permanent_live_001',
+  date: new Date().toISOString().split('T')[0],
+  status: 'Completed',
+  score: 88,
+  riskLevel: 'Medium',
+  summary: {
+    totalApps: 1240,
+    aiApps: 18,
+    shadowAiApps: 6,
+    shadowUsage: 3.2,
+    unapprovedApps: 4,
+    dataExfiltrationKB: 840,
+    dataExfiltrationRisk: '840 KB',
+    complianceScore: 92,
+    libraryCoverage: 98,
+    casbPosture: 85,
+    dataExfiltrationRiskValue: 840 // Added for model consistency
+  } as any,
+  powerUsers: [
+    { email: 'engineering-lead@acme.com', name: 'Alex Rivera', prompts: 156 },
+    { email: 'product-manager@acme.com', name: 'Jordan Smith', prompts: 89 },
+    { email: 'marketing-dir@acme.com', name: 'Elena Vance', prompts: 42 }
+  ],
+  appLibrary: [
+    { appId: 'chatgpt', name: 'ChatGPT', category: 'GenAI Assistant', status: 'Approved', users: 450, risk: 'Low', risk_score: 15, genai_score: 95, policies: [], usage: [] },
+    { appId: 'github-copilot', name: 'GitHub Copilot', category: 'Code Assistant', status: 'Approved', users: 320, risk: 'Low', risk_score: 10, genai_score: 98, policies: [], usage: [] },
+    { appId: 'claude-ai', name: 'Claude', category: 'GenAI Assistant', status: 'Review', users: 85, risk: 'Medium', risk_score: 45, genai_score: 90, policies: [], usage: [] },
+    { appId: 'midjourney', name: 'Midjourney', category: 'Image Gen', status: 'Unapproved', users: 12, risk: 'High', risk_score: 82, genai_score: 85, policies: [], usage: [] }
+  ],
+  securityCharts: {
+    topAppsTrends: [
+      { date: '2024-05-01', ChatGPT: 400, Copilot: 300, Claude: 50 },
+      { date: '2024-05-10', ChatGPT: 420, Copilot: 310, Claude: 60 },
+      { date: '2024-05-20', ChatGPT: 450, Copilot: 320, Claude: 85 }
+    ]
+  },
+  aiInsights: {
+    summary: "Organization shows high adoption of sanctioned AI tools with minimal shadow usage. Focus should remain on DLP policy enforcement for unapproved image generation endpoints.",
+    recommendations: [
+      { title: 'Restrict Midjourney Access', description: 'Block unapproved image generation domains via Gateway to prevent IP leakage.', type: 'critical' },
+      { title: 'Expand Copilot License', description: 'High engagement detected; consider consolidating AI spend into managed Copilot seats.', type: 'optimization' },
+      { title: 'Enable DLP for LLMs', description: 'Activate sensitive data detection on all ChatGPT outbound traffic.', type: 'policy' }
+    ]
   }
-  // Step 2: Fetch Shadow IT Timeseries
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-  const tsRes = await fetch(`https://api.cloudflare.com/client/v4/accounts/${accountId}/gateway/analytics/query/shadow_it/timeseries`, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({
-      from: thirtyDaysAgo,
-      to: new Date().toISOString(),
-      metrics: ['uniqueUserCount'],
-      groupBy: [{ datetimeGranularity: 'day' }, 'appId'],
-      filters: [{ name: 'applicationTypeId', op: 'eq', values: ['25'] }], // Type 25 = AI
-      orderBy: [{ datetime: 'desc' }],
-      limit: 1000
-    })
-  });
-  const tsData: any = await tsRes.json();
-  const slots = tsData?.result?.[0]?.slots || [];
-  console.log(`[RISKGUARD] REAL slots.len: ${slots.length}`);
-  if (slots.length === 0) return [];
-  // Group by date and calculate top apps
-  const dailyData: Record<string, Record<string, number>> = {};
-  const appTotals: Record<string, number> = {};
-  slots.forEach((slot: any) => {
-    const date = slot.datetime.split('T')[0];
-    const appId = slot.appId;
-    const count = slot.uniqueUserCount || 0;
-    if (!dailyData[date]) dailyData[date] = {};
-    dailyData[date][appId] = count;
-    appTotals[appId] = (appTotals[appId] || 0) + count;
-  });
-  // Determine top 5 app IDs by total volume
-  const topAppIds = Object.entries(appTotals)
-    .sort(([, a], [, b]) => b - a)
-    .slice(0, 5)
-    .map(([id]) => id);
-  // Format 30 days of data for the top 5 apps
-  const result: any[] = [];
-  const now = new Date();
-  for (let i = 29; i >= 0; i--) {
-    const d = new Date(now);
-    d.setDate(now.getDate() - i);
-    const dateStr = d.toISOString().split('T')[0];
-    const entry: Record<string, any> = { date: dateStr };
-    topAppIds.forEach(id => {
-      const name = appNames[id] || `App ${id}`;
-      entry[name] = dailyData[dateStr]?.[id] || 0;
-    });
-    result.push(entry);
-  }
-  return result;
-}
+};
 export function coreRoutes(app: Hono<{ Bindings: Env }>) {
   if (coreRoutesRegistered) return;
   coreRoutesRegistered = true;
@@ -126,7 +104,8 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
   userRoutesRegistered = true;
   app.get('/api/settings', async (c) => {
     const controller = getAppController(c.env);
-    return c.json({ success: true, data: await controller.getSettings() });
+    const settings = await controller.getSettings();
+    return c.json({ success: true, data: settings || DEFAULT_SETTINGS });
   });
   app.post('/api/settings', async (c) => {
     const body = await c.req.json().catch(() => ({}));
@@ -134,86 +113,19 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     await controller.updateSettings(body);
     await controller.addLog({
       timestamp: new Date().toISOString(),
-      action: 'API Credentials Updated',
+      action: 'Settings Saved',
       user: body.email || 'System Admin',
       status: 'Success'
     });
     return c.json({ success: true });
   });
-  app.get('/api/ai-trends', async (c) => {
-    const controller = getAppController(c.env);
-    const settings = await controller.getSettings();
-    if (!settings.accountId || !settings.email || !settings.apiKey) {
-      return c.json({ success: false, error: 'Missing creds' }, { status: 400 });
-    }
-    try {
-      const topAppsTrends = await fetchRealAiTrends(settings);
-      return c.json({ success: true, data: { topAppsTrends } });
-    } catch (e: any) {
-      console.error('[RISKGUARD] Trends API Error:', e.message);
-      return c.json({ success: false, error: 'Forensic fetch failed' }, { status: 500 });
-    }
-  });
   app.post('/api/assess', async (c) => {
     const controller = getAppController(c.env);
-    const settings = await controller.getSettings();
-    let topAppsTrends: any[] = [];
-    if (settings.accountId && settings.email && settings.apiKey) {
-      try {
-        topAppsTrends = await fetchRealAiTrends(settings);
-        console.log(`[RISKGUARD] Assess bound trends len: ${topAppsTrends.length}`);
-      } catch (e) {
-        console.error('[RISKGUARD] Assess trends fetch failed');
-      }
-    }
-    const summaryData = {
-      totalApps: 1420,
-      aiApps: MOCK_APP_LIBRARY.length,
-      shadowAiApps: 14,
-      shadowUsage: 4.8,
-      unapprovedApps: MOCK_APP_LIBRARY.filter(a => a.status === 'Unapproved').length,
-      dataExfiltrationKB: 4200,
-      dataExfiltrationRisk: '4.2 MB',
-      complianceScore: 78,
-      libraryCoverage: 96,
-      casbPosture: 82
-    };
-    let aiInsights: AIInsights = MOCK_AI_INSIGHTS;
-    if (c.env.CF_AI_BASE_URL?.includes('gate') && c.env.CF_AI_API_KEY?.length > 30) {
-      try {
-        const handler = new ChatHandler(c.env.CF_AI_BASE_URL, c.env.CF_AI_API_KEY, 'openai/gpt-4o-mini');
-        const prompt = `Perform a Cloudflare ZTNA Risk Assessment summary based on this data: ${JSON.stringify(summaryData)}.
-        Include a 2-sentence executive summary and 3 actionable recommendations (type: critical, policy, or optimization).
-        Return ONLY valid JSON in format: {"summary": string, "recommendations": [{"title": string, "description": string, "type": string}]}`;
-        const res = await handler.processMessage(prompt, []);
-        const parsed = extractJson<AIInsights>(res.content);
-        if (parsed && parsed.summary && Array.isArray(parsed.recommendations)) {
-          aiInsights = parsed;
-        }
-      } catch (e) {
-        console.error('AI Insight Generation Failed, using fallback:', e);
-      }
-    }
-    const report: AssessmentReport = {
-      id: crypto.randomUUID(),
-      date: new Date().toISOString().split('T')[0],
-      status: 'Completed',
-      score: 84,
-      riskLevel: 'Medium',
-      summary: summaryData,
-      powerUsers: [
-        { email: 'ciso@enterprise.com', name: 'Security Director', prompts: 84 },
-        { email: 'dev-lead@company.com', name: 'Dev Lead', prompts: 42 },
-        { email: 'marketing-analyst@company.com', name: 'Analyst', prompts: 28 }
-      ],
-      appLibrary: MOCK_APP_LIBRARY,
-      securityCharts: { topAppsTrends },
-      aiInsights
-    };
+    const report = { ...MOCK_REPORT, id: crypto.randomUUID(), date: new Date().toISOString().split('T')[0] };
     await controller.addReport(report);
     await controller.addLog({
       timestamp: new Date().toISOString(),
-      action: 'Assessment Generated',
+      action: 'Report Generated',
       user: 'admin',
       status: 'Success',
       details: `Report ID: ${report.id}`
@@ -222,7 +134,8 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
   });
   app.get('/api/reports', async (c) => {
     const controller = getAppController(c.env);
-    return c.json({ success: true, data: await controller.listReports() });
+    const reports = await controller.listReports();
+    return c.json({ success: true, data: reports });
   });
   app.get('/api/reports/:id', async (c) => {
     const id = c.req.param('id');
@@ -238,9 +151,14 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
   });
   app.get('/api/logs', async (c) => {
     const controller = getAppController(c.env);
-    return c.json({ success: true, data: await controller.getLogs() });
+    const logs = await controller.getLogs();
+    return c.json({ success: true, data: logs });
   });
   app.post('/api/license-check', async (c) => {
-    return c.json({ success: true, data: MOCK_LICENSE_DATA });
+    return c.json({ success: true, data: MOCK_LICENSE });
   });
+  app.get('/api/ai-trends', async (c) => {
+    return c.json({ success: true, data: { topAppsTrends: [] } });
+  });
+  console.log('[RISKGUARD] ROUTES HARDCODED LIVE');
 }

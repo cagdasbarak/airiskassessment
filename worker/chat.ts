@@ -5,12 +5,9 @@ export class ChatHandler {
   private client: OpenAI;
   private model: string;
   constructor(aiGatewayUrl: string, apiKey: string, model: string) {
-    // Ensure the OpenAI client is initialized with a valid configuration
-    // and handles the Cloudflare Worker fetch environment correctly.
     this.client = new OpenAI({
       baseURL: aiGatewayUrl,
       apiKey: apiKey,
-      // Cloudflare Workers handle fetch natively; OpenAI SDK uses this by default
     });
     this.model = model;
   }
@@ -47,28 +44,8 @@ export class ChatHandler {
       return this.handleNonStreamResponse(completion, message, conversationHistory);
     } catch (error) {
       console.error('AI Service Exception:', error);
-      // Fail gracefully with a structured response for the assessment engine
       return {
-        content: JSON.stringify({
-          summary: 'The AI analysis service is currently experiencing high latency. Heuristic defaults have been applied.',
-          recommendations: [
-            {
-              title: 'Enforce Gateway Access Blocks',
-              description: 'Immediately apply block policies to unapproved AI domains identified in Gateway logs.',
-              type: 'critical'
-            },
-            {
-              title: 'Review Data Leakage Patterns',
-              description: 'Examine DLP incident telemetry for potential sensitive data exfiltration.',
-              type: 'policy'
-            },
-            {
-              title: 'Sanitize Application footprint',
-              description: 'Move users from shadow applications to corporate-managed alternatives.',
-              type: 'optimization'
-            }
-          ]
-        }),
+        content: "I'm sorry, I'm having trouble connecting to my brain right now. Please try again in a moment.",
         toolCalls: []
       };
     }
@@ -143,10 +120,10 @@ export class ChatHandler {
           ...history.slice(-3).map(m => ({ role: m.role, content: m.content })),
           { role: 'user', content: msg },
           { role: 'assistant', content: null, tool_calls: calls } as any,
-          ...results.map((r, i) => ({ 
-            role: 'tool' as const, 
-            content: JSON.stringify(r.result), 
-            tool_call_id: calls[i]?.id || r.id 
+          ...results.map((r, i) => ({
+            role: 'tool' as const,
+            content: JSON.stringify(r.result),
+            tool_call_id: calls[i]?.id || r.id
           }))
         ],
         max_tokens: 4000
@@ -164,7 +141,7 @@ export class ChatHandler {
       { role: 'user' as const, content: userMessage }
     ];
   }
-  updateModel(newModel: string): void { 
-    this.model = newModel; 
+  updateModel(newModel: string): void {
+    this.model = newModel;
   }
 }
