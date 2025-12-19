@@ -51,30 +51,6 @@ const MOCK_APP_LIBRARY: any[] = [
     usage: Array(5).fill(0).map(() => ({ clientIP: '10.0.0.1', userEmail: 'user@org.com', action: 'Query', date: new Date().toISOString(), bytesKB: 12 }))
   },
   {
-    appId: 'claude',
-    name: 'Claude.ai',
-    category: 'LLM Assistant',
-    status: 'Review',
-    users: 28,
-    risk: 'Low',
-    risk_score: 15,
-    genai_score: 92,
-    policies: [],
-    usage: []
-  },
-  {
-    appId: 'midjourney',
-    name: 'Midjourney',
-    category: 'Image Generation',
-    status: 'Unapproved',
-    users: 12,
-    risk: 'High',
-    risk_score: 85,
-    genai_score: 95,
-    policies: [{ name: 'Block Non-Business Creative', action: 'Block', type: 'Gateway' }],
-    usage: []
-  },
-  {
     appId: 'github-copilot',
     name: 'GitHub Copilot',
     category: 'Code Assistant',
@@ -87,14 +63,38 @@ const MOCK_APP_LIBRARY: any[] = [
     usage: []
   },
   {
-    appId: 'jasper',
-    name: 'Jasper AI',
-    category: 'Marketing Automation',
+    appId: 'gemini',
+    name: 'Gemini',
+    category: 'LLM Assistant',
+    status: 'Approved',
+    users: 85,
+    risk: 'Low',
+    risk_score: 20,
+    genai_score: 92,
+    policies: [],
+    usage: []
+  },
+  {
+    appId: 'deepseek',
+    name: 'DeepSeek',
+    category: 'LLM Assistant',
+    status: 'Review',
+    users: 45,
+    risk: 'Medium',
+    risk_score: 55,
+    genai_score: 85,
+    policies: [],
+    usage: []
+  },
+  {
+    appId: 'perplexity',
+    name: 'Perplexity',
+    category: 'Search AI',
     status: 'Unapproved',
-    users: 8,
+    users: 62,
     risk: 'High',
-    risk_score: 78,
-    genai_score: 75,
+    risk_score: 72,
+    genai_score: 80,
     policies: [],
     usage: []
   }
@@ -140,6 +140,24 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
   });
   app.post('/api/assess', async (c) => {
     const controller = getAppController(c.env);
+    // Generate 30 days of high-fidelity timeseries data
+    const topAppsTrends = [];
+    const now = new Date();
+    const appNames = ['ChatGPT', 'GitHub Copilot', 'Gemini', 'DeepSeek', 'Perplexity'];
+    for (let i = 29; i >= 0; i--) {
+      const date = new Date(now);
+      date.setDate(now.getDate() - i);
+      const dateStr = date.toISOString().split('T')[0];
+      const dayData: Record<string, any> = { date: dateStr };
+      appNames.forEach(name => {
+        // Realistic distribution with some randomness
+        const base = name === 'ChatGPT' ? 350 : name === 'GitHub Copilot' ? 300 : name === 'Gemini' ? 200 : name === 'Perplexity' ? 100 : 50;
+        dayData[name] = Math.floor(base + (Math.random() * 100) - 50);
+      });
+      topAppsTrends.push(dayData);
+    }
+    console.log(`[FORENSIC] TIMESERIES slots len: ${topAppsTrends.length}`);
+    console.log(`[FORENSIC] Identified top5 apps: ${appNames.join(', ')}`);
     const report: AssessmentReport = {
       id: crypto.randomUUID(),
       date: new Date().toISOString().split('T')[0],
@@ -165,13 +183,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       ],
       appLibrary: MOCK_APP_LIBRARY,
       securityCharts: {
-        topAppsTrends: [
-          { date: '2024-05-15', 'ChatGPT': 400, 'Claude': 240, 'Midjourney': 120, 'Jasper': 80 },
-          { date: '2024-05-16', 'ChatGPT': 380, 'Claude': 260, 'Midjourney': 150, 'Jasper': 75 },
-          { date: '2024-05-17', 'ChatGPT': 420, 'Claude': 280, 'Midjourney': 110, 'Jasper': 90 },
-          { date: '2024-05-18', 'ChatGPT': 450, 'Claude': 310, 'Midjourney': 140, 'Jasper': 85 },
-          { date: '2024-05-19', 'ChatGPT': 410, 'Claude': 290, 'Midjourney': 160, 'Jasper': 70 }
-        ]
+        topAppsTrends
       },
       aiInsights: MOCK_AI_INSIGHTS
     };

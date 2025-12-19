@@ -86,8 +86,8 @@ export function ExecutiveScorecard({ summary, score, powerUsers = [] }: Scorecar
   const healthScore = Number(score ?? 0);
   const topUser = powerUsers?.[0] || null;
   const isTrafficRisk = dataRiskKB >= 1024;
-  const trafficProgress = Math.min(100, (dataRiskKB / 2048) * 100);
-  const userProgress = topUser ? Math.min(100, (topUser.prompts / 50) * 100) : 0;
+  const trafficProgress = Math.min(100, (dataRiskKB / 5000) * 100);
+  const userProgress = topUser ? Math.min(100, (topUser.prompts / 100) * 100) : 0;
   const cards = [
     {
       title: "Shadow AI Usage",
@@ -96,7 +96,7 @@ export function ExecutiveScorecard({ summary, score, powerUsers = [] }: Scorecar
       icon: Activity,
       colorClass: "text-[#F38020]",
       colorKey: "orange" as const,
-      progress: shadowUsage
+      progress: shadowUsage * 5 // Scaled for visibility
     },
     {
       title: "Unapproved Apps",

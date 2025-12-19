@@ -34,7 +34,7 @@ const ChartContainer = React.forwardRef<
           {
             "--chart-style-id": `chart-style-${chartId}`,
             minWidth: "0",
-            minHeight: "450px"
+            minHeight: "400px", // Fixed minHeight to resolve Recharts dimension warnings
           } as React.CSSProperties
         }
         ref={ref}
@@ -45,7 +45,8 @@ const ChartContainer = React.forwardRef<
         {...props}
       >
         <ChartStyle id={chartId} config={config} />
-        <RechartsPrimitive.ResponsiveContainer width="100%" height="100%" debounce={0}>
+        {/* Debounce added to stabilize layout during tab switching and resizing */}
+        <RechartsPrimitive.ResponsiveContainer width="100%" height="100%" debounce={16}>
           {children as any}
         </RechartsPrimitive.ResponsiveContainer>
       </div>
