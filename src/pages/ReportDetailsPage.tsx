@@ -2,11 +2,13 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ChevronLeft, Printer, Loader2, FileText, ShieldAlert, FileCheck, Zap, AlertCircle } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ChevronLeft, Printer, Loader2, FileText, LayoutGrid, ShieldAlert, BarChart3 } from 'lucide-react';
 import { api, AssessmentReport } from '@/lib/api';
 import { ExecutiveScorecard } from '@/components/reports/ExecutiveScorecard';
-import { cn } from '@/lib/utils';
+import { AppLibraryTab } from '@/components/reports/AppLibraryTab';
+import { SecurityForensicsTab } from '@/components/reports/SecurityForensicsTab';
+import { SummaryRemediationTab } from '@/components/reports/SummaryRemediationTab';
 import { motion } from 'framer-motion';
 export function ReportDetailsPage() {
   const { id } = useParams();
@@ -83,18 +85,16 @@ export function ReportDetailsPage() {
     libraryCoverage: report.summary?.libraryCoverage ?? 0,
     casbPosture: report.summary?.casbPosture ?? 0
   };
-  const defaultSummary = "This report provides a definitive analysis of organizational AI usage patterns. Current telemetry suggests a dynamic risk landscape that requires proactive Cloudflare Gateway management to ensure data integrity.";
   return (
-    <AppLayout container>
-      <div className="space-y-12 lg:space-y-16 pb-24 max-w-6xl mx-auto">
-        <header className="flex flex-col items-center justify-center space-y-6 text-center relative" role="banner">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="py-8 md:py-10 lg:py-12 space-y-12">
+        <header className="flex flex-col items-center justify-center space-y-6 text-center relative">
           <div className="no-print lg:absolute top-0 left-0">
-            <Button 
-              variant="ghost" 
-              size="sm" 
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={handleBack}
               className="rounded-xl gap-2 text-muted-foreground hover:text-foreground"
-              aria-label="Return to report archive"
             >
               <ChevronLeft className="h-4 w-4" /> Back to Archive
             </Button>
@@ -103,101 +103,68 @@ export function ReportDetailsPage() {
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#F38020]/10 text-[#F38020] text-[10px] font-black uppercase tracking-[0.2em] border border-[#F38020]/20">
               Security Compliance Audit
             </div>
-            <h1 className="text-5xl font-black tracking-tighter text-foreground uppercase lg:text-7xl">
+            <h1 className="text-4xl md:text-6xl font-black tracking-tighter text-foreground uppercase">
               RiskGuard AI Report
             </h1>
-            <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[10px] font-mono text-muted-foreground uppercase tracking-[0.3em] border-y border-border/50 py-4 px-10">
-              <span>ID: {report.id.toUpperCase()}</span>
-              <span className="hidden sm:inline" aria-hidden="true">•</span>
+            <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[10px] font-mono text-muted-foreground uppercase tracking-[0.3em] border-y border-border/50 py-3 px-6">
+              <span>ID: {report.id.slice(-8).toUpperCase()}</span>
+              <span className="hidden sm:inline">•</span>
               <span>Date: {report.date}</span>
-              <span className="hidden sm:inline" aria-hidden="true">•</span>
-              <span>ZTNA Telemetry</span>
+              <span className="hidden sm:inline">•</span>
+              <span>ZTNA Precision</span>
             </div>
           </div>
-          <Button 
-            variant="outline" 
-            size="lg" 
+          <Button
+            variant="outline"
+            size="lg"
             className="rounded-2xl no-print hover:bg-secondary border-border/50 shadow-soft h-14 px-8 font-bold"
             onClick={handlePrint}
           >
             <Printer className="h-5 w-5 mr-3" /> Export Executive PDF
           </Button>
         </header>
-        <section aria-labelledby="scorecard-heading" className="space-y-8">
+        <section className="space-y-8">
           <div className="text-center space-y-2 no-print">
-            <h2 id="scorecard-heading" className="text-[10px] font-black uppercase tracking-[0.4em] text-muted-foreground/60">Risk Scorecard</h2>
-            <div className="h-px w-16 bg-[#F38020] mx-auto" aria-hidden="true" />
+            <h2 className="text-[10px] font-black uppercase tracking-[0.4em] text-muted-foreground/60">Risk Scorecard</h2>
+            <div className="h-px w-16 bg-[#F38020] mx-auto" />
           </div>
-          <ExecutiveScorecard 
-            summary={safeSummary} 
+          <ExecutiveScorecard
+            summary={safeSummary}
             score={report.score ?? 0}
             powerUsers={report.powerUsers ?? []}
           />
         </section>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <section className="lg:col-span-1" aria-labelledby="summary-heading">
-            <Card className="border-border/50 shadow-soft h-full bg-[#F38020]/5 overflow-hidden relative border-t-4 border-t-[#F38020]">
-              <div className="absolute top-0 right-0 p-4 opacity-10" aria-hidden="true">
-                <ShieldAlert className="h-24 w-24" />
-              </div>
-              <CardHeader>
-                <CardTitle id="summary-heading" className="text-xl font-black uppercase tracking-tight">Executive Summary</CardTitle>
-                <CardDescription className="font-bold text-[10px] uppercase tracking-wider text-[#F38020]">AI Forensics</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-foreground leading-relaxed italic text-base font-medium">
-                  "{report.aiInsights?.summary || defaultSummary}"
-                </p>
-              </CardContent>
-            </Card>
-          </section>
-          <section className="lg:col-span-2" aria-labelledby="recommendations-heading">
-            <div className="space-y-6">
-              <h3 id="recommendations-heading" className="text-xl font-black uppercase tracking-tighter px-1 flex items-center gap-3">
-                <Zap className="h-6 w-6 text-[#F38020]" aria-hidden="true" />
-                Remediation Framework
-              </h3>
-              <div className="grid gap-4">
-                {(report.aiInsights?.recommendations || []).map((rec, i) => (
-                  <motion.div
-                    key={i}
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.2 + i * 0.1 }}
-                  >
-                    <Card className={cn(
-                      "border-l-4 border-y-border border-r-border shadow-soft group hover:shadow-md transition-shadow",
-                      rec.type === 'critical' ? "border-l-red-500 bg-red-500/[0.02]" :
-                      rec.type === 'policy' ? "border-l-blue-500 bg-blue-500/[0.02]" :
-                      "border-l-emerald-500 bg-emerald-500/[0.02]"
-                    )}>
-                      <CardContent className="p-6 flex gap-5">
-                        <div className={cn(
-                          "h-12 w-12 shrink-0 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110",
-                          rec.type === 'critical' ? "bg-red-500/10 text-red-500" :
-                          rec.type === 'policy' ? "bg-blue-500/10 text-blue-500" :
-                          "bg-emerald-500/10 text-emerald-500"
-                        )} aria-hidden="true">
-                          {rec.type === 'critical' ? <ShieldAlert className="h-6 w-6" /> :
-                           rec.type === 'policy' ? <FileCheck className="h-6 w-6" /> :
-                           <AlertCircle className="h-6 w-6" />}
-                        </div>
-                        <div className="space-y-1">
-                          <h4 className="font-black text-foreground uppercase tracking-tight">{rec.title}</h4>
-                          <p className="text-sm text-muted-foreground font-medium leading-relaxed">{rec.description}</p>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </motion.div>
-                ))}
-              </div>
-            </div>
-          </section>
-        </div>
-        <footer className="pt-16 text-center text-[10px] text-muted-foreground uppercase tracking-[0.4em] font-black opacity-40 border-t border-border/50" role="contentinfo">
+        <Tabs defaultValue="summary" className="w-full space-y-10">
+          <div className="flex justify-center">
+            <TabsList className="bg-white/40 dark:bg-black/20 backdrop-blur-xl border border-border/50 p-1 h-auto rounded-2xl shadow-soft">
+              <TabsTrigger value="library" className="flex items-center gap-2 px-6 py-2.5 rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm dark:data-[state=active]:bg-secondary">
+                <LayoutGrid className="h-4 w-4" />
+                <span className="font-bold text-xs uppercase tracking-wider">Application Library</span>
+              </TabsTrigger>
+              <TabsTrigger value="forensics" className="flex items-center gap-2 px-6 py-2.5 rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm dark:data-[state=active]:bg-secondary">
+                <BarChart3 className="h-4 w-4" />
+                <span className="font-bold text-xs uppercase tracking-wider">AI Security Report</span>
+              </TabsTrigger>
+              <TabsTrigger value="summary" className="flex items-center gap-2 px-6 py-2.5 rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm dark:data-[state=active]:bg-secondary">
+                <ShieldAlert className="h-4 w-4" />
+                <span className="font-bold text-xs uppercase tracking-wider">AI Summary</span>
+              </TabsTrigger>
+            </TabsList>
+          </div>
+          <TabsContent value="library" className="focus-visible:outline-none">
+            <AppLibraryTab />
+          </TabsContent>
+          <TabsContent value="forensics" className="focus-visible:outline-none">
+            <SecurityForensicsTab />
+          </TabsContent>
+          <TabsContent value="summary" className="focus-visible:outline-none">
+            <SummaryRemediationTab report={report} />
+          </TabsContent>
+        </Tabs>
+        <footer className="pt-16 text-center text-[10px] text-muted-foreground uppercase tracking-[0.4em] font-black opacity-40 border-t border-border/50">
           Confidential • Cloudflare ZTNA Precision Analytics v1.2 • Generated by RiskGuard AI
         </footer>
       </div>
-    </AppLayout>
+    </div>
   );
 }
