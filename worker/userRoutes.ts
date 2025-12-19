@@ -23,8 +23,10 @@ async function fetchCloudflare(endpoint: string, settings: any) {
   }
 }
 const getBaseReport = (idSuffix: string = '001') => {
+  // Enhanced robust ID generation to prevent React key collisions
+  const uniqueId = `rep_${Date.now()}_${Math.random().toString(36).substring(2, 8)}_${idSuffix}`;
   return {
-    id: `rep_live_${Date.now()}_${idSuffix}`,
+    id: uniqueId,
     date: new Date().toISOString().split('T')[0],
     status: 'Completed',
     score: 84,
@@ -91,28 +93,27 @@ export function userRoutes(app: Hono<any>) {
     let managed_count = 0;
     let debugInfo: any = { aiIds: [], managedIds: [] };
     if (settings.accountId && settings.apiKey) {
-      const appTypes = await fetchCloudflare('/gateway/app_types?per_page=1000', settings);
-      const reviewStatus = await fetchCloudflare('/gateway/apps/review_status', settings);
+      // Cast to any to resolve TS2339 result property error
+      const appTypes = await fetchCloudflare('/gateway/app_types?per_page=1000', settings) as any;
+      const reviewStatus = await fetchCloudflare('/gateway/apps/review_status', settings) as any;
       if (appTypes?.result && reviewStatus?.result) {
         const ai_ids = appTypes.result
           .filter((t: any) => t.application_type_id === 25)
           .map((t: any) => t.id);
         total_ai = ai_ids.length;
-        console.log('RAW_APP_TYPES:', total_ai);
         const managed_ids = [
           ...(reviewStatus.result.approved_apps || []),
           ...(reviewStatus.result.in_review_apps || []),
           ...(reviewStatus.result.unapproved_apps || [])
         ];
-        console.log('RAW_REVIEW_STATUS:', managed_ids.length);
         managed_count = ai_ids.filter((id: string) => managed_ids.includes(id)).length;
         const shadow_count = total_ai - managed_count;
         shadowUsage = total_ai > 0 ? Math.round((shadow_count / total_ai) * 100 * 1000) / 1000 : 0;
         debugInfo = { aiIds: ai_ids, managedIds: managed_ids, total_ai, managed_count, shadowUsage };
       }
     }
-    const report = { 
-      ...getBaseReport(Math.random().toString(36).substr(2, 5)), 
+    const report = {
+      ...getBaseReport(),
       id: `rep_${Date.now()}`,
       summary: {
         ...getBaseReport().summary,
@@ -134,9 +135,9 @@ export function userRoutes(app: Hono<any>) {
   app.get('/api/reports', async (c) => {
     const controller = c.env.APP_CONTROLLER.get(c.env.APP_CONTROLLER.idFromName("controller"));
     const reports = await controller.listReports();
-    // Ensure uniqueness for the archive view to fix React key warnings
-    const uniqueReports = (reports.length > 0 ? reports : [getBaseReport('001'), getBaseReport('002')]);
-    return c.json({ success: true, data: uniqueReports });
+    // Return empty array if null to prevent frontend crashes
+    const data = (reports || []);
+    return c.json({ success: true, data });
   });
   app.get('/api/reports/:id', async (c) => {
     const id = c.req.param('id');
@@ -153,14 +154,14 @@ export function userRoutes(app: Hono<any>) {
   app.get('/api/logs', async (c) => {
     const controller = c.env.APP_CONTROLLER.get(c.env.APP_CONTROLLER.idFromName("controller"));
     const logs = await controller.getLogs();
-    return c.json({ success: true, data: logs });
+    return c.json({ success: true, data: logs || [] });
   });
   app.post('/api/license-check', async (c) => {
     const controller = c.env.APP_CONTROLLER.get(c.env.APP_CONTROLLER.idFromName("controller"));
     const settings = await controller.getSettings();
-    const license = await fetchCloudflare('/gateway/proxy/entitlements', settings) || { result: { plan: 'Free' } };
+    const licenseResult = await fetchCloudflare('/gateway/proxy/entitlements', settings) as any;
     const mockLicense = {
-      plan: settings.accountId ? 'Enterprise Zero Trust' : 'Free Tier',
+      plan: settings.accountId ? (licenseResult?.result?.plan || 'Enterprise Zero Trust') : 'Free Tier',
       totalLicenses: 1000,
       usedLicenses: 742,
       accessSub: !!settings.accountId,
@@ -171,6 +172,5 @@ export function userRoutes(app: Hono<any>) {
     };
     return c.json({ success: true, data: mockLicense });
   });
-  console.log('ALL ROUTES PRECISION ENABLED');
 }
 export function coreRoutes(app: Hono<any>): void {}

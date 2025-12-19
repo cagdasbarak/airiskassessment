@@ -39,15 +39,15 @@ const ChartContainer = React.forwardRef<
       const entry = entries[0]
       if (entry && entry.contentRect.width > 0 && entry.contentRect.height > 0) {
         setDims({
-          width: entry.contentRect.width,
-          height: entry.contentRect.height,
+          width: Math.floor(entry.contentRect.width),
+          height: Math.floor(entry.contentRect.height),
         })
       }
     })
     observer.observe(containerRef.current)
     return () => observer.disconnect()
   }, [])
-  // Strict check for valid dimensions to prevent Recharts -1/-1 warnings
+  // Strict check: dimensions must be positive to render ResponsiveContainer
   const shouldRenderChart = mounted && dims.width > 0 && dims.height > 0
   return (
     <ChartContext.Provider value={{ config }}>
@@ -59,26 +59,28 @@ const ChartContainer = React.forwardRef<
           {
             "--chart-style-id": `chart-style-${chartId}`,
             minWidth: "0px",
-            minHeight: "1px", // Prevent zero-height calculation errors
+            minHeight: "350px", // Provide a non-zero base height to prevent -1 measurement
             height: height,
             display: 'flex',
             flexDirection: 'column'
           } as React.CSSProperties
         }
         className={cn(
-          "relative w-full overflow-visible text-xs print:overflow-visible [&_.recharts-cartesian-axis-tick_text]:fill-muted-foreground [&_.recharts-cartesian-grid_line[stroke='#ccc']]:stroke-border/50",
+          "relative w-full overflow-hidden text-xs print:overflow-visible [&_.recharts-cartesian-axis-tick_text]:fill-muted-foreground [&_.recharts-cartesian-grid_line[stroke='#ccc']]:stroke-border/50",
           className
         )}
         {...props}
       >
         <ChartStyle id={chartId} config={config} />
         {shouldRenderChart ? (
-          <RechartsPrimitive.ResponsiveContainer width="100%" height="100%">
-            {children as any}
-          </RechartsPrimitive.ResponsiveContainer>
+          <div className="flex-1 w-full h-full min-h-[1px]">
+            <RechartsPrimitive.ResponsiveContainer width="100%" height="100%" debounce={50}>
+              {children as any}
+            </RechartsPrimitive.ResponsiveContainer>
+          </div>
         ) : (
           <div className="flex-1 w-full h-full flex items-center justify-center bg-secondary/5 rounded-xl border border-dashed border-border/20">
-             <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/40">Calculating Viewport...</span>
+             <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/40">Calibrating Viewport...</span>
           </div>
         )}
       </div>

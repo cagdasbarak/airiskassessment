@@ -10,13 +10,14 @@ import { AppLibraryTab } from '@/components/reports/AppLibraryTab';
 import { SecurityForensicsTab } from '@/components/reports/SecurityForensicsTab';
 import { SummaryRemediationTab } from '@/components/reports/SummaryRemediationTab';
 import { useAppStore } from '@/lib/store';
+import { motion, AnimatePresence } from 'framer-motion';
 export function ReportDetailsPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [report, setReport] = useState<AssessmentReport | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('forensics');
-  // Adhering to Zustand Primitive Selection Law for performance and stability
+  // Primtive selections for stability
   const cfContactName = useAppStore(s => s.settings.cloudflareContact.name);
   const cfContactTeam = useAppStore(s => s.settings.cloudflareContact.team);
   const cfContactRole = useAppStore(s => s.settings.cloudflareContact.role);
@@ -26,10 +27,7 @@ export function ReportDetailsPage() {
   useEffect(() => {
     let isMounted = true;
     const fetchReport = async () => {
-      if (!id) {
-        if (isMounted) setIsLoading(false);
-        return;
-      }
+      if (!id) return;
       try {
         setIsLoading(true);
         const res = await api.getReport(id);
@@ -65,13 +63,8 @@ export function ReportDetailsPage() {
     return (
       <AppLayout container>
         <div className="text-center py-24 space-y-6">
-          <div className="h-20 w-20 rounded-full bg-muted flex items-center justify-center mx-auto">
-            <FileText className="h-10 w-10 text-muted-foreground" />
-          </div>
           <h2 className="text-3xl font-bold">Report Not Found</h2>
-          <Button onClick={() => navigate('/reports')} className="rounded-xl px-8 h-11">
-            Back to Archive
-          </Button>
+          <Button onClick={() => navigate('/reports')} className="rounded-xl px-8 h-11">Back to Archive</Button>
         </div>
       </AppLayout>
     );
@@ -88,8 +81,6 @@ export function ReportDetailsPage() {
     libraryCoverage: report.summary?.libraryCoverage ?? 0,
     casbPosture: report.summary?.casbPosture ?? 0
   };
-  const reportScore = report.score ?? 0;
-  const powerUsers = report.powerUsers ?? [];
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 printable-report">
       <div className="py-8 md:py-10 lg:py-12 space-y-12">
@@ -108,15 +99,11 @@ export function ReportDetailsPage() {
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#F38020]/10 text-[#F38020] text-[10px] font-black uppercase tracking-[0.2em] border border-[#F38020]/20">
               Security Compliance Audit
             </div>
-            <h1 className="text-4xl md:text-6xl font-black tracking-tighter text-foreground uppercase">
-              RiskGuard AI Report
-            </h1>
-            <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[10px] font-mono text-muted-foreground uppercase tracking-[0.3em] border-y border-border/50 py-3 px-6 print:border-black print:text-black">
+            <h1 className="text-4xl md:text-6xl font-black tracking-tighter text-foreground uppercase">RiskGuard AI Report</h1>
+            <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[10px] font-mono text-muted-foreground uppercase tracking-[0.3em] border-y border-border/50 py-3 px-6 print:border-black">
               <span>ID: {id.slice(-8).toUpperCase()}</span>
               <span className="hidden sm:inline">•</span>
               <span>Date: {report.date}</span>
-              <span className="hidden sm:inline">•</span>
-              <span className="text-[#F38020] print:text-black font-bold">ZTNA Precision</span>
             </div>
           </div>
           <Button
@@ -129,22 +116,18 @@ export function ReportDetailsPage() {
           </Button>
         </header>
         <section className="space-y-8">
-          <div className="text-center space-y-2 no-print">
-            <h2 className="text-[10px] font-black uppercase tracking-[0.4em] text-muted-foreground/60">Risk Scorecard</h2>
-            <div className="h-px w-16 bg-[#F38020] mx-auto" />
-          </div>
-          <ExecutiveScorecard summary={safeSummary} score={reportScore} powerUsers={powerUsers} />
+          <ExecutiveScorecard summary={safeSummary} score={report.score} powerUsers={report.powerUsers} />
         </section>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-10">
           <div className="flex justify-center no-print">
             <TabsList className="bg-white/40 dark:bg-black/20 backdrop-blur-xl border border-border/50 p-1 h-auto rounded-2xl shadow-soft">
               <TabsTrigger value="library" className="flex items-center gap-2 px-6 py-2.5 rounded-xl data-[state=active]:bg-white dark:data-[state=active]:bg-secondary">
                 <LayoutGrid className="h-4 w-4" />
-                <span className="font-bold text-xs uppercase tracking-wider">Application Library</span>
+                <span className="font-bold text-xs uppercase tracking-wider">Inventory</span>
               </TabsTrigger>
               <TabsTrigger value="forensics" className="flex items-center gap-2 px-6 py-2.5 rounded-xl data-[state=active]:bg-white dark:data-[state=active]:bg-secondary">
                 <BarChart3 className="h-4 w-4" />
-                <span className="font-bold text-xs uppercase tracking-wider">AI Security Report</span>
+                <span className="font-bold text-xs uppercase tracking-wider">AI Security</span>
               </TabsTrigger>
               <TabsTrigger value="summary" className="flex items-center gap-2 px-6 py-2.5 rounded-xl data-[state=active]:bg-white dark:data-[state=active]:bg-secondary">
                 <ShieldAlert className="h-4 w-4" />
@@ -152,15 +135,26 @@ export function ReportDetailsPage() {
               </TabsTrigger>
             </TabsList>
           </div>
-          <TabsContent value="library" className="focus-visible:outline-none chart-print-fix">
-            {activeTab === 'library' && <AppLibraryTab report={report} />}
-          </TabsContent>
-          <TabsContent value="forensics" className="focus-visible:outline-none chart-print-fix">
-            {activeTab === 'forensics' && <SecurityForensicsTab report={report} />}
-          </TabsContent>
-          <TabsContent value="summary" className="focus-visible:outline-none">
-            {activeTab === 'summary' && <SummaryRemediationTab report={report} />}
-          </TabsContent>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, x: 10 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -10 }}
+              transition={{ duration: 0.2 }}
+              className="min-h-[500px]"
+            >
+              <TabsContent value="library" className="mt-0 focus-visible:outline-none chart-print-fix h-full">
+                <AppLibraryTab report={report} />
+              </TabsContent>
+              <TabsContent value="forensics" className="mt-0 focus-visible:outline-none chart-print-fix h-full">
+                <SecurityForensicsTab report={report} />
+              </TabsContent>
+              <TabsContent value="summary" className="mt-0 focus-visible:outline-none h-full">
+                <SummaryRemediationTab report={report} />
+              </TabsContent>
+            </motion.div>
+          </AnimatePresence>
         </Tabs>
         <div className="hidden print:flex flex-col border-t border-black pt-8 space-y-4">
           <div className="flex justify-between items-end">
@@ -175,13 +169,7 @@ export function ReportDetailsPage() {
               <p className="text-xs">{cfContactTeam} — {cfContactRole}</p>
             </div>
           </div>
-          <p className="text-[8px] text-center text-gray-400 font-mono pt-4">
-            AUTHENTICITY VERIFIED VIA RISKGUARD SECURE TUNNEL • HASH: {id.slice(0, 8)}
-          </p>
         </div>
-        <footer className="pt-16 text-center text-[10px] text-muted-foreground uppercase tracking-[0.4em] font-black opacity-40 border-t border-border/50 no-print">
-          Confidential • Cloudflare ZTNA Precision Analytics v1.2 • Generated by RiskGuard AI
-        </footer>
       </div>
     </div>
   );
