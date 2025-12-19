@@ -17,10 +17,19 @@ interface ScorecardProps {
   };
   score: number;
 }
-const ProgressRing = ({ value, color, glowColor }: { value: number; color: string; glowColor: string }) => {
+const COLOR_MAP = {
+  orange: '#F38020',
+  red: '#EF4444',
+  purple: '#A855F7',
+  blue: '#3B82F6',
+  emerald: '#10B981'
+} as const;
+const ProgressRing = ({ value, colorKey }: { value: number; colorKey: keyof typeof COLOR_MAP }) => {
   const radius = 36;
   const circumference = 2 * Math.PI * radius;
-  const offset = circumference - (value / 100) * circumference;
+  const safeValue = Math.min(100, Math.max(0, value));
+  const offset = circumference - (safeValue / 100) * circumference;
+  const color = COLOR_MAP[colorKey];
   return (
     <div className="relative h-20 w-20 flex items-center justify-center">
       <svg className="h-full w-full -rotate-90 transform overflow-visible">
@@ -44,71 +53,71 @@ const ProgressRing = ({ value, color, glowColor }: { value: number; color: strin
           initial={{ strokeDashoffset: circumference }}
           animate={{ strokeDashoffset: offset }}
           transition={{ duration: 1.5, ease: "easeOut" }}
-          style={{ 
-            filter: `drop-shadow(0 0 8px ${glowColor})`,
+          style={{
+            filter: `drop-shadow(0 0 8px ${color}40)`,
             strokeLinecap: "round"
           }}
         />
       </svg>
-      <span className="absolute text-sm font-black tracking-tighter">{Math.round(value)}%</span>
+      <span className="absolute text-sm font-black tracking-tighter">{Math.round(safeValue)}%</span>
     </div>
   );
 };
 export function ExecutiveScorecard({ summary, score }: ScorecardProps) {
   const shadowUsage = Number(summary?.shadowUsage || 0);
-  const unapproved = Number(summary?.unapprovedApps || 0);
-  const dataRisk = summary?.dataExfiltrationRisk || '0 KB';
+  const unapprovedCount = Number(summary?.unapprovedApps || 0);
+  const dataRiskKB = Number(summary?.dataExfiltrationKB || 0);
   const healthScore = Number(score || 0);
-  const compliance = Number(summary?.complianceScore || 0);
+  const complianceScore = Number(summary?.complianceScore || 0);
   const cards = [
     {
       title: "Shadow AI Usage",
       value: `${shadowUsage.toFixed(3)}%`,
       description: "Unmanaged endpoints",
       icon: Activity,
-      color: "text-[#F38020]",
-      glowColor: "rgba(243, 128, 32, 0.5)",
+      colorClass: "text-[#F38020]",
+      colorKey: "orange" as const,
       progress: shadowUsage
     },
     {
       title: "Unapproved Apps",
-      value: String(unapproved),
+      value: String(unapprovedCount),
       description: "Active risk assets",
       icon: AlertTriangle,
-      color: unapproved > 0 ? "text-red-500" : "text-emerald-500",
-      glowColor: unapproved > 0 ? "rgba(239, 68, 68, 0.5)" : "rgba(16, 185, 129, 0.5)",
-      progress: unapproved > 0 ? 100 : 0
+      colorClass: unapprovedCount > 0 ? "text-red-500" : "text-emerald-500",
+      colorKey: (unapprovedCount > 0 ? "red" : "emerald") as const,
+      progress: unapprovedCount > 0 ? 100 : 0
     },
     {
       title: "Risk Volume",
-      value: dataRisk,
+      value: summary?.dataExfiltrationRisk || '0 KB',
       description: "30D Forensic Data",
       icon: HardDriveUpload,
-      color: "text-purple-500",
-      glowColor: "rgba(168, 85, 247, 0.5)",
-      progress: Math.min(100, (Number(summary?.dataExfiltrationKB || 0) / 1024) * 100)
+      colorClass: "text-purple-500",
+      colorKey: "purple" as const,
+      progress: Math.min(100, (dataRiskKB / 1024) * 100)
     },
     {
       title: "Health Score",
       value: `${healthScore.toFixed(0)}%`,
       description: "Security posture",
       icon: ShieldCheck,
-      color: "text-blue-500",
-      glowColor: "rgba(59, 130, 246, 0.5)",
+      colorClass: "text-blue-500",
+      colorKey: "blue" as const,
       progress: healthScore
     },
     {
       title: "Compliance",
-      value: `${compliance.toFixed(0)}%`,
+      value: `${complianceScore.toFixed(0)}%`,
       description: "Managed ratio",
       icon: FileCheck,
-      color: "text-emerald-500",
-      glowColor: "rgba(16, 185, 129, 0.5)",
-      progress: compliance
+      colorClass: "text-emerald-500",
+      colorKey: "emerald" as const,
+      progress: complianceScore
     }
   ];
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-6 lg:gap-8">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 xl:gap-8">
       {cards.map((card, idx) => (
         <motion.div
           key={card.title}
@@ -118,21 +127,21 @@ export function ExecutiveScorecard({ summary, score }: ScorecardProps) {
           whileHover={{ y: -8, transition: { duration: 0.2 } }}
           className="group"
         >
-          <Card className="relative overflow-hidden border-0 bg-white/5 backdrop-blur-xl shadow-2xl h-full before:absolute before:inset-0 before:bg-gradient-mesh before:opacity-10">
+          <Card className="relative overflow-hidden border-0 bg-white/5 backdrop-blur-xl shadow-2xl h-full transition-all duration-300 hover:bg-white/[0.08] before:absolute before:inset-0 before:bg-gradient-mesh before:opacity-10 before:transition-opacity group-hover:before:opacity-20">
             <CardContent className="p-8 flex flex-col items-center text-center space-y-6">
               <div className="relative">
                 <div className="h-14 w-14 rounded-2xl bg-white/10 flex items-center justify-center animate-float group-hover:shadow-glow-lg transition-all">
-                  <card.icon className={cn("h-8 w-8 animate-glow", card.color)} />
+                  <card.icon className={cn("h-8 w-8 animate-glow", card.colorClass)} />
                 </div>
               </div>
               <div className="space-y-1">
                 <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/60">{card.title}</h3>
-                <p className="text-4xl font-black bg-gradient-to-r from-[#F38020] to-[#E55A1B] bg-clip-text text-transparent">
+                <p className="text-4xl font-black bg-gradient-to-r from-[#F38020] to-[#E55A1B] bg-clip-text text-transparent truncate w-full px-2">
                   {card.value}
                 </p>
               </div>
-              <ProgressRing value={card.progress} color={card.color.split('-').pop()?.replace('500', '') === 'red' ? '#ef4444' : card.color.includes('F38020') ? '#F38020' : card.color.includes('purple') ? '#a855f7' : card.color.includes('blue') ? '#3b82f6' : '#10b981'} glowColor={card.glowColor} />
-              <p className="text-xs font-medium text-muted-foreground italic">
+              <ProgressRing value={card.progress} colorKey={card.colorKey} />
+              <p className="text-xs font-medium text-muted-foreground italic min-h-[1rem]">
                 {card.description}
               </p>
             </CardContent>
