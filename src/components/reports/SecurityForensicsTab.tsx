@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { motion } from 'framer-motion';
+import { Skeleton } from '@/components/ui/skeleton';
 import { AssessmentReport } from '@/lib/api';
 interface SecurityForensicsTabProps {
   report: AssessmentReport;
@@ -21,7 +22,6 @@ export function SecurityForensicsTab({ report }: SecurityForensicsTabProps) {
     acc[key] = { label: key, color: COLORS[idx % COLORS.length] };
     return acc;
   }, {} as any);
-  if (trendData.length === 0) return null;
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -37,11 +37,12 @@ export function SecurityForensicsTab({ report }: SecurityForensicsTabProps) {
           <div className="text-[10px] font-mono text-muted-foreground/40 uppercase tracking-tighter hidden md:block">Synced via Cloudflare Zero Trust</div>
         </CardHeader>
         <CardContent className="flex-1 p-4 md:p-8 min-h-[500px]">
-          <ChartContainer config={chartConfig} className="h-full w-full">
-            <BarChart
-              data={trendData}
-              margin={{ top: 20, right: 140, left: 10, bottom: 60 }}
-            >
+          {trendData.length > 0 ? (
+            <ChartContainer config={chartConfig} className="h-full w-full">
+              <BarChart
+                data={trendData}
+                margin={{ top: 20, right: 140, left: 10, bottom: 60 }}
+              >
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" opacity={0.3} />
               <XAxis
                 dataKey="date"
@@ -70,7 +71,12 @@ export function SecurityForensicsTab({ report }: SecurityForensicsTabProps) {
                 <Bar key={key} dataKey={key} stackId="a" fill={COLORS[idx % COLORS.length]} radius={[0, 0, 0, 0]} animationDuration={1500} minPointSize={2} />
               ))}
             </BarChart>
-          </ChartContainer>
+            </ChartContainer>
+          ) : (
+            <div className="h-full flex items-center justify-center p-8">
+              <Skeleton className="h-[450px] w-full max-w-4xl mx-auto rounded-xl shadow-soft bg-gradient-to-r from-muted/50 to-muted animate-pulse" />
+            </div>
+          )}
         </CardContent>
       </Card>
       <div className="flex items-center justify-between text-[10px] font-black text-muted-foreground/40 uppercase tracking-[0.2em] px-2 py-4">
