@@ -16,6 +16,7 @@ export function ReportDetailsPage() {
   const [report, setReport] = useState<AssessmentReport | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('forensics');
+  // Adhering to Zustand Primitive Selection Law for performance and stability
   const cfContactName = useAppStore(s => s.settings.cloudflareContact.name);
   const cfContactTeam = useAppStore(s => s.settings.cloudflareContact.team);
   const cfContactRole = useAppStore(s => s.settings.cloudflareContact.role);
@@ -25,20 +26,20 @@ export function ReportDetailsPage() {
   useEffect(() => {
     let isMounted = true;
     const fetchReport = async () => {
-      if (!id) { 
-        if (isMounted) setIsLoading(false); 
-        return; 
+      if (!id) {
+        if (isMounted) setIsLoading(false);
+        return;
       }
       try {
         setIsLoading(true);
         const res = await api.getReport(id);
-        if (isMounted && res.success && res.data) { 
-          setReport(res.data); 
+        if (isMounted && res.success && res.data) {
+          setReport(res.data);
         }
-      } catch (err) { 
-        console.error('[ReportDetails] Fetch failed:', err); 
-      } finally { 
-        if (isMounted) setIsLoading(false); 
+      } catch (err) {
+        console.error('[ReportDetails] Fetch failed:', err);
+      } finally {
+        if (isMounted) setIsLoading(false);
       }
     };
     fetchReport();
@@ -54,7 +55,7 @@ export function ReportDetailsPage() {
           </div>
           <div className="text-center space-y-2">
             <p className="text-xl font-bold tracking-tight">Generating Precision Audit</p>
-            <p className="text-muted-foreground text-sm italic">Synthesizing executive security telemetry...</p>
+            <p className="text-muted-foreground text-sm italic font-medium uppercase tracking-widest">Synthesizing executive telemetry...</p>
           </div>
         </div>
       </AppLayout>
@@ -87,15 +88,17 @@ export function ReportDetailsPage() {
     libraryCoverage: report.summary?.libraryCoverage ?? 0,
     casbPosture: report.summary?.casbPosture ?? 0
   };
+  const reportScore = report.score ?? 0;
+  const powerUsers = report.powerUsers ?? [];
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 printable-report">
       <div className="py-8 md:py-10 lg:py-12 space-y-12">
         <header className="flex flex-col items-center justify-center space-y-6 text-center relative">
           <div className="no-print lg:absolute top-0 left-0">
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={() => navigate('/reports')} 
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate('/reports')}
               className="rounded-xl gap-2 text-muted-foreground hover:text-foreground"
             >
               <ChevronLeft className="h-4 w-4" /> Back to Archive
@@ -116,10 +119,10 @@ export function ReportDetailsPage() {
               <span className="text-[#F38020] print:text-black font-bold">ZTNA Precision</span>
             </div>
           </div>
-          <Button 
-            variant="outline" 
-            size="lg" 
-            className="rounded-2xl no-print hover:bg-secondary border-border/50 shadow-soft h-14 px-8 font-bold" 
+          <Button
+            variant="outline"
+            size="lg"
+            className="rounded-2xl no-print hover:bg-secondary border-border/50 shadow-soft h-14 px-8 font-bold"
             onClick={() => window.print()}
           >
             <Printer className="h-5 w-5 mr-3" /> Export Executive PDF
@@ -130,21 +133,21 @@ export function ReportDetailsPage() {
             <h2 className="text-[10px] font-black uppercase tracking-[0.4em] text-muted-foreground/60">Risk Scorecard</h2>
             <div className="h-px w-16 bg-[#F38020] mx-auto" />
           </div>
-          <ExecutiveScorecard summary={safeSummary} score={report.score ?? 0} powerUsers={report.powerUsers ?? []} />
+          <ExecutiveScorecard summary={safeSummary} score={reportScore} powerUsers={powerUsers} />
         </section>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-10">
           <div className="flex justify-center no-print">
             <TabsList className="bg-white/40 dark:bg-black/20 backdrop-blur-xl border border-border/50 p-1 h-auto rounded-2xl shadow-soft">
               <TabsTrigger value="library" className="flex items-center gap-2 px-6 py-2.5 rounded-xl data-[state=active]:bg-white dark:data-[state=active]:bg-secondary">
-                <LayoutGrid className="h-4 w-4" /> 
+                <LayoutGrid className="h-4 w-4" />
                 <span className="font-bold text-xs uppercase tracking-wider">Application Library</span>
               </TabsTrigger>
               <TabsTrigger value="forensics" className="flex items-center gap-2 px-6 py-2.5 rounded-xl data-[state=active]:bg-white dark:data-[state=active]:bg-secondary">
-                <BarChart3 className="h-4 w-4" /> 
+                <BarChart3 className="h-4 w-4" />
                 <span className="font-bold text-xs uppercase tracking-wider">AI Security Report</span>
               </TabsTrigger>
               <TabsTrigger value="summary" className="flex items-center gap-2 px-6 py-2.5 rounded-xl data-[state=active]:bg-white dark:data-[state=active]:bg-secondary">
-                <ShieldAlert className="h-4 w-4" /> 
+                <ShieldAlert className="h-4 w-4" />
                 <span className="font-bold text-xs uppercase tracking-wider">AI Summary</span>
               </TabsTrigger>
             </TabsList>

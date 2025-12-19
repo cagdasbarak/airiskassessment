@@ -28,32 +28,55 @@ const ChartContainer = React.forwardRef<
 >(({ id, className, children, config, height = "450px", ...props }, ref) => {
   const uniqueId = React.useId?.() ?? ''
   const chartId = `chart-${id || uniqueId.replace(/:/g, "")}`
+  const containerRef = React.useRef<HTMLDivElement>(null)
+  const [dims, setDims] = React.useState({ width: 0, height: 0 })
   const [mounted, setMounted] = React.useState(false)
+  React.useImperativeHandle(ref, () => containerRef.current!)
   React.useEffect(() => {
     setMounted(true)
+    if (!containerRef.current) return
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0]
+      if (entry) {
+        setDims({
+          width: entry.contentRect.width,
+          height: entry.contentRect.height,
+        })
+      }
+    })
+    observer.observe(containerRef.current)
+    return () => observer.disconnect()
   }, [])
+  // Guard: Only render Recharts when dimensions are positive to avoid -1/-1 warnings
+  const shouldRenderChart = mounted && dims.width > 0 && dims.height > 0
   return (
     <ChartContext.Provider value={{ config }}>
       <div
+        ref={containerRef}
         style={
           {
             "--chart-style-id": `chart-style-${chartId}`,
             minWidth: "0px",
             height: height,
+            display: 'flex',
+            flexDirection: 'column'
           } as React.CSSProperties
         }
-        ref={ref}
         className={cn(
-          "relative flex flex-col min-w-0 w-full overflow-visible justify-center text-xs print:overflow-visible [&_.recharts-cartesian-axis-tick_text]:fill-muted-foreground [&_.recharts-cartesian-grid_line[stroke='#ccc']]:stroke-border/50",
+          "relative w-full overflow-visible text-xs print:overflow-visible [&_.recharts-cartesian-axis-tick_text]:fill-muted-foreground [&_.recharts-cartesian-grid_line[stroke='#ccc']]:stroke-border/50",
           className
         )}
         {...props}
       >
         <ChartStyle id={chartId} config={config} />
-        {mounted && (
-          <RechartsPrimitive.ResponsiveContainer width="100%" height="100%" debounce={1}>
+        {shouldRenderChart ? (
+          <RechartsPrimitive.ResponsiveContainer width="100%" height="100%">
             {children as any}
           </RechartsPrimitive.ResponsiveContainer>
+        ) : (
+          <div className="flex-1 w-full h-full flex items-center justify-center bg-secondary/5 rounded-xl border border-dashed border-border/20">
+             <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/40">Calculating Viewport...</span>
+          </div>
         )}
       </div>
     </ChartContext.Provider>
