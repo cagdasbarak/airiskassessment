@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { ShieldCheck, Activity, Database, FileCheck, AlertTriangle, Info, HardDriveUpload } from 'lucide-react';
+import { ShieldCheck, Activity, FileCheck, AlertTriangle, Info, HardDriveUpload } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Badge } from '@/components/ui/badge';
@@ -24,12 +24,14 @@ export function ExecutiveScorecard({ summary, score }: ScorecardProps) {
   const unapprovedCount = summary?.unapprovedApps ?? 0;
   const dataExfiltrationKB = summary?.dataExfiltrationKB ?? 0;
   const healthScore = score ?? 0;
+  // Consume the pre-formatted high-fidelity string from the backend
   const dataRiskLabel = summary?.dataExfiltrationRisk ?? '0 KB';
   const compliance = summary?.complianceScore ?? 0;
   // Visual Risk Triggers
   const isHighRiskShadow = shadowUsageValue > 50;
   const isCriticalUnapproved = unapprovedCount > 0;
-  const isCriticalUpload = dataExfiltrationKB > 1024; // > 1MB
+  // Badge and color triggers for data volume (1024KB = 1MB)
+  const isCriticalUpload = dataExfiltrationKB >= 1024;
   const cards = [
     {
       title: "Shadow AI Usage",
@@ -56,13 +58,13 @@ export function ExecutiveScorecard({ summary, score }: ScorecardProps) {
     {
       title: "Unmanaged AI Upload",
       value: dataRiskLabel,
-      description: "Potential data leak volume.",
+      description: "30D Forensic Data Leakage.",
       icon: HardDriveUpload,
       color: isCriticalUpload ? "text-red-500" : "text-purple-500",
       bg: isCriticalUpload ? "bg-red-500/10" : "bg-purple-500/10",
       highlight: isCriticalUpload,
       badge: isCriticalUpload ? "Critical" : null,
-      tooltip: "Calculated from real-time Cloudflare DLP Incident Telemetry, tracking data sent to unreviewed or unapproved AI endpoints."
+      tooltip: "High-fidelity aggregate of bytes sent to unreviewed or unapproved AI endpoints within the last 30 days, filtered by Gateway status and DLP incidents."
     },
     {
       title: "Health Score",
@@ -91,10 +93,10 @@ export function ExecutiveScorecard({ summary, score }: ScorecardProps) {
             key={card.title}
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ 
+            transition={{
               delay: idx * 0.1,
               duration: 0.5,
-              ease: [0.23, 1, 0.32, 1] 
+              ease: [0.23, 1, 0.32, 1]
             }}
           >
             <Card className={cn(

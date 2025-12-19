@@ -26,9 +26,8 @@ const safeFetch = async (endpoint: string, settings: any) => {
 };
 const formatRiskVolume = (kb: number): string => {
   if (kb === 0) return "0 KB";
-  if (kb < 1024) return `${kb} KB`;
-  if (kb < 1024 * 1024) return `${(kb / 1024).toFixed(2)} MB`;
-  return `${(kb / (1024 * 1024)).toFixed(2)} GB`;
+  if (kb < 1024) return `${kb.toLocaleString()} KB`;
+  return `${(kb / 1024).toFixed(2)} MB`;
 };
 export function coreRoutes(app: Hono<{ Bindings: Env }>) {
   if (coreRoutesRegistered) return;
@@ -148,17 +147,24 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       const managedIds = aiIds.filter((id: string) => managedIdsSet.has(id));
       const managedCount = managedIds.length;
       const shadowCount = totalAI - managedCount;
-      const shadowUsage = totalAI > 0 
-        ? Number(((shadowCount / totalAI) * 100).toFixed(3)) 
+      const shadowUsage = totalAI > 0
+        ? Number(((shadowCount / totalAI) * 100).toFixed(3))
         : 0;
+      // PHASE 29: Precision 30-Day DLP Forensic Filtering
+      const cutoffDate = new Date(Date.now() - 30 * 24 * 3600 * 1000);
       const dlpResp = await safeFetch('/dlp/incidents?per_page=500', settings);
       const dlpJson = safeJSON(await dlpResp.text());
       let dataExfiltrationKB = 0;
       if (dlpJson?.result) {
-        const unmanagedIncidents = dlpJson.result.filter((i: any) => 
-          i.gatewayApp?.status === 'Unreviewed' || i.gatewayApp?.status === 'Unapproved'
-        );
-        const totalBytes = unmanagedIncidents.reduce((sum: number, i: any) => sum + (i.fileSize || 0), 0);
+        const forensicIncidents = dlpJson.result.filter((i: any) => {
+          const timestamp = i.timestamp || i.edgeStartTS || i.created_at;
+          const incidentDate = new Date(timestamp);
+          const isWithin30Days = incidentDate > cutoffDate;
+          const status = i.gatewayApp?.status;
+          const isUnmanaged = status === 'Unreviewed' || status === 'Unapproved';
+          return isWithin30Days && isUnmanaged;
+        });
+        const totalBytes = forensicIncidents.reduce((sum: number, i: any) => sum + (i.fileSize || 0), 0);
         dataExfiltrationKB = Math.floor(totalBytes / 1024);
       }
       const unapprovedAppsCount = unapproved.filter((id: string) => aiIds.includes(id)).length;
@@ -171,7 +177,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         - Unapproved AI Apps Detected: ${unapprovedAppsCount}
         - Overall Security Health Score: ${healthScore.toFixed(0)}%
         - Total Detected AI Apps: ${totalAI}
-        - Potential Sensitive Data Exposure: ${formatRiskVolume(dataExfiltrationKB)}
+        - Potential Sensitive Data Exposure (30-day forensic): ${formatRiskVolume(dataExfiltrationKB)}
         Provide your analysis in EXACTLY this JSON format:
         {
           "summary": "A 2-sentence executive summary of the risk posture.",
@@ -229,7 +235,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         action: 'Report Generated',
         user: settings.email || 'System Admin',
         status: 'Success',
-        description: `Detected ${shadowCount} shadow apps with ${formatRiskVolume(dataExfiltrationKB)} potential data exposure.`
+        description: `30-Day Forensic: Detected ${shadowCount} shadow apps with ${formatRiskVolume(dataExfiltrationKB)} unmanaged data exposure.`
       });
       return c.json({ success: true, data: report });
     } catch (error: any) {
