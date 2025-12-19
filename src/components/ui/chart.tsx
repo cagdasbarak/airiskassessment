@@ -37,7 +37,7 @@ const ChartContainer = React.forwardRef<
     if (!containerRef.current) return
     const observer = new ResizeObserver((entries) => {
       const entry = entries[0]
-      if (entry) {
+      if (entry && entry.contentRect.width > 0 && entry.contentRect.height > 0) {
         setDims({
           width: entry.contentRect.width,
           height: entry.contentRect.height,
@@ -47,6 +47,7 @@ const ChartContainer = React.forwardRef<
     observer.observe(containerRef.current)
     return () => observer.disconnect()
   }, [])
+  // Strict check for valid dimensions to prevent Recharts -1/-1 warnings
   const shouldRenderChart = mounted && dims.width > 0 && dims.height > 0
   return (
     <ChartContext.Provider value={{ config }}>
@@ -58,6 +59,7 @@ const ChartContainer = React.forwardRef<
           {
             "--chart-style-id": `chart-style-${chartId}`,
             minWidth: "0px",
+            minHeight: "1px", // Prevent zero-height calculation errors
             height: height,
             display: 'flex',
             flexDirection: 'column'

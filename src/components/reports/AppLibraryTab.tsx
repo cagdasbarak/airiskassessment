@@ -13,7 +13,7 @@ interface AppLibraryTabProps {
   report: AssessmentReport;
 }
 export function AppLibraryTab({ report }: AppLibraryTabProps) {
-  const apps = report.appLibrary || [];
+  const apps = useMemo(() => report.appLibrary || [], [report.appLibrary]);
   const distributionData = useMemo(() => {
     const counts = apps.reduce((acc, app) => {
       acc[app.status] = (acc[app.status] || 0) + 1;
@@ -26,12 +26,12 @@ export function AppLibraryTab({ report }: AppLibraryTabProps) {
       { status: 'Unreviewed', count: counts['Unreviewed'] || 0, fill: '#6B7280' },
     ];
   }, [apps]);
-  const distributionConfig = {
+  const distributionConfig = useMemo(() => ({
     count: { label: 'Applications' },
     Approved: { label: 'Approved', color: '#10B981' },
     Review: { label: 'Review', color: '#F38020' },
     Unapproved: { label: 'Unapproved', color: '#EF4444' },
-  };
+  }), []);
   if (apps.length === 0) {
     return (
       <motion.div

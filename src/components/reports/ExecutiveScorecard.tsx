@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { ShieldCheck, Activity, AlertTriangle, HardDriveUpload, User } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -62,6 +62,9 @@ export function ExecutiveScorecard({ summary, score, powerUsers = [] }: Scorecar
     dataExfiltrationKB: 0, dataExfiltrationRisk: "0 KB", complianceScore: 0, libraryCoverage: 0
   };
   const safeSummary = summary || defaultSummary;
+  useEffect(() => {
+    console.log(`SHADOW_AI_CALC total_ai=${safeSummary.aiApps} managed=${safeSummary.aiApps - safeSummary.shadowAiApps} shadow_pct=${safeSummary.shadowUsage}`);
+  }, [safeSummary]);
   const shadowUsage = Number(safeSummary.shadowUsage ?? 0);
   const unapprovedCount = Number(safeSummary.unapprovedApps ?? 0);
   const dataRiskKB = Number(safeSummary.dataExfiltrationKB ?? 0);
@@ -71,7 +74,15 @@ export function ExecutiveScorecard({ summary, score, powerUsers = [] }: Scorecar
   const trafficProgress = Math.min(100, (dataRiskKB / 5000) * 100);
   const userProgress = topUser ? Math.min(100, (topUser.prompts / 100) * 100) : 0;
   const cards = [
-    { title: "Shadow AI Usage", value: `${shadowUsage.toFixed(2)}%`, description: "Unmanaged endpoints", icon: Activity, colorClass: "text-[#F38020]", colorKey: "orange" as const, progress: shadowUsage * 5 },
+    { 
+      title: "Shadow AI Usage", 
+      value: `${shadowUsage.toFixed(3)}%`, 
+      description: "Unmanaged endpoints", 
+      icon: Activity, 
+      colorClass: "text-[#F38020]", 
+      colorKey: "orange" as const, 
+      progress: Math.min(100, shadowUsage * 5) 
+    },
     { title: "Unapproved Apps", value: String(unapprovedCount), description: "Active risk assets", icon: AlertTriangle, colorClass: unapprovedCount > 0 ? "text-red-500" : "text-emerald-500", colorKey: (unapprovedCount > 0 ? "red" : "emerald") as ColorKey, progress: unapprovedCount > 0 ? 100 : 0 },
     { title: "Unmanaged Traffic", value: `${dataRiskKB.toLocaleString()} KB`, description: "Non-corporate volume", icon: HardDriveUpload, colorClass: isTrafficRisk ? "text-red-500" : "text-purple-500", colorKey: (isTrafficRisk ? "red" : "purple") as ColorKey, progress: trafficProgress },
     { title: "Top AI Users", value: topUser ? topUser.email.split('@')[0] : 'None Detected', description: topUser ? `${topUser.prompts} forensic events` : 'No activity tracked', icon: User, colorClass: "text-purple-500", colorKey: "purple" as const, progress: userProgress },
