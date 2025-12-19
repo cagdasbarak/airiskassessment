@@ -7,6 +7,7 @@ import { ShieldCheck, Zap, ArrowRight, Activity, Loader2, Sparkles } from 'lucid
 import { toast } from 'sonner';
 import { api, AssessmentReport } from '@/lib/api';
 import { motion } from 'framer-motion';
+import { cn } from '@/lib/utils';
 export function DashboardPage() {
   const navigate = useNavigate();
   const [isAssessing, setIsAssessing] = useState(false);
@@ -18,12 +19,9 @@ export function DashboardPage() {
         const res = await api.listReports();
         if (res.success && res.data && res.data.length > 0) {
           setLastReport(res.data[0]);
-        } else {
-          setLastReport(null);
         }
       } catch (err) {
-        console.error('Failed to fetch reports');
-        setLastReport(null);
+        console.error('Dashboard telemetry fetch failed');
       } finally {
         setIsLoading(false);
       }
@@ -37,16 +35,11 @@ export function DashboardPage() {
       loading: 'Analyzing Cloudflare Zero Trust logs...',
       success: (res) => {
         if (res.success && res.data) {
-          // Forensic Logging to Browser Console synchronized with toast label
-          if (res.data.debug) {
-            console.log('DEBUG_SHADOW', res.data.debug);
-          }
-          // Delaying navigation slightly for better visual feedback
           setTimeout(() => {
             setIsAssessing(false);
             navigate(`/reports/${res.data.id}`);
-          }, 500);
-          return 'Assessment complete! Check console for DEBUG_SHADOW';
+          }, 800);
+          return 'Precision assessment generated.';
         }
         setIsAssessing(false);
         throw new Error(res.error || 'Assessment failed');
@@ -59,12 +52,7 @@ export function DashboardPage() {
   };
   const containerVariants = {
     hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.15
-      }
-    }
+    show: { opacity: 1, transition: { staggerChildren: 0.1 } }
   };
   const itemVariants = {
     hidden: { opacity: 0, y: 20 },
@@ -76,90 +64,101 @@ export function DashboardPage() {
         variants={containerVariants}
         initial="hidden"
         animate="show"
-        className="space-y-8"
+        className="space-y-10"
       >
         <motion.div
           variants={itemVariants}
-          className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#F38020] to-[#E55A1B] p-8 md:p-12 text-white shadow-xl"
+          className="relative overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-[#F38020] to-[#D14615] p-10 md:p-16 text-white shadow-2xl"
         >
-          <div className="relative z-10 max-w-2xl space-y-6">
+          <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10 pointer-events-none" />
+          <div className="relative z-10 max-w-3xl space-y-8">
             <motion.div
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.3 }}
-              className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 backdrop-blur-sm text-xs font-bold uppercase tracking-wider"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/20 backdrop-blur-md text-[10px] font-black uppercase tracking-[0.2em]"
             >
-              <Sparkles className="h-3 w-3" />
-              AI-Powered Security
+              <Sparkles className="h-3 w-3 animate-pulse" />
+              Executive Risk Platform
             </motion.div>
-            <h1 className="text-4xl md:text-5xl font-bold tracking-tight">
-              AI Risk Assessment Command Center
+            <h1 className="text-5xl md:text-7xl font-black tracking-tighter leading-none">
+              Zero Trust <br />
+              <span className="text-white/80">Command Center</span>
             </h1>
-            <p className="text-lg text-white/90">
-              Instantly audit your Cloudflare Zero Trust environment for shadow AI usage,
-              data exfiltration risks, and policy compliance.
+            <p className="text-xl text-white/90 leading-relaxed max-w-xl font-medium">
+              Perform high-fidelity audits of your Cloudflare infrastructure to identify shadow AI usage and data exfiltration vulnerabilities.
             </p>
-            <Button
-              size="lg"
-              onClick={startAssessment}
-              disabled={isAssessing}
-              className="bg-white text-[#F38020] hover:bg-white/90 font-bold h-12 px-8 rounded-xl shadow-lg transition-all hover:scale-105 active:scale-95"
-            >
-              {isAssessing ? (
-                <>
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  Processing...
-                </>
-              ) : (
-                <>
-                  Start New Assessment
-                  <Zap className="ml-2 h-5 w-5 fill-current" />
-                </>
-              )}
-            </Button>
+            <div className="pt-4">
+              <Button
+                size="lg"
+                onClick={startAssessment}
+                disabled={isAssessing}
+                className="bg-white text-[#F38020] hover:bg-white/90 font-black h-14 px-10 rounded-2xl shadow-glow hover:scale-105 active:scale-95 transition-all text-lg"
+              >
+                {isAssessing ? (
+                  <>
+                    <Loader2 className="mr-3 h-6 w-6 animate-spin" />
+                    Analyzing Data...
+                  </>
+                ) : (
+                  <>
+                    Launch Assessment
+                    <Zap className="ml-3 h-6 w-6 fill-current" />
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
-          <div className="absolute right-0 top-0 h-full w-1/3 opacity-10 pointer-events-none">
-            <ShieldCheck className="h-full w-full" />
+          <div className="absolute -right-20 -bottom-20 h-96 w-96 opacity-10 pointer-events-none">
+            <ShieldCheck className="h-full w-full rotating" />
           </div>
         </motion.div>
-        <motion.div variants={itemVariants}>
-          <Card className="border-border/50 shadow-soft hover:shadow-md transition-shadow">
-            <CardHeader className="flex flex-row items-center justify-between">
+        <motion.div variants={itemVariants} className="grid grid-cols-1 gap-8">
+          <Card className="border-0 bg-white/40 dark:bg-black/20 backdrop-blur-xl shadow-soft overflow-hidden">
+            <CardHeader className="flex flex-row items-center justify-between border-b border-border/10 pb-6">
               <div>
-                <CardTitle>Latest Security Insight</CardTitle>
-                <CardDescription>
-                  {lastReport ? `Summary from report generated on ${lastReport.date ?? 'Unknown'}` : 'No assessments generated yet'}
+                <CardTitle className="text-2xl font-black tracking-tight">Latest Security Insight</CardTitle>
+                <CardDescription className="font-medium">
+                  {lastReport ? `Telemetry snapshot from ${lastReport.date}` : 'No active audit records found'}
                 </CardDescription>
               </div>
-              <Activity className="h-5 w-5 text-[#F38020]" />
+              <div className="h-12 w-12 rounded-2xl bg-[#F38020]/10 flex items-center justify-center">
+                <Activity className="h-6 w-6 text-[#F38020]" />
+              </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-8">
               {isLoading ? (
-                <div className="flex justify-center py-8">
-                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                <div className="flex justify-center py-12">
+                  <Loader2 className="h-10 w-10 animate-spin text-[#F38020]" />
                 </div>
               ) : lastReport ? (
-                <div className="space-y-6">
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div className="space-y-8">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                     {[
-                      { label: 'Health Score', value: `${lastReport?.score?.toFixed(0) ?? 0}%`, color: 'text-foreground' },
-                      { label: 'Shadow Usage', value: `${lastReport?.summary?.shadowUsage?.toFixed(2) ?? 0}%`, color: 'text-orange-500' },
-                      { label: 'Unapproved Apps', value: lastReport?.summary?.unapprovedApps ?? 0, color: 'text-red-500' },
-                      { label: 'Risk Level', value: lastReport?.riskLevel ?? 'N/A', color: 'text-blue-500' },
+                      { label: 'Posture Score', value: `${lastReport.score}%`, color: 'text-foreground' },
+                      { label: 'Shadow Usage', value: `${lastReport.summary.shadowUsage.toFixed(2)}%`, color: 'text-[#F38020]' },
+                      { label: 'Risk Assets', value: lastReport.summary.unapprovedApps, color: 'text-red-500' },
+                      { label: 'Forensic Risk', value: lastReport.riskLevel, color: 'text-blue-500' },
                     ].map((stat, i) => (
-                      <div key={i} className="p-4 rounded-2xl bg-secondary/50 text-center space-y-1">
-                        <span className={`text-2xl font-bold ${stat.color}`}>{stat.value}</span>
-                        <p className="text-xs text-muted-foreground uppercase tracking-wider">{stat.label}</p>
+                      <div key={i} className="p-6 rounded-3xl bg-white/50 dark:bg-white/5 border border-border/5 text-center space-y-2 group hover:bg-white transition-colors cursor-default">
+                        <span className={cn("text-3xl font-black", stat.color)}>{stat.value}</span>
+                        <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest">{stat.label}</p>
                       </div>
                     ))}
                   </div>
-                  <Button variant="ghost" className="w-full group" onClick={() => navigate(`/reports/${lastReport.id}`)}>
-                    View Full Report <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+                  <Button 
+                    variant="ghost" 
+                    className="w-full h-14 text-lg font-bold group rounded-2xl border border-border/10 hover:bg-secondary/50" 
+                    onClick={() => navigate(`/reports/${lastReport.id}`)}
+                  >
+                    Drill Down into Full Analysis 
+                    <ArrowRight className="ml-3 h-5 w-5 transition-transform group-hover:translate-x-2" />
                   </Button>
                 </div>
               ) : (
-                <div className="text-center py-12 text-muted-foreground border-2 border-dashed rounded-2xl">
-                  Click "Start New Assessment" to begin your first audit.
+                <div className="text-center py-20 text-muted-foreground border-2 border-dashed rounded-[2rem] border-border/20">
+                  <ShieldCheck className="h-12 w-12 mx-auto mb-4 opacity-10" />
+                  <p className="text-lg font-semibold">Ready for your first security audit.</p>
+                  <p className="text-sm">Click the launch button above to aggregate Cloudflare ZTNA logs.</p>
                 </div>
               )}
             </CardContent>
@@ -167,11 +166,15 @@ export function DashboardPage() {
         </motion.div>
         <motion.footer
           variants={itemVariants}
-          className="pt-12 pb-6 text-center text-muted-foreground/60 text-sm space-y-2"
+          className="pt-16 pb-8 text-center"
         >
-          <p>Powered by Cloudflare Workers & AI</p>
-          <p className="max-w-2xl mx-auto px-4">
-            Note: Although this project has AI capabilities, there is a limit on the number of requests that can be made to the AI servers across all user apps in a given time period.
+          <div className="h-px w-24 bg-[#F38020]/20 mx-auto mb-6" />
+          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground/40 mb-3">
+            Powered by Cloudflare Workers & AI
+          </p>
+          <p className="max-w-xl mx-auto px-6 text-xs text-muted-foreground/60 font-medium leading-relaxed italic">
+            Disclaimer: There is a system-wide limit on the number of AI requests across all instances. 
+            Assessments are prioritized based on service availability.
           </p>
         </motion.footer>
       </motion.div>
