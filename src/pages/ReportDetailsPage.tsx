@@ -81,6 +81,7 @@ export function ReportDetailsPage() {
     dataExfiltrationRisk: report.summary?.dataExfiltrationRisk ?? '0 KB',
     complianceScore: report.summary?.complianceScore ?? 0,
     libraryCoverage: report.summary?.libraryCoverage ?? 0,
+    casbPosture: report.summary?.casbPosture ?? 0
   };
   const defaultSummary = "This report provides a definitive analysis of organizational AI usage patterns. Current telemetry suggests a dynamic risk landscape that requires proactive Cloudflare Gateway management to ensure data integrity.";
   return (
@@ -88,9 +89,9 @@ export function ReportDetailsPage() {
       <div className="space-y-12 lg:space-y-16 pb-24 max-w-6xl mx-auto">
         <header className="flex flex-col items-center justify-center space-y-6 text-center relative" role="banner">
           <div className="no-print lg:absolute top-0 left-0">
-            <Button
-              variant="ghost"
-              size="sm"
+            <Button 
+              variant="ghost" 
+              size="sm" 
               onClick={handleBack}
               className="rounded-xl gap-2 text-muted-foreground hover:text-foreground"
               aria-label="Return to report archive"
@@ -113,9 +114,9 @@ export function ReportDetailsPage() {
               <span>ZTNA Telemetry</span>
             </div>
           </div>
-          <Button
-            variant="outline"
-            size="lg"
+          <Button 
+            variant="outline" 
+            size="lg" 
             className="rounded-2xl no-print hover:bg-secondary border-border/50 shadow-soft h-14 px-8 font-bold"
             onClick={handlePrint}
           >
@@ -129,7 +130,7 @@ export function ReportDetailsPage() {
           </div>
           <ExecutiveScorecard 
             summary={safeSummary} 
-            score={report.score ?? 0} 
+            score={report.score ?? 0}
             powerUsers={report.powerUsers ?? []}
           />
         </section>

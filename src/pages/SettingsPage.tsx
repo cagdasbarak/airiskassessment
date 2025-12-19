@@ -61,11 +61,11 @@ export function SettingsPage() {
         toast.success('Settings saved securely');
       } else {
         console.error('Settings save failed API error:', res.error);
-        toast.warn('Save failed—check console logs');
+        toast.warning('Save failed—check console logs');
       }
     } catch (err) {
       console.error('Network error while saving settings:', err);
-      toast.warn('Save failed—check console logs');
+      toast.warning('Save failed—check console logs');
     } finally {
       setIsSaving(false);
     }

@@ -161,20 +161,24 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       const managedIdsSet = new Set([...approved, ...inReview, ...unapproved]);
       const managedIds = aiIds.filter((id: string) => managedIdsSet.has(id));
       const shadowCount = Math.max(0, totalAI - managedIds.length);
-      const shadowUsage = totalAI > 0 ? Number(((shadowCount / totalAI) * 100).toFixed(3)) : 0;
+      const shadowUsageValue = totalAI > 0 ? (shadowCount / totalAI) * 100 : 0;
+      const shadowUsage = Number(shadowUsageValue.toFixed(3));
       const accessResp = await safeFetch('/access/events?per_page=1000', settings);
       const accessJson = safeJSON(await accessResp.text());
       const events = Array.isArray(accessJson?.result) ? accessJson.result : [];
-      const unmanagedEvents = events.filter((ev: any) =>
-        ev.gatewayApp &&
-        ['Unapproved', 'Unreviewed'].includes(ev.gatewayApp.status) &&
-        Number(ev.bytesSent || 0) > 0
-      );
-      const dataExfiltrationKB = Math.floor(unmanagedEvents.reduce((sum: number, ev: any) =>
+      const unmanagedEvents = events.filter((ev: any) => {
+        if (!ev.gatewayApp || !ev.gatewayApp.id) return false;
+        const appId = String(ev.gatewayApp.id);
+        const isAI = aiIds.includes(appId);
+        const isNotManaged = !managedIdsSet.has(appId);
+        const hasTraffic = Number(ev.bytesSent || 0) > 0;
+        return isAI && isNotManaged && hasTraffic;
+      });
+      const dataExfiltrationKB = Math.floor(unmanagedEvents.reduce((sum: number, ev: any) => 
         sum + (Number(ev.bytesSent || 0) / 1024), 0
       ));
       const aiKeywords = /chatgpt|claude|gemini|copilot/i;
-      const aiUsageEvents = events.filter((ev: any) =>
+      const aiUsageEvents = events.filter((ev: any) => 
         ev.gatewayApp?.name && aiKeywords.test(ev.gatewayApp.name)
       );
       const userMap = new Map<string, number>();
@@ -234,7 +238,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
           totalApps: Math.round(totalAI * 1.25),
           aiApps: totalAI,
           shadowAiApps: shadowCount,
-          shadowUsage: Number(shadowUsage.toFixed(3)),
+          shadowUsage: shadowUsage,
           unapprovedApps: unapprovedAppsCount,
           dataExfiltrationKB: dataExfiltrationKB,
           dataExfiltrationRisk: formatRiskVolume(dataExfiltrationKB),
