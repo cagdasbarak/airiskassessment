@@ -1,29 +1,28 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { useAppStore } from '@/lib/store';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 interface ProtectedRouteProps {
   children: React.ReactNode;
 }
 /**
  * Robust authentication guard that prevents context loss crashes.
- * Calls hooks at the top level and handles navigation in a stable useEffect.
+ * Uses <Navigate /> instead of useNavigate + useEffect for zero-render redirection.
  */
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const isAuthenticated = useAppStore((s) => s.isAuthenticated);
-  const navigate = useNavigate();
   const location = useLocation();
-  useEffect(() => {
-    // Check if auth state is loaded. If false, redirect to login.
-    if (isAuthenticated === false) {
-      console.warn('[AUTH] Unauthorized access attempt to:', location.pathname);
-      navigate('/login', { 
-        replace: true,
-        state: { from: location.pathname }
-      });
-    }
-  }, [isAuthenticated, navigate, location.pathname]);
-  // If state is not yet ready or explicitly false, prevent rendering protected nodes
-  if (!isAuthenticated) {
+  // Explicit check for the authentication state
+  if (isAuthenticated === false) {
+    return (
+      <Navigate 
+        to="/login" 
+        state={{ from: location.pathname }} 
+        replace 
+      />
+    );
+  }
+  // Handle initial hydration or null state
+  if (isAuthenticated === null || isAuthenticated === undefined) {
     return null;
   }
   return <React.Fragment>{children}</React.Fragment>;

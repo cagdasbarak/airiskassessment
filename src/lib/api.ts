@@ -23,18 +23,6 @@ export interface LicenseInfo {
   casb: boolean;
   rbi: boolean;
 }
-export interface AppPolicy {
-  name: string;
-  action: string;
-  type: 'Gateway' | 'Access';
-}
-export interface AppUsageEvent {
-  clientIP: string;
-  userEmail: string;
-  action: string;
-  date: string;
-  bytesKB: number;
-}
 export interface PowerUser {
   email: string;
   name: string;
@@ -43,7 +31,6 @@ export interface PowerUser {
 export interface SecurityCharts {
   usageOverTime?: Array<{ name: string; usage: number }>;
   riskDistribution?: Array<{ name: string; value: number }>;
-  topAppsTrend?: Array<Record<string, any>>;
 }
 export interface AssessmentReport {
   id: string;
@@ -72,27 +59,18 @@ export interface AssessmentReport {
     risk: string;
     risk_score: number;
     genai_score: number;
-    policies: AppPolicy[];
-    usage: AppUsageEvent[];
+    policies: any[];
+    usage: any[];
   }>;
   securityCharts: SecurityCharts;
-  aiInsights?: {
-    summary: string;
-    recommendations: Array<{
-      title: string;
-      description: string;
-      type: 'critical' | 'policy' | 'optimization';
-    }>;
-  };
 }
 async function safeApi<T>(endpoint: string, options?: RequestInit): Promise<ApiResponse<T>> {
   const url = `/api${endpoint}`;
-  console.info(`[API CALL] Starting ${options?.method || 'GET'} to ${endpoint}`);
   try {
     const res = await fetch(url, options);
     const text = await res.text();
     if (!res.ok) {
-      console.error(`[API ERROR] Endpoint ${endpoint} returned ${res.status}:`, text.slice(0, 300));
+      console.warn(`[API DIAGNOSTIC] ${options?.method || 'GET'} ${endpoint} failed with status ${res.status}`);
       let errorData;
       try {
         errorData = JSON.parse(text);
@@ -101,14 +79,17 @@ async function safeApi<T>(endpoint: string, options?: RequestInit): Promise<ApiR
       }
       return { success: false, error: errorData.error, detail: errorData.detail } as ApiResponse<T>;
     }
+    if (!text || text.trim().length === 0) {
+      return { success: true } as ApiResponse<T>;
+    }
     try {
       return JSON.parse(text) as ApiResponse<T>;
     } catch (e: any) {
-      console.error(`[API ERROR] Failed to parse JSON from ${endpoint}:`, text.slice(0, 300));
-      return { success: false, error: 'Invalid JSON from server' } as ApiResponse<T>;
+      console.error(`[API DIAGNOSTIC] JSON parsing failed for ${endpoint}:`, text.slice(0, 100));
+      return { success: false, error: 'Invalid server response' } as ApiResponse<T>;
     }
   } catch (error: any) {
-    console.error(`[API ERROR] Network failure reaching ${endpoint}:`, error);
+    console.error(`[API DIAGNOSTIC] Network failure for ${endpoint}:`, error.message);
     return { success: false, error: 'Network connection failed' } as ApiResponse<T>;
   }
 }

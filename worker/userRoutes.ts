@@ -3,9 +3,11 @@ import { getAgentByName } from 'agents';
 import { ChatAgent } from './agent';
 import { Env, getAppController, registerSession } from "./core-utils";
 import type { AssessmentReport, PowerUser, AppPolicy } from './app-controller';
-let routesRegistered = false;
+let coreRoutesRegistered = false;
+let userRoutesRegistered = false;
 export function coreRoutes(app: Hono<{ Bindings: Env }>) {
-  if (routesRegistered) return;
+  if (coreRoutesRegistered) return;
+  coreRoutesRegistered = true;
   app.all('/api/chat/:sessionId/*', async (c) => {
     try {
       const sessionId = c.req.param('sessionId');
@@ -24,24 +26,23 @@ export function coreRoutes(app: Hono<{ Bindings: Env }>) {
   });
 }
 export function userRoutes(app: Hono<{ Bindings: Env }>) {
-  if (routesRegistered) return;
-  routesRegistered = true;
+  if (userRoutesRegistered) return;
+  userRoutesRegistered = true;
   const getCFHeaders = (email: string, key: string) => ({
-    'X-Auth-Email': email,
-    'X-Auth-Key': key,
+    'X-Auth-Email': email ?? '',
+    'X-Auth-Key': key ?? '',
     'Content-Type': 'application/json'
   });
   const safeCFJson = async (resp: Response): Promise<any> => {
-    const text = await resp.text().catch(() => '');
-    if (!resp.ok) {
-      console.error(`CF API error ${resp.status} ${resp.url}:`, text.slice(0, 300));
-      return { success: false, result: [], errors: [{ message: `HTTP ${resp.status}: ${text.slice(0, 100)}` }] };
-    }
     try {
+      const text = await resp.text().catch(() => '');
+      if (!resp.ok) {
+        console.warn(`CF API error ${resp.status}:`, text.slice(0, 100));
+        return { success: false, result: [], errors: [{ message: `HTTP ${resp.status}` }] };
+      }
       return JSON.parse(text || '{}');
-    } catch (e: any) {
-      console.error(`CF API bad JSON: ${e.message}`, text.slice(0, 300));
-      return { success: false, result: [], errors: [{ message: 'Invalid JSON response' }] };
+    } catch (e) {
+      return { success: false, result: [], errors: [{ message: 'Parse error' }] };
     }
   };
   app.get('/api/settings', async (c) => {
@@ -70,8 +71,8 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       const subData = await safeCFJson(subRes);
       if (!subData.success) return c.json({ success: false, error: 'Authentication failed' }, { status: 401 });
       const results = subData.result || [];
-      return c.json({ 
-        success: true, 
+      return c.json({
+        success: true,
         data: {
           plan: results.find((s: any) => s.rate_plan?.public_name?.includes('Zero Trust'))?.rate_plan?.public_name || 'Zero Trust Free',
           totalLicenses: 50,
@@ -81,7 +82,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
           dlp: true,
           casb: false,
           rbi: true
-        } 
+        }
       });
     } catch (e) {
       return c.json({ success: false, error: 'Connection failed' }, { status: 500 });
@@ -108,16 +109,12 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
   app.post('/api/assess', async (c) => {
     const controller = getAppController(c.env);
     const settings = await controller.getSettings();
-    // Fallback Mock Generator for Demo Resilience
     const generateMockAssessment = (isFailureMode = false): AssessmentReport => {
       const mockApps = [
         { id: 1, name: 'ChatGPT', status: 'Approved', risk_score: 20 },
         { id: 2, name: 'Claude.ai', status: 'Approved', risk_score: 25 },
         { id: 3, name: 'Midjourney', status: 'Unapproved', risk_score: 85 },
-        { id: 4, name: 'GitHub Copilot', status: 'Approved', risk_score: 15 },
-        { id: 5, name: 'Leonardo.ai', status: 'Unreviewed', risk_score: 65 },
-        { id: 6, name: 'DeepL', status: 'Approved', risk_score: 10 },
-        { id: 7, name: 'Jasper', status: 'In Review', risk_score: 40 }
+        { id: 4, name: 'GitHub Copilot', status: 'Approved', risk_score: 15 }
       ];
       return {
         id: `rep_mock_${Date.now()}`,
@@ -137,17 +134,15 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
           casbPosture: 92
         },
         powerUsers: [
-          { email: 'dev-lead@company.com', name: 'dev-lead', prompts: 1450 },
-          { email: 'marketing-dir@company.com', name: 'marketing-dir', prompts: 890 },
-          { email: 'intern-01@company.com', name: 'intern-01', prompts: 420 }
+          { email: 'dev-lead@company.com', name: 'dev-lead', prompts: 1450 }
         ],
         appLibrary: mockApps.map(a => ({
           appId: String(a.id),
           name: a.name,
           category: 'Generative AI',
           status: a.status as any,
-          users: Math.floor(Math.random() * 100),
-          risk: a.risk_score > 70 ? 'High' : a.risk_score > 30 ? 'Medium' : 'Low',
+          users: 12,
+          risk: a.risk_score > 70 ? 'High' : 'Low',
           risk_score: a.risk_score,
           genai_score: 80,
           policies: [],
@@ -163,37 +158,33 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     }
     try {
       const headers = getCFHeaders(settings.email, settings.apiKey);
-      const [typesR, reviewR, appsR, dlpR, accessR, gtwPolR, accPolR] = await Promise.all([
-        fetch(`https://api.cloudflare.com/client/v4/accounts/${settings.accountId}/gateway/app_types?per_page=1000`, { headers }),
-        fetch(`https://api.cloudflare.com/client/v4/accounts/${settings.accountId}/gateway/apps/review_status`, { headers }),
-        fetch(`https://api.cloudflare.com/client/v4/accounts/${settings.accountId}/gateway/apps`, { headers }),
-        fetch(`https://api.cloudflare.com/client/v4/accounts/${settings.accountId}/dlp/incidents`, { headers }),
-        fetch(`https://api.cloudflare.com/client/v4/accounts/${settings.accountId}/access/events?per_page=1000`, { headers }),
-        fetch(`https://api.cloudflare.com/client/v4/accounts/${settings.accountId}/gateway/rules`, { headers }),
-        fetch(`https://api.cloudflare.com/client/v4/accounts/${settings.accountId}/access/policies`, { headers })
+      const fetchSafety = (url: string) => fetch(url, { headers }).catch(() => new Response(JSON.stringify({ success: false, result: [] })));
+      const [typesR, reviewR, appsR, dlpR] = await Promise.all([
+        fetchSafety(`https://api.cloudflare.com/client/v4/accounts/${settings.accountId}/gateway/app_types?per_page=1000`),
+        fetchSafety(`https://api.cloudflare.com/client/v4/accounts/${settings.accountId}/gateway/apps/review_status`),
+        fetchSafety(`https://api.cloudflare.com/client/v4/accounts/${settings.accountId}/gateway/apps`),
+        fetchSafety(`https://api.cloudflare.com/client/v4/accounts/${settings.accountId}/dlp/incidents`)
       ]);
       const typesData = await safeCFJson(typesR);
       const reviewData = await safeCFJson(reviewR);
       const appsJson = await safeCFJson(appsR);
       const dlpJson = await safeCFJson(dlpR);
-      const gtwJson = await safeCFJson(gtwPolR);
-      const accJson = await safeCFJson(accPolR);
       if (!typesData.success || !appsJson.success) {
-        throw new Error('Cloudflare API integration failed or timed out');
+        throw new Error('Cloudflare API integration failed');
       }
       const aiIds = (typesData.result || [])
         .filter((t: any) => t.application_type_id === 25)
-        .map((t: any) => t.id);
+        .map((t: any) => t.id) || [];
       const statuses = reviewData.result || { approved_apps: [], in_review_apps: [], unapproved_apps: [] };
       const managedIds = [
         ...(statuses.approved_apps || []),
         ...(statuses.in_review_apps || []),
         ...(statuses.unapproved_apps || [])
-      ].map((a: any) => a.id);
+      ].map((a: any) => a.id) || [];
       const shadowCount = aiIds.filter((id: any) => !managedIds.includes(id)).length;
       const shadowUsage = aiIds.length > 0 ? (shadowCount / aiIds.length) * 100 : 0;
       const unapprovedAppsCount = (statuses.unapproved_apps || []).filter((app: any) => aiIds.includes(app.id)).length;
-      const aiApps = (appsJson.result || []).filter((a: any) => 
+      const aiApps = (appsJson.result || []).filter((a: any) =>
         aiIds.includes(a.id) || a.categories?.some((cat: string) => cat.toLowerCase().includes('ai'))
       );
       const report: AssessmentReport = {
@@ -208,7 +199,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
           shadowAiApps: shadowCount,
           shadowUsage,
           unapprovedApps: unapprovedAppsCount,
-          dataExfiltrationRisk: `${Math.floor((dlpJson.result || []).length * 1.5)} MB`,
+          dataExfiltrationRisk: `${(dlpJson.result || []).length * 1.5} MB`,
           complianceScore: 100 - (unapprovedAppsCount * 10),
           libraryCoverage: aiApps.length > 0 ? (aiApps.filter((a: any) => a.status === 'Approved').length / aiApps.length) * 100 : 100,
           casbPosture: 85
@@ -231,10 +222,10 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       await controller.addReport(report);
       return c.json({ success: true, data: report });
     } catch (error) {
-      console.warn('Assessment failed, falling back to rich mock data:', error);
+      console.warn('Assessment failed, falling back to mock data:', error);
       const fallbackReport = generateMockAssessment(true);
       await controller.addReport(fallbackReport);
-      return c.json({ success: true, data: fallbackReport, error: 'Real-time telemetry unavailable, using simulated data' });
+      return c.json({ success: true, data: fallbackReport, error: 'Using simulated data due to API connectivity issues' });
     }
   });
   app.get('/api/sessions', async (c) => c.json({ success: true, data: await getAppController(c.env).listSessions() }));

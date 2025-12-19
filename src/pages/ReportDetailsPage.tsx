@@ -56,7 +56,7 @@ export function ReportDetailsPage() {
   );
   const summary = report.summary;
   const safeAppLibrary = report.appLibrary ?? [];
-  const shadowPercent = Number(summary.shadowUsage) || 0;
+  const shadowPercent = Math.min(100, Math.max(0, Number(summary?.shadowUsage ?? 0)));
   const isHighRiskShadow = shadowPercent > 30;
   return (
     <AppLayout container>
@@ -80,7 +80,7 @@ export function ReportDetailsPage() {
           </div>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-          <Card className={cn("border-border/50 shadow-soft", isHighRiskShadow && "ring-2 ring-red-500 bg-red-500/5")}>
+          <Card className={cn("border-border/50 shadow-soft transition-all", isHighRiskShadow && "ring-4 ring-red-500/50 bg-red-500/5 animate-pulse-slow")}>
             <CardContent className="p-6">
               <Terminal className="h-5 w-5 text-red-500 mb-4" />
               <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-1">Shadow AI Usage</p>
@@ -97,14 +97,14 @@ export function ReportDetailsPage() {
             <CardContent className="p-6">
               <AlertTriangle className="h-5 w-5 text-orange-500 mb-4" />
               <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-1">Unapproved Apps</p>
-              <p className="text-3xl font-bold">{summary.unapprovedApps || 0}</p>
+              <p className="text-3xl font-bold">{summary?.unapprovedApps ?? 0}</p>
             </CardContent>
           </Card>
           <Card className="border-border/50 shadow-soft">
             <CardContent className="p-6">
               <Database className="h-5 w-5 text-blue-500 mb-4" />
               <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-1">DLP Incident Mass</p>
-              <p className="text-2xl font-bold text-blue-500">{summary.dataExfiltrationRisk || '0 MB'}</p>
+              <p className="text-2xl font-bold text-blue-500">{summary?.dataExfiltrationRisk ?? '0 MB'}</p>
             </CardContent>
           </Card>
           <Card className="border-border/50 shadow-soft">
@@ -112,12 +112,13 @@ export function ReportDetailsPage() {
               <Users className="h-5 w-5 text-purple-500 mb-4" />
               <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-1">Power Users</p>
               <div className="space-y-1 mt-2">
-                {(report.powerUsers || []).slice(0, 2).map((u, i) => (
+                {(report.powerUsers ?? []).slice(0, 2).map((u, i) => (
                   <div key={i} className="flex justify-between text-[10px]">
-                    <span className="truncate max-w-[80px]">{u.name}</span>
-                    <span className="font-bold">{u.prompts} reqs</span>
+                    <span className="truncate max-w-[80px]">{u.name || 'Anonymous'}</span>
+                    <span className="font-bold">{u.prompts ?? 0} reqs</span>
                   </div>
                 ))}
+                {(report.powerUsers ?? []).length === 0 && <span className="text-[10px] italic text-muted-foreground">None detected</span>}
               </div>
             </CardContent>
           </Card>
@@ -125,7 +126,7 @@ export function ReportDetailsPage() {
             <CardContent className="p-6">
               <ShieldCheck className="h-5 w-5 text-green-500 mb-4" />
               <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-1">Security Score</p>
-              <p className="text-2xl font-bold text-green-500">{report.score}%</p>
+              <p className="text-2xl font-bold text-green-500">{report.score ?? 0}%</p>
             </CardContent>
           </Card>
         </div>
@@ -147,14 +148,14 @@ export function ReportDetailsPage() {
                 <TableBody>
                   {safeAppLibrary.length > 0 ? safeAppLibrary.map((app, i) => (
                     <TableRow key={app.appId || i}>
-                      <TableCell className="font-bold text-sm">{app.name}</TableCell>
+                      <TableCell className="font-bold text-sm">{app.name || 'Unknown'}</TableCell>
                       <TableCell>
-                        <Badge variant="secondary" className="text-[9px]" style={{ color: PIE_COLORS[app.status] || '#808080' }}>{app.status}</Badge>
+                        <Badge variant="secondary" className="text-[9px]" style={{ color: PIE_COLORS[app.status] || '#808080' }}>{app.status || 'Unreviewed'}</Badge>
                       </TableCell>
                       <TableCell>
-                        <Badge variant={app.risk === 'High' ? 'destructive' : 'outline'} className="text-[9px]">{app.risk}</Badge>
+                        <Badge variant={app.risk === 'High' ? 'destructive' : 'outline'} className="text-[9px]">{app.risk || 'Low'}</Badge>
                       </TableCell>
-                      <TableCell className="text-right font-mono text-xs">{app.users}</TableCell>
+                      <TableCell className="text-right font-mono text-xs">{app.users ?? 0}</TableCell>
                     </TableRow>
                   )) : (
                     <TableRow>
