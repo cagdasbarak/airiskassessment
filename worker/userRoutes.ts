@@ -8,6 +8,16 @@ import { extractJson } from "./utils";
 console.log('[RISKGUARD] Registering user routes...');
 let coreRoutesRegistered = false;
 let userRoutesRegistered = false;
+const AI_APP_TYPES: Record<string, string> = {
+  'chatgpt': 'ChatGPT',
+  'claude': 'Claude',
+  'gemini': 'Google Gemini',
+  'copilot': 'Microsoft Copilot',
+  'perplexity': 'Perplexity',
+  'deepseek': 'DeepSeek',
+  'midjourney': 'Midjourney',
+  'mistral': 'Mistral AI'
+};
 const MOCK_AI_INSIGHTS: AIInsights = {
   summary: "Telemetry suggests a dynamic risk landscape requiring Cloudflare Gateway management to ensure data integrity.",
   recommendations: [
@@ -33,6 +43,29 @@ const MOCK_APP_LIBRARY: any[] = [
   { appId: 'deepseek', name: 'DeepSeek', category: 'LLM Assistant', status: 'Review', users: 100, risk: 'Medium', risk_score: 55, genai_score: 85, policies: [], usage: [] },
   { appId: 'perplexity', name: 'Perplexity', category: 'Search AI', status: 'Unapproved', users: 50, risk: 'High', risk_score: 72, genai_score: 80, policies: [], usage: [] }
 ];
+async function generateTrendingData() {
+  const topAppsTrends = [];
+  const now = new Date();
+  const apps = [
+    { name: 'ChatGPT', base: 350 },
+    { name: 'Microsoft Copilot', base: 300 },
+    { name: 'Google Gemini', base: 200 },
+    { name: 'DeepSeek', base: 100 },
+    { name: 'Perplexity', base: 50 }
+  ];
+  for (let i = 29; i >= 0; i--) {
+    const date = new Date(now);
+    date.setDate(now.getDate() - i);
+    const dateStr = date.toISOString().split('T')[0];
+    const dayData: Record<string, any> = { date: dateStr };
+    apps.forEach(app => {
+      const variance = Math.floor(Math.random() * 101) - 50;
+      dayData[app.name] = Math.max(0, app.base + variance);
+    });
+    topAppsTrends.push(dayData);
+  }
+  return topAppsTrends;
+}
 export function coreRoutes(app: Hono<{ Bindings: Env }>) {
   if (coreRoutesRegistered) return;
   coreRoutesRegistered = true;
@@ -72,28 +105,23 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     });
     return c.json({ success: true });
   });
+  app.get('/api/ai-trends', async (c) => {
+    const controller = getAppController(c.env);
+    const settings = await controller.getSettings();
+    // Simulate complex Cloudflare Shadow IT Analytics API Call
+    // Filters: applicationTypeId = 25 (AI)
+    // Granularity: daily
+    // Metrics: uniqueUserCount
+    const topAppsTrends = await generateTrendingData();
+    console.log(`[RISKGUARD] TIMESERIES data len: ${topAppsTrends.length}`);
+    return c.json({ 
+      success: true, 
+      data: { topAppsTrends } 
+    });
+  });
   app.post('/api/assess', async (c) => {
     const controller = getAppController(c.env);
-    const topAppsTrends = [];
-    const now = new Date();
-    const apps = [
-      { name: 'ChatGPT', base: 350 },
-      { name: 'Microsoft Copilot', base: 300 },
-      { name: 'Google Gemini', base: 200 },
-      { name: 'DeepSeek', base: 100 },
-      { name: 'Perplexity', base: 50 }
-    ];
-    for (let i = 29; i >= 0; i--) {
-      const date = new Date(now);
-      date.setDate(now.getDate() - i);
-      const dateStr = date.toISOString().split('T')[0];
-      const dayData: Record<string, any> = { date: dateStr };
-      apps.forEach(app => {
-        const variance = Math.floor(Math.random() * 101) - 50;
-        dayData[app.name] = Math.max(0, app.base + variance);
-      });
-      topAppsTrends.push(dayData);
-    }
+    const topAppsTrends = await generateTrendingData();
     const summaryData = {
       totalApps: 1420,
       aiApps: MOCK_APP_LIBRARY.length,
@@ -107,9 +135,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       casbPosture: 82
     };
     let aiInsights: AIInsights = MOCK_AI_INSIGHTS;
-    if (!c.env.CF_AI_BASE_URL?.includes('gateway') || !c.env.CF_AI_API_KEY) {
-      console.error('AI unavailable: CF_AI_BASE_URL missing/invalid or CF_AI_API_KEY missing');
-    } else {
+    if (c.env.CF_AI_BASE_URL && c.env.CF_AI_API_KEY) {
       try {
         const handler = new ChatHandler(c.env.CF_AI_BASE_URL, c.env.CF_AI_API_KEY, 'openai/gpt-4o-mini');
         const prompt = `Perform a Cloudflare ZTNA Risk Assessment summary based on this data: ${JSON.stringify(summaryData)}.
