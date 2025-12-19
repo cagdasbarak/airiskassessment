@@ -144,15 +144,21 @@ export function ReportDetailsPage() {
               transition={{ duration: 0.2 }}
               className="min-h-[500px]"
             >
-              <TabsContent value="library" className="mt-0 focus-visible:outline-none chart-print-fix h-full">
-                <AppLibraryTab report={report} />
-              </TabsContent>
-              <TabsContent value="forensics" className="mt-0 focus-visible:outline-none chart-print-fix h-full">
-                <SecurityForensicsTab report={report} />
-              </TabsContent>
-              <TabsContent value="summary" className="mt-0 focus-visible:outline-none h-full">
-                <SummaryRemediationTab report={report} />
-              </TabsContent>
+              {activeTab === 'library' && (
+                <div className="mt-0 focus-visible:outline-none chart-print-fix h-full">
+                  <AppLibraryTab report={report} />
+                </div>
+              )}
+              {activeTab === 'forensics' && (
+                <div className="mt-0 focus-visible:outline-none chart-print-fix h-full">
+                  <SecurityForensicsTab report={report} />
+                </div>
+              )}
+              {activeTab === 'summary' && (
+                <div className="mt-0 focus-visible:outline-none chart-print-fix h-full">
+                  <SummaryRemediationTab report={report} />
+                </div>
+              )}
             </motion.div>
           </AnimatePresence>
         </Tabs>
