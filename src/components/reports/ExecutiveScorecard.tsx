@@ -24,6 +24,7 @@ export function ExecutiveScorecard({ summary, score }: ScorecardProps) {
   const healthScore = score ?? 0;
   const dataRisk = summary?.dataExfiltrationRisk ?? '0 MB';
   const compliance = summary?.complianceScore ?? 0;
+  // Visual Risk Trigger strictly > 50.000
   const isHighRiskShadow = shadowUsageValue > 50;
   const isCriticalUnapproved = unapprovedCount > 0;
   const cards = [
@@ -85,7 +86,7 @@ export function ExecutiveScorecard({ summary, score }: ScorecardProps) {
             key={card.title}
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ 
+            transition={{
               delay: idx * 0.12,
               duration: 0.5,
               ease: [0.23, 1, 0.32, 1]

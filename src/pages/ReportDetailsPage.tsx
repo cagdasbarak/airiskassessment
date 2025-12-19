@@ -71,6 +71,7 @@ export function ReportDetailsPage() {
       </AppLayout>
     );
   }
+  const shadowUsageText = report.summary.shadowUsage.toFixed(3);
   return (
     <AppLayout container>
       <div className="space-y-16 pb-24 max-w-6xl mx-auto">
@@ -121,7 +122,7 @@ export function ReportDetailsPage() {
               </CardHeader>
               <CardContent>
                 <p className="text-foreground leading-relaxed italic text-base">
-                  "{report.aiInsights?.summary || "This report provides a high-fidelity snapshot of Generative AI usage patterns across your Zero Trust environment. The metrics highlight critical shadow usage densities that bypass standard organizational review."}"
+                  "{report.aiInsights?.summary || `This report provides a high-fidelity snapshot of Generative AI usage patterns. The metrics highlight a shadow usage density of ${shadowUsageText}%, which represents traffic bypassing standard organizational review.`}"
                 </p>
               </CardContent>
             </Card>
@@ -142,19 +143,19 @@ export function ReportDetailsPage() {
                   >
                     <Card className={cn(
                       "border-l-4 border-y-border border-r-border shadow-soft",
-                      rec.type === 'critical' ? "border-l-red-500 bg-red-500/[0.02]" : 
-                      rec.type === 'policy' ? "border-l-blue-500 bg-blue-500/[0.02]" : 
+                      rec.type === 'critical' ? "border-l-red-500 bg-red-500/[0.02]" :
+                      rec.type === 'policy' ? "border-l-blue-500 bg-blue-500/[0.02]" :
                       "border-l-emerald-500 bg-emerald-500/[0.02]"
                     )}>
                       <CardContent className="p-5 flex gap-4">
                         <div className={cn(
                           "h-10 w-10 shrink-0 rounded-xl flex items-center justify-center",
-                          rec.type === 'critical' ? "bg-red-500/10 text-red-500" : 
-                          rec.type === 'policy' ? "bg-blue-500/10 text-blue-500" : 
+                          rec.type === 'critical' ? "bg-red-500/10 text-red-500" :
+                          rec.type === 'policy' ? "bg-blue-500/10 text-blue-500" :
                           "bg-emerald-500/10 text-emerald-500"
                         )}>
-                          {rec.type === 'critical' ? <ShieldAlert className="h-5 w-5" /> : 
-                           rec.type === 'policy' ? <FileCheck className="h-5 w-5" /> : 
+                          {rec.type === 'critical' ? <ShieldAlert className="h-5 w-5" /> :
+                           rec.type === 'policy' ? <FileCheck className="h-5 w-5" /> :
                            <AlertCircle className="h-5 w-5" />}
                         </div>
                         <div className="space-y-1">
