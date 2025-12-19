@@ -155,14 +155,12 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
             const appsRes = await fetch(`https://api.cloudflare.com/client/v4/accounts/${settings.accountId}/gateway/apps`, { headers });
             let appsData: any;
             if (!appsRes.ok) {
-                console.error('Apps API failed:', appsRes.status, await appsRes.text());
                 appsData = { success: false, result: [] };
             } else {
                 const rawText = await appsRes.text();
                 try {
                     appsData = JSON.parse(rawText);
                 } catch (e) {
-                    console.error('Apps JSON parse failed:', e);
                     appsData = { success: false, result: [] };
                 }
             }
@@ -175,14 +173,12 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
             const dlpRes = await fetch(`https://api.cloudflare.com/client/v4/accounts/${settings.accountId}/dlp/incidents`, { headers });
             let dlpData: any;
             if (!dlpRes.ok) {
-                console.error('DLP API failed:', dlpRes.status, await dlpRes.text());
                 dlpData = { success: false, result: [] };
             } else {
                 const rawText = await dlpRes.text();
                 try {
                     dlpData = JSON.parse(rawText);
                 } catch (e) {
-                    console.error('DLP JSON parse failed:', e);
                     dlpData = { success: false, result: [] };
                 }
             }
@@ -192,14 +188,12 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
             const eventsRes = await fetch(`https://api.cloudflare.com/client/v4/accounts/${settings.accountId}/access/events`, { headers });
             let eventsData: any;
             if (!eventsRes.ok) {
-                console.error('Events API failed:', eventsRes.status, await eventsRes.text());
                 eventsData = { success: false, result: [] };
             } else {
                 const rawText = await eventsRes.text();
                 try {
                     eventsData = JSON.parse(rawText);
                 } catch (e) {
-                    console.error('Events JSON parse failed:', e);
                     eventsData = { success: false, result: [] };
                 }
             }

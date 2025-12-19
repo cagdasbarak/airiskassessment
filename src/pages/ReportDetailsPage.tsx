@@ -133,7 +133,7 @@ export function ReportDetailsPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="h-[200px]">
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="100%" height="100%" minHeight={200}>
                       <PieChart>
                         <Pie
                           data={pieData}
@@ -258,7 +258,7 @@ export function ReportDetailsPage() {
                     </div>
                   </CardHeader>
                   <CardContent className="h-[300px]">
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="100%" height="100%" minHeight={300}>
                       <AreaChart data={safeCharts.dataVolume}>
                         <defs>
                           <linearGradient id="colorExfil" x1="0" y1="0" x2="0" y2="1">
@@ -285,7 +285,7 @@ export function ReportDetailsPage() {
                     </div>
                   </CardHeader>
                   <CardContent className="h-[300px]">
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="100%" height="100%" minHeight={300}>
                       <BarChart data={safeCharts.mcpActivity}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} />
                         <XAxis dataKey="name" hide />
@@ -303,7 +303,7 @@ export function ReportDetailsPage() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="h-[300px]">
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="100%" height="100%" minHeight={300}>
                       <LineChart data={safeCharts.loginEvents}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} />
                         <XAxis dataKey="name" hide />
@@ -321,7 +321,7 @@ export function ReportDetailsPage() {
                      </CardTitle>
                    </CardHeader>
                    <CardContent className="h-[300px]">
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="100%" height="100%" minHeight={300}>
                       <PieChart>
                         <Pie
                           data={safeCharts.riskDistribution}

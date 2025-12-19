@@ -54,12 +54,12 @@ const router = createBrowserRouter([
   },
 ]);
 createRoot(document.getElementById('root')!).render(
-  <QueryClientProvider client={queryClient}>
-    <ErrorBoundary>
-      <ThemeProvider attribute='class' defaultTheme='system' enableSystem>
+  <ThemeProvider attribute='class' defaultTheme='system' enableSystem>
+    <QueryClientProvider client={queryClient}>
+      <ErrorBoundary>
         <RouterProvider router={router} />
-        <Toaster richColors closeButton position="top-right" />
-      </ThemeProvider>
-    </ErrorBoundary>
-  </QueryClientProvider>
+      </ErrorBoundary>
+      <Toaster richColors closeButton position="top-right" />
+    </QueryClientProvider>
+  </ThemeProvider>
 )
