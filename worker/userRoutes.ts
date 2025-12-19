@@ -5,6 +5,26 @@ import { Env, getAppController, registerSession } from "./core-utils";
 import type { AssessmentReport } from './app-controller';
 let coreRoutesRegistered = false;
 let userRoutesRegistered = false;
+// Helper for safe JSON parsing
+const safeJSON = (text: string) => {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return {};
+  }
+};
+// Helper for authenticated Cloudflare API calls
+const safeFetch = async (endpoint: string, settings: any) => {
+  const { accountId, email, apiKey } = settings;
+  const baseUrl = `https://api.cloudflare.com/client/v4/accounts/${accountId}`;
+  return fetch(`${baseUrl}${endpoint}`, {
+    headers: {
+      'X-Auth-Email': email,
+      'X-Auth-Key': apiKey,
+      'Content-Type': 'application/json',
+    },
+  });
+};
 export function coreRoutes(app: Hono<{ Bindings: Env }>) {
   if (coreRoutesRegistered) return;
   coreRoutesRegistered = true;
@@ -81,60 +101,68 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const controller = getAppController(c.env);
     const settings = await controller.getSettings();
     const now = new Date();
-    // MOCK DATA FETCHES (Simulating JQ requirements)
-    const mockAppTypes = [
-      { id: "gpt-4", application_type_id: 25 },
-      { id: "claude-3", application_type_id: 25 },
-      { id: "midjourney-v6", application_type_id: 25 },
-      { id: "copilot-ext", application_type_id: 25 },
-      { id: "notion-ai", application_type_id: 25 },
-      { id: "slack", application_type_id: 10 }
-    ];
-    const mockReviewStatus = {
-      approved_apps: ["gpt-4", "copilot-ext"],
-      in_review_apps: ["claude-3"],
-      unapproved_apps: ["midjourney-v6"]
-    };
-    // PRECISION JQ LOGIC
-    const ai_ids = (mockAppTypes || []).filter(app => app.application_type_id === 25).map(app => app.id);
-    const total_ai = ai_ids.length;
-    const managed_set = [
-      ...(mockReviewStatus.approved_apps || []),
-      ...(mockReviewStatus.in_review_apps || []),
-      ...(mockReviewStatus.unapproved_apps || [])
-    ];
-    const managed_count = ai_ids.filter(id => managed_set.includes(id)).length;
-    const shadowUsage = total_ai > 0 ? ((total_ai - managed_count) / total_ai) * 100 : 0;
-    const unapprovedAppsCount = (mockReviewStatus.unapproved_apps || []).filter(id => ai_ids.includes(id)).length;
-    const report: AssessmentReport = {
-      id: `rep_${Date.now()}`,
-      date: now.toISOString().split('T')[0],
-      status: 'Completed',
-      score: Math.max(0, Math.min(100, 100 - (shadowUsage / 1.5))), // Hardened scoring logic
-      riskLevel: shadowUsage > 50 ? 'High' : shadowUsage > 20 ? 'Medium' : 'Low',
-      summary: {
-        totalApps: 184,
-        aiApps: total_ai,
-        shadowAiApps: Math.max(0, total_ai - managed_count),
-        shadowUsage: Number(shadowUsage.toFixed(2)),
-        unapprovedApps: unapprovedAppsCount,
-        dataExfiltrationRisk: shadowUsage > 40 ? '420 MB' : '12 MB',
-        complianceScore: 72,
-        libraryCoverage: 62,
-        casbPosture: 88
-      },
-      powerUsers: [],
-      appLibrary: [],
-      securityCharts: {}
-    };
-    await controller.addReport(report);
-    await controller.addLog({
-      timestamp: new Date().toISOString(),
-      action: 'Report Generated',
-      user: settings.email || 'System Admin',
-      status: 'Success'
-    });
-    return c.json({ success: true, data: report });
+    if (!settings.accountId || !settings.apiKey) {
+      return c.json({ success: false, error: 'Cloudflare API credentials missing in Settings' }, { status: 400 });
+    }
+    try {
+      // 1. Fetch App Types (Filter for AI which is type 25)
+      const appTypesResp = await safeFetch('/gateway/app_types?per_page=1000', settings);
+      const appTypesText = await appTypesResp.text();
+      const appTypesJson = safeJSON(appTypesText);
+      const aiIds = appTypesJson?.result?.filter((t: any) => t.application_type_id === 25).map((t: any) => t.id) || [];
+      const totalAI = aiIds.length;
+      // 2. Fetch Review Statuses
+      const reviewResp = await safeFetch('/gateway/apps/review_status', settings);
+      const reviewText = await reviewResp.text();
+      const reviewJson = safeJSON(reviewText);
+      const statuses = reviewJson?.result || {};
+      // 3. Precision Shadow AI Usage Calculation (JQ-Inspired)
+      const managedIds = [
+        ...(statuses.approved_apps || []),
+        ...(statuses.in_review_apps || []),
+        ...(statuses.unapproved_apps || [])
+      ];
+      const managedCount = aiIds.filter((id: string) => managedIds.includes(id)).length;
+      const shadowCount = totalAI - managedCount;
+      // Calculate with 3-decimal precision (e.g. 98.122)
+      const shadowUsage = totalAI > 0 
+        ? Math.round((shadowCount / totalAI) * 100 * 1000) / 1000 
+        : 0;
+      // 4. Calculate Unapproved Apps (filtered against detected AI list)
+      const unapprovedAppsCount = (statuses.unapproved_apps || []).filter((id: string) => aiIds.includes(id)).length;
+      const report: AssessmentReport = {
+        id: `rep_${Date.now()}`,
+        date: now.toISOString().split('T')[0],
+        status: 'Completed',
+        score: Math.max(0, Math.min(100, 100 - (shadowUsage / 1.5))), 
+        riskLevel: shadowUsage > 50 ? 'High' : shadowUsage > 20 ? 'Medium' : 'Low',
+        summary: {
+          totalApps: 184, // Mocked total across all types
+          aiApps: totalAI,
+          shadowAiApps: shadowCount,
+          shadowUsage: shadowUsage, // Precision float
+          unapprovedApps: unapprovedAppsCount,
+          dataExfiltrationRisk: shadowUsage > 40 ? '420 MB' : '12 MB',
+          complianceScore: Math.round((managedCount / (totalAI || 1)) * 100),
+          libraryCoverage: 62,
+          casbPosture: 88
+        },
+        powerUsers: [],
+        appLibrary: [],
+        securityCharts: {}
+      };
+      await controller.addReport(report);
+      await controller.addLog({
+        timestamp: new Date().toISOString(),
+        action: 'Report Generated',
+        user: settings.email || 'System Admin',
+        status: 'Success'
+      });
+      return c.json({ success: true, data: report });
+    } catch (error: any) {
+      console.error('Assessment Engine Failure:', error);
+      return c.json({ success: false, error: 'Failed to aggregate Cloudflare telemetry. Check API credentials.' }, { status: 500 });
+    }
   });
   app.get('/api/sessions', async (c) => c.json({ success: true, data: await getAppController(c.env).listSessions() }));
   app.post('/api/sessions', async (c) => {

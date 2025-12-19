@@ -66,7 +66,7 @@ export interface AssessmentReport {
     totalApps: number;
     aiApps: number;
     shadowAiApps: number;
-    shadowUsage: number; // Stored as precision number from backend
+    shadowUsage: number; // Precision float (e.g. 98.122)
     unapprovedApps: number;
     dataExfiltrationRisk: string;
     complianceScore: number;

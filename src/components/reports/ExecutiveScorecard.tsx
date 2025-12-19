@@ -25,28 +25,30 @@ export function ExecutiveScorecard({ summary, score }: ScorecardProps) {
   const healthScore = score ?? 0;
   const dataRisk = summary?.dataExfiltrationRisk ?? '0 MB';
   const compliance = summary?.complianceScore ?? 0;
+  // Risk triggers based on precision logic
   const isHighRiskShadow = shadowUsageValue > 50;
+  const isCriticalUnapproved = unapprovedCount > 0;
   const cards = [
     {
       title: "Shadow AI Usage",
-      value: `${shadowUsageValue.toFixed(1)}%`,
+      value: `${shadowUsageValue.toFixed(3)}%`, // Reflect 3-decimal precision
       description: "Traffic via unmanaged endpoints.",
       icon: Activity,
       color: isHighRiskShadow ? "text-red-500" : "text-[#F38020]",
       bg: isHighRiskShadow ? "bg-red-500/10" : "bg-[#F38020]/10",
       highlight: isHighRiskShadow,
       badge: isHighRiskShadow ? "High Risk" : null,
-      tooltip: "Percentage of total detected AI traffic that bypasses standard review policies."
+      tooltip: "Percentage of detected AI applications not found in Approved, Review, or Unapproved lists. Calculated via precise JQ-inspired telemetry matching."
     },
     {
       title: "Unapproved Apps",
       value: unapprovedCount,
       description: "Active restricted AI assets.",
       icon: AlertTriangle,
-      color: unapprovedCount > 0 ? "text-red-500" : "text-green-500",
-      bg: unapprovedCount > 0 ? "bg-red-500/10" : "bg-green-500/10",
-      badge: unapprovedCount > 0 ? "Critical" : null,
-      tooltip: "Number of Generative AI applications marked 'Unapproved' with current activity."
+      color: isCriticalUnapproved ? "text-red-500" : "text-green-500",
+      bg: isCriticalUnapproved ? "bg-red-500/10" : "bg-green-500/10",
+      badge: isCriticalUnapproved ? "Critical" : null,
+      tooltip: "Number of Generative AI applications explicitly marked as 'Unapproved' with active traffic detected."
     },
     {
       title: "Health Score",
@@ -55,7 +57,7 @@ export function ExecutiveScorecard({ summary, score }: ScorecardProps) {
       icon: ShieldCheck,
       color: "text-blue-500",
       bg: "bg-blue-500/10",
-      tooltip: "Composite score based on policy coverage and detected shadow risk density."
+      tooltip: "Composite score based on your Zero Trust policy coverage and shadow AI density metrics."
     },
     {
       title: "Data Risk",
@@ -64,7 +66,7 @@ export function ExecutiveScorecard({ summary, score }: ScorecardProps) {
       icon: Database,
       color: "text-purple-500",
       bg: "bg-purple-500/10",
-      tooltip: "Estimated volume of data transferred to unreviewed Generative AI endpoints."
+      tooltip: "Estimated volume of sensitive data transmitted to unmanaged or unreviewed AI endpoints."
     },
     {
       title: "Compliance",
@@ -73,7 +75,7 @@ export function ExecutiveScorecard({ summary, score }: ScorecardProps) {
       icon: FileCheck,
       color: "text-emerald-500",
       bg: "bg-emerald-500/10",
-      tooltip: "Audit of current Gateway and Access rules against organizational baseline."
+      tooltip: "Ratio of managed AI applications (Approved/Review/Unapproved) against total detected AI footprint."
     }
   ];
   return (

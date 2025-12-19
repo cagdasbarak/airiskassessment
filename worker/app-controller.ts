@@ -69,7 +69,7 @@ export interface AssessmentReport {
     totalApps: number;
     aiApps: number;
     shadowAiApps: number;
-    shadowUsage: number;
+    shadowUsage: number; // Stored with 3-decimal precision
     unapprovedApps: number;
     dataExfiltrationRisk: string;
     complianceScore: number;
@@ -141,6 +141,7 @@ export class AppController extends DurableObject<Env> {
   async addReport(report: AssessmentReport): Promise<void> {
     const reports = await this.ctx.storage.get<AssessmentReport[]>('reports') || [];
     reports.unshift(report);
+    // Keep last 10 reports
     await this.ctx.storage.put('reports', reports.slice(0, 10));
   }
   async listReports(): Promise<AssessmentReport[]> {
