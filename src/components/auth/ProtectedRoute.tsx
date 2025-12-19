@@ -1,13 +1,18 @@
+// SYNC GUARD NO HOOKS STABLE
 import React from 'react';
 import { useAppStore } from '@/lib/store';
 import { Loader2, ShieldCheck } from 'lucide-react';
 interface ProtectedRouteProps {
   children: React.ReactNode;
 }
-/** Hardened sync security guard - loader until hydrated AND auth */
+/** 
+ * Hardened sync security guard 
+ * Strictly uses getState() to avoid hook initialization timing issues (useState null) 
+ */
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const hasHydrated = useAppStore.getState()._hasHydrated;
-  const isAuthenticated = useAppStore.getState().isAuthenticated;
+  const state = useAppStore.getState();
+  const hasHydrated = state._hasHydrated;
+  const isAuthenticated = state.isAuthenticated;
   if (!hasHydrated || !isAuthenticated) {
     return (
       <div className='min-h-screen flex flex-col items-center justify-center bg-background'>

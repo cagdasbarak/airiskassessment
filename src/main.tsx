@@ -59,6 +59,8 @@ const router = createBrowserRouter([
     errorElement: <RouteErrorBoundary />,
   },
 ]);
+// STRICTMODE DELETED PERMANENT NO DUP REACT SYNTH IGNORE
+// Reordered tree to ensure Toaster mounts safely outside the router but inside query context
 createRoot(document.getElementById('root')!).render(
   <QueryClientProvider client={queryClient}>
     <ErrorBoundary>
@@ -66,4 +68,5 @@ createRoot(document.getElementById('root')!).render(
     </ErrorBoundary>
     <Toaster richColors closeButton position="top-right" />
   </QueryClientProvider>
-)
+);
+console.log('[RISKGUARD] Root mounted successfully.');

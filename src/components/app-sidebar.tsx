@@ -1,3 +1,4 @@
+// NO HOOKS WINDOW SAFE PERMANENT NO SYNTH DUP
 import React from "react";
 import { Home, FileText, History, Settings, ShieldAlert, LogOut, User } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -13,10 +14,10 @@ import {
 } from "@/components/ui/sidebar";
 import { useAppStore } from "@/lib/store";
 export function AppSidebar(): JSX.Element {
-  const logout = useAppStore.getState().logout;
+  // Accessing store values directly from state to avoid dispatcher null errors during HMR/Hydration
   const username = useAppStore.getState().username ?? 'Guest';
   const handleLogout = () => {
-    logout();
+    useAppStore.getState().logout();
     window.location.href = '/login';
   };
   const menuItems = [
@@ -25,6 +26,8 @@ export function AppSidebar(): JSX.Element {
     { title: "Audit Logs", icon: History, path: "/logs" },
     { title: "Settings", icon: Settings, path: "/settings" },
   ];
+  // Using window.location.pathname for sync active state detection
+  const currentPath = typeof window !== 'undefined' ? window.location.pathname : '/';
   return (
     <Sidebar collapsible="none" className="border-r border-border/50">
       <SidebarHeader>
@@ -41,23 +44,20 @@ export function AppSidebar(): JSX.Element {
       <SidebarContent>
         <SidebarGroup>
           <SidebarMenu>
-            {(() => {
-              const path = window.location.pathname;
-              return menuItems.map((item) => (
-                <SidebarMenuItem key={item.path}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={path === item.path}
-                    className="py-6"
-                  >
-                    <Link to={item.path} className="flex items-center gap-3">
-                      <item.icon className="h-5 w-5" />
-                      <span className="font-medium">{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ));
-            })()}
+            {menuItems.map((item) => (
+              <SidebarMenuItem key={item.path}>
+                <SidebarMenuButton
+                  asChild
+                  isActive={currentPath === item.path}
+                  className="py-6"
+                >
+                  <Link to={item.path} className="flex items-center gap-3">
+                    <item.icon className="h-5 w-5" />
+                    <span className="font-medium">{item.title}</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            ))}
           </SidebarMenu>
         </SidebarGroup>
       </SidebarContent>

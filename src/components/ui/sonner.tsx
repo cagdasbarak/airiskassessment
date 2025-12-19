@@ -1,14 +1,14 @@
-
-
-
-import { Toaster as Sonner, toast } from "sonner"
-
+import React, { useEffect, useState } from "react"
+import { Toaster as Sonner } from "sonner"
 type ToasterProps = React.ComponentProps<typeof Sonner>
-
 const Toaster = ({ ...props }: ToasterProps) => {
-  const isDark = typeof document !== 'undefined' ? document.documentElement.classList.contains('dark') : false
-  const theme = isDark ? 'dark' : 'system' as any
-
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+  if (!mounted) return null;
+  const isDark = typeof document !== 'undefined' ? document.documentElement.classList.contains('dark') : false;
+  const theme = isDark ? 'dark' : 'light';
   return (
     <Sonner
       theme={theme as ToasterProps["theme"]}
@@ -28,5 +28,4 @@ const Toaster = ({ ...props }: ToasterProps) => {
     />
   )
 }
-
-export { Toaster, toast }
+export { Toaster }
