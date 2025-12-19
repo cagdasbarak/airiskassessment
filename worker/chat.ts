@@ -5,9 +5,12 @@ export class ChatHandler {
   private client: OpenAI;
   private model: string;
   constructor(aiGatewayUrl: string, apiKey: string, model: string) {
+    // Ensure the OpenAI client is initialized with a valid configuration
+    // and handles the Cloudflare Worker fetch environment correctly.
     this.client = new OpenAI({
       baseURL: aiGatewayUrl,
-      apiKey: apiKey
+      apiKey: apiKey,
+      // Cloudflare Workers handle fetch natively; OpenAI SDK uses this by default
     });
     this.model = model;
   }
@@ -26,7 +29,7 @@ export class ChatHandler {
         const stream = await this.client.chat.completions.create({
           model: this.model,
           messages,
-          tools: toolDefinitions,
+          tools: toolDefinitions as any,
           tool_choice: 'auto',
           max_completion_tokens: 16000,
           stream: true,
@@ -36,7 +39,7 @@ export class ChatHandler {
       const completion = await this.client.chat.completions.create({
         model: this.model,
         messages,
-        tools: toolDefinitions,
+        tools: toolDefinitions as any,
         tool_choice: 'auto',
         max_tokens: 16000,
         stream: false
@@ -44,23 +47,24 @@ export class ChatHandler {
       return this.handleNonStreamResponse(completion, message, conversationHistory);
     } catch (error) {
       console.error('AI Service Exception:', error);
+      // Fail gracefully with a structured response for the assessment engine
       return {
         content: JSON.stringify({
-          summary: 'The AI analysis service is currently unavailable. Review local security heuristics.',
+          summary: 'The AI analysis service is currently experiencing high latency. Heuristic defaults have been applied.',
           recommendations: [
             {
               title: 'Enforce Gateway Access Blocks',
-              description: 'Immediately apply block policies to unapproved AI domains.',
+              description: 'Immediately apply block policies to unapproved AI domains identified in Gateway logs.',
               type: 'critical'
             },
             {
-              title: 'Audit DLP Policy Matches',
-              description: 'Review real-time DLP incident telemetry.',
+              title: 'Review Data Leakage Patterns',
+              description: 'Examine DLP incident telemetry for potential sensitive data exfiltration.',
               type: 'policy'
             },
             {
-              title: 'Optimize Managed App Library',
-              description: 'Consolidate shadow AI usage into corporate-sanctioned applications.',
+              title: 'Sanitize Application footprint',
+              description: 'Move users from shadow applications to corporate-managed alternatives.',
               type: 'optimization'
             }
           ]
@@ -85,23 +89,23 @@ export class ChatHandler {
           onChunk(delta.content);
         }
         if (delta?.tool_calls) {
-          for (let i = 0; i < delta.tool_calls.length; i++) {
-            const deltaToolCall = delta.tool_calls[i];
+          for (const tc of delta.tool_calls) {
+            const i = tc.index;
             if (!accumulatedToolCalls[i]) {
               accumulatedToolCalls[i] = {
-                id: deltaToolCall.id || `tool_${Date.now()}_${i}`,
+                id: tc.id,
                 type: 'function',
-                function: { name: deltaToolCall.function?.name || '', arguments: deltaToolCall.function?.arguments || '' }
+                function: { name: tc.function?.name || '', arguments: tc.function?.arguments || '' }
               };
             } else {
-              if (deltaToolCall.function?.name) accumulatedToolCalls[i].function.name = deltaToolCall.function.name;
-              if (deltaToolCall.function?.arguments) accumulatedToolCalls[i].function.arguments += deltaToolCall.function.arguments;
+              if (tc.function?.name) accumulatedToolCalls[i].function.name = tc.function.name;
+              if (tc.function?.arguments) accumulatedToolCalls[i].function.arguments += tc.function.arguments;
             }
           }
         }
       }
     } catch (e) {
-      console.error('Stream failure:', e);
+      console.error('Stream processing failure:', e);
     }
     if (accumulatedToolCalls.length > 0) {
       const executedTools = await this.executeToolCalls(accumulatedToolCalls);
@@ -112,7 +116,7 @@ export class ChatHandler {
   }
   private async handleNonStreamResponse(completion: OpenAI.Chat.Completions.ChatCompletion, message: string, history: Message[]) {
     const responseMessage = completion.choices[0]?.message;
-    if (!responseMessage) return { content: 'No response from AI.' };
+    if (!responseMessage) return { content: 'Internal AI routing failure.' };
     if (!responseMessage.tool_calls) return { content: responseMessage.content || '' };
     const toolCalls = await this.executeToolCalls(responseMessage.tool_calls);
     const finalResponse = await this.generateToolResponse(message, history, responseMessage.tool_calls, toolCalls);
@@ -125,30 +129,42 @@ export class ChatHandler {
         const result = await executeTool(tc.function.name, args);
         return { id: tc.id, name: tc.function.name, arguments: args, result };
       } catch (e) {
-        return { id: tc.id, name: tc.function.name, arguments: {}, result: { error: 'Tool error' } };
+        console.error(`Tool execution error [${tc.function.name}]:`, e);
+        return { id: tc.id, name: tc.function.name, arguments: {}, result: { error: 'Execution failed' } };
       }
     }));
   }
   private async generateToolResponse(msg: string, history: Message[], calls: any[], results: ToolCall[]): Promise<string> {
-    const followUp = await this.client.chat.completions.create({
-      model: this.model,
-      messages: [
-        { role: 'system', content: 'You are RiskGuard AI Expert.' },
-        ...history.slice(-3).map(m => ({ role: m.role, content: m.content })),
-        { role: 'user', content: msg },
-        { role: 'assistant', content: null, tool_calls: calls } as any,
-        ...results.map((r, i) => ({ role: 'tool' as const, content: JSON.stringify(r.result), tool_call_id: calls[i]?.id || r.id }))
-      ],
-      max_tokens: 16000
-    });
-    return followUp.choices[0]?.message?.content || 'Analysis complete.';
+    try {
+      const followUp = await this.client.chat.completions.create({
+        model: this.model,
+        messages: [
+          { role: 'system', content: 'You are RiskGuard AI Expert. Synthesize tool results into executive insights.' },
+          ...history.slice(-3).map(m => ({ role: m.role, content: m.content })),
+          { role: 'user', content: msg },
+          { role: 'assistant', content: null, tool_calls: calls } as any,
+          ...results.map((r, i) => ({ 
+            role: 'tool' as const, 
+            content: JSON.stringify(r.result), 
+            tool_call_id: calls[i]?.id || r.id 
+          }))
+        ],
+        max_tokens: 4000
+      });
+      return followUp.choices[0]?.message?.content || 'Analysis synthesis failed.';
+    } catch (e) {
+      console.error('Tool response generation failure:', e);
+      return 'Tool results received but final summary failed.';
+    }
   }
   private buildConversationMessages(userMessage: string, history: Message[]) {
     return [
-      { role: 'system' as const, content: 'You are RiskGuard AI Consultant for Cloudflare ZTNA. Provide executive-level risk summaries.' },
+      { role: 'system' as const, content: 'You are RiskGuard AI, a security consultant for Cloudflare Zero Trust. Provide professional, data-driven risk assessments.' },
       ...history.slice(-5).map(m => ({ role: m.role, content: m.content })),
       { role: 'user' as const, content: userMessage }
     ];
   }
-  updateModel(newModel: string): void { this.model = newModel; }
+  updateModel(newModel: string): void { 
+    this.model = newModel; 
+  }
 }

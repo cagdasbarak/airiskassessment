@@ -1,23 +1,20 @@
-import React, { useEffect } from 'react';
+import React from 'react';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAppStore } from '@/lib/store';
-import { useNavigate } from 'react-router-dom';
 interface ProtectedRouteProps {
   children: React.ReactNode;
 }
 /**
- * Compliance Guard for Stable Navigation.
- * Uses reactive store selectors and useEffect for redirection to prevent render-phase errors.
+ * Security Guard for Application Access.
+ * Refactored to use <Navigate /> to avoid hook dispatcher conflicts (useContext null) 
+ * during early render phases or store hydration.
  */
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const isAuthenticated = useAppStore(s => s.isAuthenticated);
-  const navigate = useNavigate();
-  useEffect(() => {
-    if (!isAuthenticated) {
-      navigate('/login', { replace: true });
-    }
-  }, [isAuthenticated, navigate]);
+  const location = useLocation();
   if (!isAuthenticated) {
-    return null;
+    // Redirect to login while saving the attempted location for post-auth redirection
+    return <Navigate to="/login" state={{ from: location }} replace />;
   }
   return <>{children}</>;
 }
