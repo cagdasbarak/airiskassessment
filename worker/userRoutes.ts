@@ -82,46 +82,45 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const settings = await controller.getSettings();
     const now = new Date();
     // MOCK DATA FETCHES (Simulating JQ requirements)
-    // FETCH1: gateway/app_types
     const mockAppTypes = [
       { id: "gpt-4", application_type_id: 25 },
       { id: "claude-3", application_type_id: 25 },
       { id: "midjourney-v6", application_type_id: 25 },
       { id: "copilot-ext", application_type_id: 25 },
       { id: "notion-ai", application_type_id: 25 },
-      { id: "slack", application_type_id: 10 },
-      { id: "zoom", application_type_id: 12 }
+      { id: "slack", application_type_id: 10 }
     ];
-    // FETCH2: gateway/review_status
     const mockReviewStatus = {
       approved_apps: ["gpt-4", "copilot-ext"],
       in_review_apps: ["claude-3"],
-      unapproved_apps: ["midjourney-v6", "notion-ai"]
+      unapproved_apps: ["midjourney-v6"]
     };
-    // PRECISION CALCULATION LOGIC
-    const ai_ids = mockAppTypes.filter(app => app.application_type_id === 25).map(app => app.id);
+    // PRECISION JQ LOGIC
+    // .result[] | select(.application_type_id == 25) | .id
+    const ai_ids = (mockAppTypes || []).filter(app => app.application_type_id === 25).map(app => app.id);
     const total_ai = ai_ids.length;
-    const managed_ids = [
+    // managed = [approved, inreview, unapproved].flat
+    const managed_set = [
       ...(mockReviewStatus.approved_apps || []),
       ...(mockReviewStatus.in_review_apps || []),
       ...(mockReviewStatus.unapproved_apps || [])
     ];
-    const managed_count = ai_ids.filter(id => managed_ids.includes(id)).length;
-    const shadow_count = total_ai - managed_count;
-    // JQ Precision: shadowUsage % to 3 decimal places
-    const shadowUsage = total_ai > 0 ? Math.round((shadow_count / total_ai) * 100 * 1000) / 1000 : 0;
-    // Unapproved Apps: intersection of unapproved_apps and ai_ids
+    // managed_count = intersection(ai_ids, managed_set)
+    const managed_count = ai_ids.filter(id => managed_set.includes(id)).length;
+    // shadow_usage = (totalAI - managed_count) / totalAI * 100
+    const shadowUsage = total_ai > 0 ? ((total_ai - managed_count) / total_ai) * 100 : 0;
+    // Unapproved = intersection(ai_ids, unapproved_apps)
     const unapprovedAppsCount = (mockReviewStatus.unapproved_apps || []).filter(id => ai_ids.includes(id)).length;
     const report: AssessmentReport = {
       id: `rep_${Date.now()}`,
       date: now.toISOString().split('T')[0],
       status: 'Completed',
-      score: 84,
+      score: 100 - (shadowUsage / 2), // Simplistic health score logic
       riskLevel: shadowUsage > 50 ? 'High' : 'Medium',
       summary: {
         totalApps: 184,
         aiApps: total_ai,
-        shadowAiApps: shadow_count,
+        shadowAiApps: total_ai - managed_count,
         shadowUsage: shadowUsage,
         unapprovedApps: unapprovedAppsCount,
         dataExfiltrationRisk: '420 MB',
@@ -129,21 +128,8 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         libraryCoverage: 62,
         casbPosture: 88
       },
-      aiInsights: {
-        summary: "Executive analysis identifies specific risks in non-managed AI vectors. Immediate decommissioning of unapproved endpoints is recommended.",
-        recommendations: [
-          { title: "Enforce Gateway Block on Midjourney", description: "Unapproved image generator detected. Apply block policies immediately.", type: "critical" },
-          { title: "Review Claude Prompt Logs", description: "In-review assistant showing high engineering usage. Validate DLP rules.", type: "policy" },
-          { title: "Consolidate to Managed Instances", description: "Transition shadow users to approved Copilot and ChatGPT Enterprise accounts.", type: "optimization" }
-        ]
-      },
-      powerUsers: [
-        { email: 'admin@corp.com', name: 'Security Admin', prompts: 124 }
-      ],
-      appLibrary: [
-        { appId: '1', name: 'ChatGPT', category: 'AI', status: 'Approved', users: 84, risk: 'Low', risk_score: 15, genai_score: 95, policies: [], usage: [] },
-        { appId: '3', name: 'Midjourney', category: 'AI', status: 'Unapproved', users: 8, risk: 'High', risk_score: 82, genai_score: 75, policies: [], usage: [] }
-      ],
+      powerUsers: [],
+      appLibrary: [],
       securityCharts: {}
     };
     await controller.addReport(report);
