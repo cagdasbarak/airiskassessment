@@ -8,20 +8,37 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import {
-  ChevronLeft, Download, Loader2, Globe, Printer, BarChart3, PieChart, Users, Zap
+  ChevronLeft, Globe, Printer, BarChart3, PieChart, Zap
 } from 'lucide-react';
 import { api, AssessmentReport } from '@/lib/api';
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area, Cell, PieChart as RePieChart, Pie
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend, AreaChart, Area, Cell, PieChart as RePieChart, Pie
 } from 'recharts';
 import { AppDetailsDrillDown } from '@/components/reports/AppDetailsDrillDown';
 import { AIInsightsSection } from '@/components/reports/AIInsightsSection';
 import { ExecutiveScorecard } from '@/components/reports/ExecutiveScorecard';
+import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart';
 const PIE_COLORS: Record<string, string> = {
   'Unreviewed': '#808080',
   'Review': '#FDBA74',
   'Unapproved': '#EF4444',
   'Approved': '#10B981'
+};
+const usageChartConfig: ChartConfig = {
+  'ChatGPT': { label: 'ChatGPT', color: '#10B981' },
+  'Claude': { label: 'Claude', color: '#FDBA74' },
+  'GitHub Copilot': { label: 'GitHub Copilot', color: '#3B82F6' },
+  'Midjourney': { label: 'Midjourney', color: '#EF4444' }
+};
+const dataChartConfig: ChartConfig = {
+  'Approved': { label: 'Approved Data', color: '#10B981' },
+  'Unapproved': { label: 'Unapproved Data', color: '#EF4444' }
+};
+const pieChartConfig: ChartConfig = {
+  'Approved': { label: 'Approved', color: '#10B981' },
+  'Review': { label: 'Review', color: '#FDBA74' },
+  'Unapproved': { label: 'Unapproved', color: '#EF4444' },
+  'Unreviewed': { label: 'Unreviewed', color: '#808080' }
 };
 export function ReportDetailsPage() {
   const { id } = useParams();
@@ -89,7 +106,7 @@ export function ReportDetailsPage() {
               <h1 className="text-3xl font-bold tracking-tight text-foreground">Cloudflare ZTNA Audit</h1>
               <div className="flex items-center gap-2 text-muted-foreground">
                 <Globe className="h-3 w-3" />
-                <span className="text-xs font-mono">Snapshot ID: {report.id} �� Date: {report.date}</span>
+                <span className="text-xs font-mono">Snapshot ID: {report.id} • Date: {report.date}</span>
               </div>
             </div>
           </div>
@@ -115,24 +132,24 @@ export function ReportDetailsPage() {
                   </CardTitle>
                   <CardDescription>30-day user engagement across GenAI platforms.</CardDescription>
                 </CardHeader>
-                <CardContent className="h-[350px]">
-                  <ResponsiveContainer width="100%" height="100%">
+                <CardContent>
+                  <ChartContainer config={usageChartConfig} className="h-[350px]">
                     <BarChart data={report.securityCharts?.usageTrends ?? []}>
-                      <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
-                      <XAxis dataKey="date" tick={{ fontSize: 10 }} hide />
-                      <YAxis tick={{ fontSize: 10 }} />
-                      <Tooltip />
-                      <Legend />
-                      <Bar dataKey="ChatGPT" stackId="a" fill="#10B981" />
-                      <Bar dataKey="Claude" stackId="a" fill="#FDBA74" />
-                      <Bar dataKey="GitHub Copilot" stackId="a" fill="#3B82F6" />
-                      <Bar dataKey="Midjourney" stackId="a" fill="#EF4444" />
+                      <CartesianGrid strokeDasharray="3 3" opacity={0.1} vertical={false} />
+                      <XAxis dataKey="date" tickLine={false} axisLine={false} tick={{ fontSize: 10 }} hide />
+                      <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 10 }} />
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <Legend verticalAlign="top" height={36} />
+                      <Bar dataKey="ChatGPT" stackId="a" fill="var(--color-ChatGPT)" radius={[0, 0, 0, 0]} />
+                      <Bar dataKey="Claude" stackId="a" fill="var(--color-Claude)" />
+                      <Bar dataKey="GitHub Copilot" stackId="a" fill="var(--color-GitHub-Copilot)" />
+                      <Bar dataKey="Midjourney" stackId="a" fill="var(--color-Midjourney)" radius={[4, 4, 0, 0]} />
                     </BarChart>
-                  </ResponsiveContainer>
+                  </ChartContainer>
                 </CardContent>
               </Card>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <Card className="border-border/50 shadow-soft">
+                <Card className="border-border/50 shadow-soft h-full">
                   <CardHeader>
                     <CardTitle className="text-sm font-bold flex items-center gap-2">
                       <Zap className="h-4 w-4 text-blue-500" /> Top Power Users
@@ -162,19 +179,21 @@ export function ReportDetailsPage() {
                     </Table>
                   </CardContent>
                 </Card>
-                <Card className="border-border/50 shadow-soft">
-                  <CardHeader><CardTitle className="text-sm font-bold">Data Upload Trends (KB)</CardTitle></CardHeader>
-                  <CardContent className="h-[250px]">
-                    <ResponsiveContainer width="100%" height="100%">
+                <Card className="border-border/50 shadow-soft h-full">
+                  <CardHeader>
+                    <CardTitle className="text-sm font-bold">Data Upload Trends (KB)</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ChartContainer config={dataChartConfig} className="h-[250px]">
                       <AreaChart data={report.securityCharts?.dataTrends ?? []}>
-                        <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
+                        <CartesianGrid strokeDasharray="3 3" opacity={0.1} vertical={false} />
                         <XAxis dataKey="date" hide />
-                        <YAxis tick={{ fontSize: 10 }} />
-                        <Tooltip />
-                        <Area type="monotone" dataKey="Approved" stackId="1" stroke="#10B981" fill="#10B981" fillOpacity={0.2} />
-                        <Area type="monotone" dataKey="Unapproved" stackId="1" stroke="#EF4444" fill="#EF4444" fillOpacity={0.2} />
+                        <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 10 }} />
+                        <ChartTooltip content={<ChartTooltipContent />} />
+                        <Area type="monotone" dataKey="Approved" stackId="1" stroke="var(--color-Approved)" fill="var(--color-Approved)" fillOpacity={0.2} />
+                        <Area type="monotone" dataKey="Unapproved" stackId="1" stroke="var(--color-Unapproved)" fill="var(--color-Unapproved)" fillOpacity={0.2} />
                       </AreaChart>
-                    </ResponsiveContainer>
+                    </ChartContainer>
                   </CardContent>
                 </Card>
               </div>
@@ -183,27 +202,29 @@ export function ReportDetailsPage() {
           <TabsContent value="inventory" className="space-y-8 animate-in fade-in slide-in-from-bottom-2">
             <div className="flex flex-col lg:flex-row gap-8">
               <Card className="flex-1 border-border/50 shadow-soft h-fit">
-                <CardHeader><CardTitle className="flex items-center gap-2"><PieChart className="h-5 w-5 text-[#F38020]" /> Status Breakdown</CardTitle></CardHeader>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <PieChart className="h-5 w-5 text-[#F38020]" /> Status Breakdown
+                  </CardTitle>
+                </CardHeader>
                 <CardContent className="flex flex-col items-center">
-                  <div className="h-[240px] w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <RePieChart>
-                        <Pie
-                          data={pieData}
-                          innerRadius={60}
-                          outerRadius={80}
-                          paddingAngle={5}
-                          dataKey="value"
-                          onClick={(data) => setSelectedStatusFilter(selectedStatusFilter === data.name ? null : data.name)}
-                        >
-                          {pieData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.fill} cursor="pointer" />
-                          ))}
-                        </Pie>
-                        <Tooltip />
-                      </RePieChart>
-                    </ResponsiveContainer>
-                  </div>
+                  <ChartContainer config={pieChartConfig} className="h-[240px] w-full">
+                    <RePieChart>
+                      <Pie
+                        data={pieData}
+                        innerRadius={60}
+                        outerRadius={80}
+                        paddingAngle={5}
+                        dataKey="value"
+                        onClick={(data) => setSelectedStatusFilter(selectedStatusFilter === data.name ? null : data.name)}
+                      >
+                        {pieData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.fill} cursor="pointer" />
+                        ))}
+                      </Pie>
+                      <ChartTooltip content={<ChartTooltipContent hideLabel />} />
+                    </RePieChart>
+                  </ChartContainer>
                   <div className="grid grid-cols-2 gap-4 mt-4 w-full">
                     {pieData.map((d) => (
                       <button
