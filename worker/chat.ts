@@ -1,7 +1,6 @@
 import OpenAI from 'openai';
 import type { Message, ToolCall } from './types';
 import { getToolDefinitions, executeTool } from './tools';
-import { ChatCompletionMessageFunctionToolCall } from 'openai/resources/index.mjs';
 export class ChatHandler {
   private client: OpenAI;
   private model: string;
@@ -45,25 +44,24 @@ export class ChatHandler {
       return this.handleNonStreamResponse(completion, message, conversationHistory);
     } catch (error) {
       console.error('AI Service Exception:', error);
-      // Production Hardening: Return a perfectly structured fallback that avoids UI parsing crashes
       return {
         content: JSON.stringify({
-          summary: 'The AI analysis service is currently unavailable. Based on local security heuristics, we recommend immediate review of shadow AI access and data loss policies.',
+          summary: 'The AI analysis service is currently unavailable. Review local security heuristics.',
           recommendations: [
-            { 
-              title: 'Enforce Gateway Access Blocks', 
-              description: 'Immediately apply block policies to unapproved AI domains detected in your Gateway logs to prevent unauthorized access.', 
-              type: 'critical' 
+            {
+              title: 'Enforce Gateway Access Blocks',
+              description: 'Immediately apply block policies to unapproved AI domains.',
+              type: 'critical'
             },
-            { 
-              title: 'Audit DLP Policy Matches', 
-              description: 'Review real-time DLP incident telemetry to identify potential sensitive data transfers to GenAI endpoints.', 
-              type: 'policy' 
+            {
+              title: 'Audit DLP Policy Matches',
+              description: 'Review real-time DLP incident telemetry.',
+              type: 'policy'
             },
-            { 
-              title: 'Optimize Managed App Library', 
-              description: 'Consolidate shadow AI usage into corporate-sanctioned applications to ensure oversight and single-sign-on integration.', 
-              type: 'optimization' 
+            {
+              title: 'Optimize Managed App Library',
+              description: 'Consolidate shadow AI usage into corporate-sanctioned applications.',
+              type: 'optimization'
             }
           ]
         }),
@@ -78,7 +76,7 @@ export class ChatHandler {
     onChunk: (chunk: string) => void
   ): Promise<{ content: string; toolCalls?: ToolCall[] }> {
     let fullContent = '';
-    const accumulatedToolCalls: ChatCompletionMessageFunctionToolCall[] = [];
+    const accumulatedToolCalls: any[] = [];
     try {
       for await (const chunk of stream) {
         const delta = chunk.choices[0]?.delta;
@@ -116,11 +114,11 @@ export class ChatHandler {
     const responseMessage = completion.choices[0]?.message;
     if (!responseMessage) return { content: 'No response from AI.' };
     if (!responseMessage.tool_calls) return { content: responseMessage.content || '' };
-    const toolCalls = await this.executeToolCalls(responseMessage.tool_calls as ChatCompletionMessageFunctionToolCall[]);
+    const toolCalls = await this.executeToolCalls(responseMessage.tool_calls);
     const finalResponse = await this.generateToolResponse(message, history, responseMessage.tool_calls, toolCalls);
     return { content: finalResponse, toolCalls };
   }
-  private async executeToolCalls(openAiToolCalls: ChatCompletionMessageFunctionToolCall[]): Promise<ToolCall[]> {
+  private async executeToolCalls(openAiToolCalls: any[]): Promise<ToolCall[]> {
     return Promise.all(openAiToolCalls.map(async (tc) => {
       try {
         const args = tc.function.arguments ? JSON.parse(tc.function.arguments) : {};
@@ -138,7 +136,7 @@ export class ChatHandler {
         { role: 'system', content: 'You are RiskGuard AI Expert.' },
         ...history.slice(-3).map(m => ({ role: m.role, content: m.content })),
         { role: 'user', content: msg },
-        { role: 'assistant', content: null, tool_calls: calls },
+        { role: 'assistant', content: null, tool_calls: calls } as any,
         ...results.map((r, i) => ({ role: 'tool' as const, content: JSON.stringify(r.result), tool_call_id: calls[i]?.id || r.id }))
       ],
       max_tokens: 16000
@@ -147,7 +145,7 @@ export class ChatHandler {
   }
   private buildConversationMessages(userMessage: string, history: Message[]) {
     return [
-      { role: 'system' as const, content: 'You are RiskGuard AI Consultant for Cloudflare ZTNA. Provide executive-level risk summaries and specific remediation steps for shadow AI usage.' },
+      { role: 'system' as const, content: 'You are RiskGuard AI Consultant for Cloudflare ZTNA. Provide executive-level risk summaries.' },
       ...history.slice(-5).map(m => ({ role: m.role, content: m.content })),
       { role: 'user' as const, content: userMessage }
     ];
