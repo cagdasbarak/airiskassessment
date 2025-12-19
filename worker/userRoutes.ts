@@ -84,7 +84,7 @@ const getBaseReport = () => {
   };
 };
 
-export function userRoutes(app: Hono<{}>) {
+export function userRoutes(app: Hono<any>) {
   if (userRoutesRegistered) return;
   userRoutesRegistered = true;
   
@@ -97,7 +97,7 @@ export function userRoutes(app: Hono<{}>) {
   });
   
   app.post('/api/assess', async (c) => {
-    const report = { ...getBaseReport(), id: crypto.randomUUID() };
+    const report = { ...getBaseReport(), id: `report-${Date.now()}-${Math.random().toString(36).substr(2, 9)}` };
     return c.json({ success: true, data: report });
   });
   
@@ -120,7 +120,16 @@ export function userRoutes(app: Hono<{}>) {
   app.post('/api/license-check', async (c) => {
     return c.json({ success: true, data: MOCK_LICENSE });
   });
+
+  app.get('/api/ai-trends', async (c) => {
+    const baseReport = getBaseReport();
+    return c.json({ success: true, data: { trends: baseReport.securityCharts.topAppsTrends } });
+  });
   
-  console.log('ROUTES HARDCODED 200');
+  console.log('ALL ROUTES HARDCODED LIVE');
+}
+
+export function coreRoutes(app: Hono<any>): void { 
+  console.log('CORE ROUTES HARDCODED EMPTY LIVE'); 
 }
 //
