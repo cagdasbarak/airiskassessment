@@ -47,12 +47,13 @@ const ChartContainer = React.forwardRef<
     observer.observe(containerRef.current)
     return () => observer.disconnect()
   }, [])
-  // Guard: Only render Recharts when dimensions are positive to avoid -1/-1 warnings
   const shouldRenderChart = mounted && dims.width > 0 && dims.height > 0
   return (
     <ChartContext.Provider value={{ config }}>
       <div
         ref={containerRef}
+        id={id}
+        data-chart={chartId}
         style={
           {
             "--chart-style-id": `chart-style-${chartId}`,
