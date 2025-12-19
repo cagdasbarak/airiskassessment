@@ -24,7 +24,8 @@ const COLOR_MAP = {
   blue: '#3B82F6',
   emerald: '#10B981'
 } as const;
-const ProgressRing = ({ value, colorKey }: { value: number; colorKey: keyof typeof COLOR_MAP }) => {
+type ColorKey = keyof typeof COLOR_MAP;
+const ProgressRing = ({ value, colorKey }: { value: number; colorKey: ColorKey }) => {
   const radius = 36;
   const circumference = 2 * Math.PI * radius;
   const safeValue = Math.min(100, Math.max(0, value));
@@ -69,6 +70,10 @@ export function ExecutiveScorecard({ summary, score }: ScorecardProps) {
   const dataRiskKB = Number(summary?.dataExfiltrationKB || 0);
   const healthScore = Number(score || 0);
   const complianceScore = Number(summary?.complianceScore || 0);
+  // Dynamic logic for Unmanaged Traffic (Card 3)
+  const isTrafficRisk = dataRiskKB >= 1024;
+  const trafficColorKey: ColorKey = isTrafficRisk ? "red" : "purple";
+  const trafficProgress = Math.min(100, (dataRiskKB / 1024) * 100);
   const cards = [
     {
       title: "Shadow AI Usage",
@@ -85,17 +90,17 @@ export function ExecutiveScorecard({ summary, score }: ScorecardProps) {
       description: "Active risk assets",
       icon: AlertTriangle,
       colorClass: unapprovedCount > 0 ? "text-red-500" : "text-emerald-500",
-      colorKey: (unapprovedCount > 0 ? "red" : "emerald") as const,
+      colorKey: (unapprovedCount > 0 ? "red" : "emerald") as ColorKey,
       progress: unapprovedCount > 0 ? 100 : 0
     },
     {
-      title: "Risk Volume",
-      value: summary?.dataExfiltrationRisk || '0 KB',
-      description: "30D Forensic Data",
+      title: "Unmanaged AI Traffic",
+      value: `${dataRiskKB.toLocaleString()} KB`,
+      description: "Non-corporate data volume",
       icon: HardDriveUpload,
-      colorClass: "text-purple-500",
-      colorKey: "purple" as const,
-      progress: Math.min(100, (dataRiskKB / 1024) * 100)
+      colorClass: isTrafficRisk ? "text-red-500" : "text-purple-500",
+      colorKey: trafficColorKey,
+      progress: trafficProgress
     },
     {
       title: "Health Score",

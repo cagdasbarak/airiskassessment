@@ -98,10 +98,10 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         data: {
           plan: ztSub?.id === 'zero_trust_enterprise' ? 'Zero Trust Enterprise' : 'ZTNA Standard',
           totalLicenses: seatCount || 50,
-          usedLicenses: Math.floor((seatCount || 50) * 0.42), // Simulated usage ratio
+          usedLicenses: Math.floor((seatCount || 50) * 0.42), 
           accessSub: hasAccess,
           gatewaySub: hasGateway,
-          dlp: true, // Standard for Enterprise
+          dlp: true,
           casb: true,
           rbi: hasGateway
         }
@@ -165,13 +165,18 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       const managedIds = aiIds.filter((id: string) => managedIdsSet.has(id));
       const shadowCount = Math.max(0, totalAI - managedIds.length);
       const shadowUsage = totalAI > 0 ? Number(((shadowCount / totalAI) * 100).toFixed(3)) : 0;
-      const dlpResp = await safeFetch('/dlp/incidents?per_page=500', settings);
-      const dlpJson = safeJSON(await dlpResp.text());
+      // Phase 35: Forensic analysis of Cloudflare Access events
+      const accessResp = await safeFetch('/access/events?per_page=1000', settings);
+      const accessJson = safeJSON(await accessResp.text());
       let dataExfiltrationKB = 0;
-      if (dlpJson?.result && Array.isArray(dlpJson.result)) {
-        const cutoffDate = new Date(Date.now() - 30 * 24 * 3600 * 1000);
-        const incidents = dlpJson.result.filter((i: any) => new Date(i.timestamp || i.created_at) > cutoffDate);
-        dataExfiltrationKB = incidents.reduce((sum: number, i: any) => sum + Math.floor(Number(i.fileSize || 0) / 1024), 0);
+      if (accessJson?.result && Array.isArray(accessJson.result)) {
+        // Filter events where gateway app is unapproved or unreviewed
+        const unmanagedEvents = accessJson.result.filter((ev: any) => 
+          ev.gatewayAppStatus === 'Unapproved' || ev.gatewayAppStatus === 'Unreviewed'
+        );
+        dataExfiltrationKB = unmanagedEvents.reduce((sum: number, ev: any) => 
+          sum + Math.floor(Number(ev.bytesSent || 0) / 1024), 0
+        );
       }
       const unapprovedAppsCount = unapproved.filter((id: string) => aiIds.includes(id)).length;
       const healthScore = Math.max(0, Math.min(100, 100 - (shadowUsage / 1.5) - (unapprovedAppsCount * 2)));
@@ -183,7 +188,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         - Unapproved AI Apps Detected: ${unapprovedAppsCount}
         - Overall Security Health Score: ${healthScore.toFixed(0)}%
         - Total Detected AI Apps: ${totalAI}
-        - Potential Sensitive Data Exposure (30-day forensic): ${formatRiskVolume(dataExfiltrationKB)}
+        - Forensic Unmanaged AI Traffic (bytesSent): ${formatRiskVolume(dataExfiltrationKB)}
         Provide your analysis in EXACTLY this JSON format:
         {
           "summary": "A 2-sentence executive summary of the risk posture.",
@@ -218,7 +223,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
           shadowAiApps: shadowCount,
           shadowUsage: Number(shadowUsage.toFixed(3)),
           unapprovedApps: unapprovedAppsCount,
-          dataExfiltrationKB: dataExfiltrationKB,
+          dataExfiltrationKB: Math.floor(dataExfiltrationKB),
           dataExfiltrationRisk: formatRiskVolume(dataExfiltrationKB),
           complianceScore: totalAI > 0 ? Math.round((managedIds.length / totalAI) * 100) : 100,
           libraryCoverage: 74,
