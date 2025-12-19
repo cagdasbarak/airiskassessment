@@ -12,7 +12,7 @@ import {
   PieChart, Pie, Cell, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from 'recharts';
 import {
-  ChevronLeft, Download, ShieldAlert, Users, Lock, Loader2, Activity, ShieldCheck, Database, Globe, Terminal, Sparkles, Printer
+  ChevronLeft, Download, ShieldAlert, Users, Lock, Loader2, Activity, ShieldCheck, Database, Globe, Terminal, Sparkles, Printer, AlertTriangle
 } from 'lucide-react';
 import { api, AssessmentReport, SecurityCharts } from '@/lib/api';
 import { AIInsightsSection } from '@/components/reports/AIInsightsSection';
@@ -46,9 +46,6 @@ export function ReportDetailsPage() {
     };
     fetchReport();
   }, [id]);
-  const handlePrint = () => {
-    window.print();
-  };
   if (isLoading) return (
     <AppLayout container>
       <div className="flex flex-col items-center justify-center h-96 space-y-4">
@@ -60,15 +57,15 @@ export function ReportDetailsPage() {
   if (!report || !report.summary) return (
     <AppLayout container>
       <div className="text-center py-24">
-        <h2 className="text-2xl font-bold">Security report not found</h2>
+        <h2 className="text-2xl font-bold text-foreground">Security report not found</h2>
         <Button variant="link" onClick={() => navigate('/reports')}>Back to Archive</Button>
       </div>
     </AppLayout>
   );
   const safeAppLibrary = report.appLibrary ?? [];
   const summary = report.summary;
-  const charts = (report.securityCharts || {}) as SecurityCharts;
-  const topAppsTrend = charts.topAppsTrend ?? [];
+  const isHighRiskShadow = (summary?.shadowUsage ?? 0) > 30;
+  const isHighRiskUnapproved = (summary?.unapprovedApps ?? 0) > 0;
   const statusCounts = safeAppLibrary.reduce((acc: Record<string, number>, app) => {
     const status = app.status ?? 'Unreviewed';
     acc[status] = (acc[status] || 0) + 1;
@@ -81,7 +78,6 @@ export function ReportDetailsPage() {
   const filteredApps = selectedStatus
     ? safeAppLibrary.filter(a => a.status === selectedStatus)
     : safeAppLibrary;
-  const trendKeys = (topAppsTrend?.length ?? 0) > 0 ? Object.keys(topAppsTrend[0] ?? {}).filter(k => k !== 'name') : [];
   return (
     <AppLayout container>
       <div className="space-y-10">
@@ -91,66 +87,76 @@ export function ReportDetailsPage() {
               <ChevronLeft className="h-5 w-5" />
             </Button>
             <div>
-              <h1 className="text-3xl font-bold tracking-tight">Security Audit {(report.id ?? '').slice(-6)}</h1>
+              <h1 className="text-3xl font-bold tracking-tight text-foreground">Security Audit {(report.id ?? '').slice(-6)}</h1>
               <div className="flex items-center gap-2 text-muted-foreground">
                 <Globe className="h-3 w-3" />
-                <span className="text-sm">ZTNA Engine v2.5 • {report.date ?? 'N/A'}</span>
+                <span className="text-sm">ZTNA Engine v2.5 ��� {report.date ?? 'N/A'}</span>
               </div>
             </div>
           </div>
           <div className="flex gap-2 no-print">
             <Button variant="outline" className="rounded-xl"><Download className="h-4 w-4 mr-2" /> Raw Logs</Button>
-            <Button onClick={handlePrint} className="btn-gradient rounded-xl"><Printer className="h-4 w-4 mr-2" /> Generate PDF</Button>
+            <Button onClick={() => window.print()} className="btn-gradient rounded-xl"><Printer className="h-4 w-4 mr-2" /> Generate PDF</Button>
           </div>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-          <Card className={cn("border-border/50 shadow-soft overflow-hidden group hover:shadow-md transition-all", (summary.shadowUsage ?? 0) > 50 && "ring-2 ring-red-500 ring-inset")}>
+          <Card className={cn(
+            "border-border/50 shadow-soft transition-all",
+            isHighRiskShadow && "ring-4 ring-red-500 animate-pulse bg-red-500/5"
+          )}>
             <CardContent className="p-6">
               <div className="p-2 rounded-lg w-fit mb-4 bg-red-500/10">
                 <Terminal className="h-5 w-5 text-red-500" />
               </div>
               <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-1">Shadow AI Usage</p>
               <div className="flex items-baseline gap-2">
-                <p className={cn("text-3xl font-bold", (summary.shadowUsage ?? 0) > 50 ? "text-red-500" : "text-foreground")}>
-                  {summary.shadowUsage ?? 0}%
+                <p className={cn("text-3xl font-bold", isHighRiskShadow ? "text-red-500" : "text-foreground")}>
+                  {summary?.shadowUsage?.toFixed(2) ?? 0}%
                 </p>
-                {(summary.shadowUsage ?? 0) > 50 && (
+                {isHighRiskShadow && (
                   <Badge variant="destructive" className="text-[8px] h-4">CRITICAL</Badge>
                 )}
               </div>
-              <Progress value={summary.shadowUsage ?? 0} className={cn("h-1 mt-2", (summary.shadowUsage ?? 0) > 50 ? "[&>div]:bg-red-500" : "")} />
+              <Progress value={summary?.shadowUsage ?? 0} className={cn("h-1 mt-2", isHighRiskShadow ? "[&>div]:bg-red-500" : "")} />
             </CardContent>
           </Card>
-          <Card className="border-border/50 shadow-soft overflow-hidden group hover:shadow-md transition-all bg-red-50/10 dark:bg-red-950/5">
+          <Card className={cn(
+            "border-border/50 shadow-soft transition-all",
+            isHighRiskUnapproved && "ring-4 ring-red-500 bg-red-500/5"
+          )}>
             <CardContent className="p-6">
               <div className="p-2 rounded-lg w-fit mb-4 bg-orange-500/10">
-                <ShieldAlert className="h-5 w-5 text-orange-500" />
+                <AlertTriangle className="h-5 w-5 text-orange-500" />
               </div>
               <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-1">Unapproved Apps</p>
               <div className="flex items-center gap-3">
-                <p className="text-3xl font-bold text-red-600 dark:text-red-500">{summary.unapprovedApps ?? 0}</p>
-                <Badge className="bg-red-600 text-white border-none text-[10px] h-5">BLOCKED</Badge>
+                <p className={cn("text-3xl font-bold", isHighRiskUnapproved ? "text-red-600" : "text-foreground")}>
+                  {summary?.unapprovedApps ?? 0}
+                </p>
+                {isHighRiskUnapproved && (
+                  <Badge className="bg-red-600 text-white border-none text-[10px] h-5">BLOCKED</Badge>
+                )}
               </div>
             </CardContent>
           </Card>
-          <Card className="border-border/50 shadow-soft overflow-hidden group hover:shadow-md transition-all">
+          <Card className="border-border/50 shadow-soft overflow-hidden">
             <CardContent className="p-6">
               <div className="p-2 rounded-lg w-fit mb-4 bg-blue-500/10">
                 <Database className="h-5 w-5 text-blue-500" />
               </div>
               <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-1">Data Exfil Risk</p>
-              <p className="text-2xl font-bold text-blue-500">{summary.dataExfiltrationRisk ?? '0 MB'}</p>
+              <p className="text-2xl font-bold text-blue-500">{summary?.dataExfiltrationRisk ?? '0 MB'}</p>
               <p className="text-[10px] text-muted-foreground mt-1">DLP Incident Volume</p>
             </CardContent>
           </Card>
-          <Card className="border-border/50 shadow-soft overflow-hidden group hover:shadow-md transition-all">
+          <Card className="border-border/50 shadow-soft overflow-hidden">
             <CardContent className="p-6">
               <div className="p-2 rounded-lg w-fit mb-4 bg-purple-500/10">
                 <Users className="h-5 w-5 text-purple-500" />
               </div>
               <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-1">Top Power Users</p>
               <div className="space-y-1.5 mt-2">
-                {(report.powerUsers ?? []).slice(0, 3).map((user, idx) => (
+                {(report?.powerUsers ?? []).slice(0, 3).map((user, idx) => (
                   <div key={idx} className="flex justify-between items-center text-[10px]">
                     <span className="font-medium text-foreground truncate max-w-[80px]">{user?.name ?? 'N/A'}</span>
                     <span className="text-purple-500 font-bold">{user?.prompts ?? 0} reqs</span>
@@ -159,16 +165,16 @@ export function ReportDetailsPage() {
               </div>
             </CardContent>
           </Card>
-          <Card className="border-border/50 shadow-soft overflow-hidden group hover:shadow-md transition-all">
+          <Card className="border-border/50 shadow-soft overflow-hidden">
             <CardContent className="p-6">
               <div className="p-2 rounded-lg w-fit mb-4 bg-green-500/10">
                 <ShieldCheck className="h-5 w-5 text-green-500" />
               </div>
               <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-1">Posture Score</p>
               <div className="flex flex-col">
-                <p className="text-2xl font-bold text-green-500">{(summary.casbPosture ?? 0)}/100</p>
+                <p className="text-2xl font-bold text-green-500">{(summary?.casbPosture ?? 0)}/100</p>
                 <div className="h-1 w-full bg-secondary mt-2 rounded-full overflow-hidden">
-                  <div className="h-full bg-green-500" style={{ width: `${summary.casbPosture ?? 0}%` }} />
+                  <div className="h-full bg-green-500" style={{ width: `${summary?.casbPosture ?? 0}%` }} />
                 </div>
               </div>
             </CardContent>
@@ -176,168 +182,36 @@ export function ReportDetailsPage() {
         </div>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="w-full justify-start border-b rounded-none bg-transparent h-auto p-0 mb-8 space-x-8 no-print">
-            <TabsTrigger value="library" className="rounded-none border-b-2 border-transparent data-[state=active]:border-[#F38020] data-[state=active]:bg-transparent px-0 py-4 font-bold text-sm">Application Inventory</TabsTrigger>
-            <TabsTrigger value="security" className="rounded-none border-b-2 border-transparent data-[state=active]:border-[#F38020] data-[state=active]:bg-transparent px-0 py-4 font-bold text-sm">Security Analytics</TabsTrigger>
-            <TabsTrigger value="recommendations" className="rounded-none border-b-2 border-transparent data-[state=active]:border-[#F38020] data-[state=active]:bg-transparent px-0 py-4 font-bold text-sm">Executive Recommendations</TabsTrigger>
+            <TabsTrigger value="library" className="rounded-none border-b-2 border-transparent data-[state=active]:border-[#F38020] data-[state=active]:bg-transparent px-0 py-4 font-bold text-sm text-foreground">Application Inventory</TabsTrigger>
+            <TabsTrigger value="security" className="rounded-none border-b-2 border-transparent data-[state=active]:border-[#F38020] data-[state=active]:bg-transparent px-0 py-4 font-bold text-sm text-foreground">Security Analytics</TabsTrigger>
           </TabsList>
           <TabsContent value="library" className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-              <Card className="lg:col-span-1 border-border/50 shadow-soft h-fit">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-xs uppercase tracking-widest text-muted-foreground font-bold">Review Status Split</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-[200px] w-full">
-                    <ResponsiveContainer width="100%" height={200} minWidth={0}>
-                      <PieChart>
-                        <Pie
-                          data={pieData}
-                          innerRadius={60}
-                          outerRadius={80}
-                          paddingAngle={5}
-                          dataKey="value"
-                          onClick={(data) => setSelectedStatus(selectedStatus === data.name ? null : data.name)}
-                          className="cursor-pointer outline-none"
-                        >
-                          {pieData.map((entry, index) => (
-                            <Cell
-                              key={`cell-${index}`}
-                              fill={PIE_COLORS[entry.name] || '#CBD5E1'}
-                              strokeWidth={selectedStatus === entry.name ? 4 : 0}
-                              stroke="currentColor"
-                              className="text-background outline-none"
-                            />
-                          ))}
-                        </Pie>
-                        <Tooltip />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                  <div className="space-y-1 mt-4">
-                    {pieData.map((entry) => (
-                      <button
-                        key={`pie-${entry.name}`}
-                        onClick={() => setSelectedStatus(selectedStatus === entry.name ? null : entry.name)}
-                        className={cn(
-                          "flex items-center justify-between w-full p-2.5 rounded-xl text-xs transition-all hover:bg-secondary/50",
-                          selectedStatus === entry.name ? "bg-secondary ring-1 ring-inset ring-[#F38020]" : ""
-                        )}
-                      >
-                        <div className="flex items-center gap-2">
-                          <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: PIE_COLORS[entry.name] }} />
-                          <span className="font-bold">{entry.name}</span>
-                        </div>
-                        <span className="font-mono">{entry.value}</span>
-                      </button>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-              <Card className="lg:col-span-3 border-border/50 shadow-soft overflow-hidden">
-                <CardHeader className="flex flex-row items-center justify-between pb-4 border-b">
-                  <div>
-                    <CardTitle className="text-lg">AI Discovery Log</CardTitle>
-                    <CardDescription className="text-xs">Granular analysis of detected generative AI endpoints.</CardDescription>
-                  </div>
-                  {selectedStatus && <Button variant="ghost" size="sm" onClick={() => setSelectedStatus(null)} className="h-8 rounded-lg text-xs no-print">Clear Filter</Button>}
-                </CardHeader>
-                <CardContent className="p-0">
-                  <Table>
-                    <TableHeader className="bg-secondary/20">
-                      <TableRow className="border-b-0">
-                        <TableHead className="w-[30px]"></TableHead>
-                        <TableHead className="text-[10px] uppercase font-bold">Application</TableHead>
-                        <TableHead className="text-[10px] uppercase font-bold">App Confidence</TableHead>
-                        <TableHead className="text-[10px] uppercase font-bold">GenAI Score</TableHead>
-                        <TableHead className="text-[10px] uppercase font-bold">Status</TableHead>
-                        <TableHead className="text-right text-[10px] uppercase font-bold">Users</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredApps.map((app) => (
-                        <React.Fragment key={app.appId}>
-                          <TableRow
-                            className="cursor-pointer group hover:bg-secondary/10 transition-colors border-l-4 border-l-transparent data-[state=expanded]:border-l-[#F38020] data-[state=expanded]:bg-secondary/30"
-                            data-state={expandedRow === app.appId ? "expanded" : "collapsed"}
-                            onClick={() => setExpandedRow(expandedRow === app.appId ? null : app.appId)}
-                          >
-                            <TableCell className="text-muted-foreground font-mono text-xs">{expandedRow === app.appId ? '−' : '+'}</TableCell>
-                            <TableCell className="font-bold text-sm">{app.name}</TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                <div className="h-1.5 w-16 bg-secondary rounded-full overflow-hidden">
-                                  <div className={cn("h-full", (app.risk_score ?? 0) > 70 ? 'bg-red-500' : 'bg-green-500')} style={{ width: `${app.risk_score ?? 0}%` }} />
-                                </div>
-                                <span className="text-[10px] font-bold">{app.risk_score ?? 0}%</span>
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-[10px] font-mono font-bold text-blue-500">{app.genai_score ?? 0}%</TableCell>
-                            <TableCell>
-                              <Badge variant="secondary" className="text-[9px] h-5" style={{ backgroundColor: `${PIE_COLORS[app.status] || '#808080'}20`, color: PIE_COLORS[app.status] || '#808080', border: `1px solid ${PIE_COLORS[app.status] || '#808080'}40` }}>
-                                {app.status}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-right font-mono text-xs font-bold">{app.users ?? 0}</TableCell>
-                          </TableRow>
-                          <AnimatePresence>
-                            {expandedRow === app.appId && (
-                              <TableRow className="bg-secondary/5">
-                                <TableCell colSpan={6} className="p-0 border-b">
-                                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-                                    <div className="p-6">
-                                      <AppDetailsDrillDown app={app as any} />
-                                    </div>
-                                  </motion.div>
-                                </TableCell>
-                              </TableRow>
-                            )}
-                          </AnimatePresence>
-                        </React.Fragment>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-          <TabsContent value="security" className="space-y-8">
-            <Card className="border-border/50 shadow-soft">
-              <CardHeader>
-                <CardTitle className="text-sm font-bold flex items-center gap-2">
-                  <Activity className="h-4 w-4 text-blue-500" /> Top 5 Visited AI Apps (30 Day Trend)
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="h-[400px]">
-                <ResponsiveContainer width="100%" height={400} minHeight={350} minWidth={0}>
-                  <AreaChart data={topAppsTrend} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.1} />
-                    <XAxis dataKey="name" hide />
-                    <YAxis />
-                    <Tooltip />
-                    <Legend />
-                    {trendKeys.map((key, i) => (
-                      <Area
-                        key={key}
-                        type="monotone"
-                        dataKey={key}
-                        stackId="1"
-                        stroke={`hsl(${i * 60}, 70%, 50%)`}
-                        fill={`hsl(${i * 60}, 70%, 50%)`}
-                        fillOpacity={0.4}
-                      />
-                    ))}
-                  </AreaChart>
-                </ResponsiveContainer>
-              </CardContent>
+            <Card className="border-border/50 shadow-soft overflow-hidden">
+              <Table>
+                <TableHeader className="bg-secondary/20">
+                  <TableRow>
+                    <TableHead className="text-[10px] uppercase font-bold text-foreground">Application</TableHead>
+                    <TableHead className="text-[10px] uppercase font-bold text-foreground">Status</TableHead>
+                    <TableHead className="text-[10px] uppercase font-bold text-foreground">Risk Level</TableHead>
+                    <TableHead className="text-right text-[10px] uppercase font-bold text-foreground">Users</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredApps.map((app) => (
+                    <TableRow key={app.appId} className="hover:bg-secondary/10">
+                      <TableCell className="font-bold text-sm text-foreground">{app.name}</TableCell>
+                      <TableCell>
+                        <Badge variant="secondary" className="text-[9px]" style={{ color: PIE_COLORS[app.status] }}>{app.status}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={app.risk === 'High' ? 'destructive' : 'outline'} className="text-[9px]">{app.risk}</Badge>
+                      </TableCell>
+                      <TableCell className="text-right font-mono text-xs text-foreground">{app.users}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </Card>
-          </TabsContent>
-          <TabsContent value="recommendations">
-            {report.aiInsights ? <AIInsightsSection insights={report.aiInsights} /> : (
-              <div className="text-center py-20 opacity-50 flex flex-col items-center gap-4">
-                <Sparkles className="h-10 w-10 text-muted-foreground opacity-20" />
-                <p>AI analysis data missing for this report.</p>
-              </div>
-            )}
           </TabsContent>
         </Tabs>
       </div>

@@ -3,6 +3,7 @@ export interface ApiResponse<T> {
   success: boolean;
   data?: T;
   error?: string;
+  detail?: string;
 }
 export interface AuditLog {
   id: string;
@@ -42,14 +43,7 @@ export interface PowerUser {
 export interface SecurityCharts {
   usageOverTime?: Array<{ name: string; usage: number }>;
   riskDistribution?: Array<{ name: string; value: number }>;
-  dataVolume?: Array<{ name: string; value: number }>;
-  mcpActivity?: Array<{ name: string; value: number }>;
-  loginEvents?: Array<{ name: string; value: number }>;
   topAppsTrend?: Array<Record<string, any>>;
-  statusTrend?: Array<{ name: string; Approved: number; Review: number; Unapproved: number; Unreviewed: number }>;
-  dataTrend?: Array<{ name: string; total: number; delta: number }>;
-  mcpAccessTrend?: Array<{ name: string; servers: number }>;
-  mcpLoginTrend?: Array<{ name: string; events: number }>;
 }
 export interface AssessmentReport {
   id: string;
@@ -93,22 +87,31 @@ export interface AssessmentReport {
 }
 async function safeApi<T>(endpoint: string, options?: RequestInit): Promise<ApiResponse<T>> {
   const url = `/api${endpoint}`;
-  const res = await fetch(url, options);
-  const logCtx = endpoint.split('/').slice(-1)[0] || endpoint.slice(1);
-  if (!res.ok) {
-    const text = await res.text().catch(() => '<empty>');
-    console.error(`Client API ${logCtx} error ${res.status}:`, text.slice(0, 300));
-    return { success: false, error: `Server error ${res.status}: ${text.slice(0, 100)}` } as ApiResponse<T>;
-  }
+  console.info(`[API CALL] Starting ${options?.method || 'GET'} to ${endpoint}`);
   try {
-    return await res.json() as ApiResponse<T>;
-  } catch (e: any) {
-    const text = await res.text().catch(() => '<empty>');
-    console.error(`Client API ${logCtx} bad JSON: ${e?.message}`, text.slice(0, 300));
-    return { success: false, error: 'Invalid JSON from server' } as ApiResponse<T>;
+    const res = await fetch(url, options);
+    const text = await res.text();
+    if (!res.ok) {
+      console.error(`[API ERROR] Endpoint ${endpoint} returned ${res.status}:`, text.slice(0, 300));
+      let errorData;
+      try {
+        errorData = JSON.parse(text);
+      } catch {
+        errorData = { error: `Server error ${res.status}`, detail: text.slice(0, 100) };
+      }
+      return { success: false, error: errorData.error, detail: errorData.detail } as ApiResponse<T>;
+    }
+    try {
+      return JSON.parse(text) as ApiResponse<T>;
+    } catch (e: any) {
+      console.error(`[API ERROR] Failed to parse JSON from ${endpoint}:`, text.slice(0, 300));
+      return { success: false, error: 'Invalid JSON from server' } as ApiResponse<T>;
+    }
+  } catch (error: any) {
+    console.error(`[API ERROR] Network failure reaching ${endpoint}:`, error);
+    return { success: false, error: 'Network connection failed' } as ApiResponse<T>;
   }
 }
-
 export const api = {
   async getSettings(): Promise<ApiResponse<Settings>> {
     return safeApi<Settings>('/settings');
