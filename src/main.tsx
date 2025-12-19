@@ -1,7 +1,7 @@
 import '@/lib/errorReporter';
 import { enableMapSet } from "immer";
 enableMapSet();
-import { StrictMode } from 'react'
+
 import { createRoot } from 'react-dom/client'
 import {
   createBrowserRouter,
@@ -19,6 +19,7 @@ import { ReportsPage } from '@/pages/ReportsPage'
 import { ReportDetailsPage } from '@/pages/ReportDetailsPage'
 import { LogsPage } from '@/pages/LogsPage'
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
+import { ThemeProvider } from 'next-themes';
 const queryClient = new QueryClient();
 const router = createBrowserRouter([
   {
@@ -53,12 +54,12 @@ const router = createBrowserRouter([
   },
 ]);
 createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <ErrorBoundary>
+  <QueryClientProvider client={queryClient}>
+    <ErrorBoundary>
+      <ThemeProvider attribute='class' defaultTheme='system' enableSystem>
         <RouterProvider router={router} />
         <Toaster richColors closeButton position="top-right" />
-      </ErrorBoundary>
-    </QueryClientProvider>
-  </StrictMode>,
+      </ThemeProvider>
+    </ErrorBoundary>
+  </QueryClientProvider>
 )
