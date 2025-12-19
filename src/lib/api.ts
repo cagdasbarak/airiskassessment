@@ -66,7 +66,7 @@ export interface AssessmentReport {
     totalApps: number;
     aiApps: number;
     shadowAiApps: number;
-    shadowUsage: number;
+    shadowUsage: number; // Stored as precision number from backend
     unapprovedApps: number;
     dataExfiltrationRisk: string;
     complianceScore: number;
@@ -95,7 +95,7 @@ async function safeApi<T>(endpoint: string, options?: RequestInit): Promise<ApiR
     const res = await fetch(url, options);
     const text = await res.text();
     if (!res.ok) {
-      console.warn(`[API DIAGNOSTIC] ${options?.method || 'GET'} ${endpoint} failed with status ${res.status}`);
+      console.warn(`[API] ${options?.method || 'GET'} ${endpoint} error: ${res.status}`);
       let errorData;
       try {
         errorData = JSON.parse(text);
@@ -107,7 +107,7 @@ async function safeApi<T>(endpoint: string, options?: RequestInit): Promise<ApiR
     if (!text || text.trim().length === 0) return { success: true } as ApiResponse<T>;
     return JSON.parse(text) as ApiResponse<T>;
   } catch (error: any) {
-    console.error(`[API DIAGNOSTIC] Network failure for ${endpoint}:`, error.message);
+    console.error(`[API] Network failure for ${endpoint}:`, error.message);
     return { success: false, error: 'Network connection failed' } as ApiResponse<T>;
   }
 }
