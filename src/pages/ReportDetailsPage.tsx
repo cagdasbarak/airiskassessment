@@ -25,13 +25,21 @@ export function ReportDetailsPage() {
   useEffect(() => {
     let isMounted = true;
     const fetchReport = async () => {
-      if (!id) { setIsLoading(false); return; }
+      if (!id) { 
+        if (isMounted) setIsLoading(false); 
+        return; 
+      }
       try {
         setIsLoading(true);
         const res = await api.getReport(id);
-        if (isMounted && res.success && res.data) { setReport(res.data); }
-      } catch (err) { console.error('[ReportDetails] Fetch failed:', err); }
-      finally { if (isMounted) setIsLoading(false); }
+        if (isMounted && res.success && res.data) { 
+          setReport(res.data); 
+        }
+      } catch (err) { 
+        console.error('[ReportDetails] Fetch failed:', err); 
+      } finally { 
+        if (isMounted) setIsLoading(false); 
+      }
     };
     fetchReport();
     return () => { isMounted = false; };
@@ -56,9 +64,13 @@ export function ReportDetailsPage() {
     return (
       <AppLayout container>
         <div className="text-center py-24 space-y-6">
-          <div className="h-20 w-20 rounded-full bg-muted flex items-center justify-center mx-auto"><FileText className="h-10 w-10 text-muted-foreground" /></div>
+          <div className="h-20 w-20 rounded-full bg-muted flex items-center justify-center mx-auto">
+            <FileText className="h-10 w-10 text-muted-foreground" />
+          </div>
           <h2 className="text-3xl font-bold">Report Not Found</h2>
-          <Button onClick={() => navigate('/reports')} className="rounded-xl px-8 h-11">Back to Archive</Button>
+          <Button onClick={() => navigate('/reports')} className="rounded-xl px-8 h-11">
+            Back to Archive
+          </Button>
         </div>
       </AppLayout>
     );
@@ -80,13 +92,22 @@ export function ReportDetailsPage() {
       <div className="py-8 md:py-10 lg:py-12 space-y-12">
         <header className="flex flex-col items-center justify-center space-y-6 text-center relative">
           <div className="no-print lg:absolute top-0 left-0">
-            <Button variant="ghost" size="sm" onClick={() => navigate('/reports')} className="rounded-xl gap-2 text-muted-foreground hover:text-foreground">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => navigate('/reports')} 
+              className="rounded-xl gap-2 text-muted-foreground hover:text-foreground"
+            >
               <ChevronLeft className="h-4 w-4" /> Back to Archive
             </Button>
           </div>
           <div className="space-y-4">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#F38020]/10 text-[#F38020] text-[10px] font-black uppercase tracking-[0.2em] border border-[#F38020]/20">Security Compliance Audit</div>
-            <h1 className="text-4xl md:text-6xl font-black tracking-tighter text-foreground uppercase">RiskGuard AI Report</h1>
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#F38020]/10 text-[#F38020] text-[10px] font-black uppercase tracking-[0.2em] border border-[#F38020]/20">
+              Security Compliance Audit
+            </div>
+            <h1 className="text-4xl md:text-6xl font-black tracking-tighter text-foreground uppercase">
+              RiskGuard AI Report
+            </h1>
             <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[10px] font-mono text-muted-foreground uppercase tracking-[0.3em] border-y border-border/50 py-3 px-6 print:border-black print:text-black">
               <span>ID: {id.slice(-8).toUpperCase()}</span>
               <span className="hidden sm:inline">•</span>
@@ -95,7 +116,12 @@ export function ReportDetailsPage() {
               <span className="text-[#F38020] print:text-black font-bold">ZTNA Precision</span>
             </div>
           </div>
-          <Button variant="outline" size="lg" className="rounded-2xl no-print hover:bg-secondary border-border/50 shadow-soft h-14 px-8 font-bold" onClick={() => window.print()}>
+          <Button 
+            variant="outline" 
+            size="lg" 
+            className="rounded-2xl no-print hover:bg-secondary border-border/50 shadow-soft h-14 px-8 font-bold" 
+            onClick={() => window.print()}
+          >
             <Printer className="h-5 w-5 mr-3" /> Export Executive PDF
           </Button>
         </header>
@@ -110,13 +136,16 @@ export function ReportDetailsPage() {
           <div className="flex justify-center no-print">
             <TabsList className="bg-white/40 dark:bg-black/20 backdrop-blur-xl border border-border/50 p-1 h-auto rounded-2xl shadow-soft">
               <TabsTrigger value="library" className="flex items-center gap-2 px-6 py-2.5 rounded-xl data-[state=active]:bg-white dark:data-[state=active]:bg-secondary">
-                <LayoutGrid className="h-4 w-4" /> <span className="font-bold text-xs uppercase tracking-wider">Application Library</span>
+                <LayoutGrid className="h-4 w-4" /> 
+                <span className="font-bold text-xs uppercase tracking-wider">Application Library</span>
               </TabsTrigger>
               <TabsTrigger value="forensics" className="flex items-center gap-2 px-6 py-2.5 rounded-xl data-[state=active]:bg-white dark:data-[state=active]:bg-secondary">
-                <BarChart3 className="h-4 w-4" /> <span className="font-bold text-xs uppercase tracking-wider">AI Security Report</span>
+                <BarChart3 className="h-4 w-4" /> 
+                <span className="font-bold text-xs uppercase tracking-wider">AI Security Report</span>
               </TabsTrigger>
               <TabsTrigger value="summary" className="flex items-center gap-2 px-6 py-2.5 rounded-xl data-[state=active]:bg-white dark:data-[state=active]:bg-secondary">
-                <ShieldAlert className="h-4 w-4" /> <span className="font-bold text-xs uppercase tracking-wider">AI Summary</span>
+                <ShieldAlert className="h-4 w-4" /> 
+                <span className="font-bold text-xs uppercase tracking-wider">AI Summary</span>
               </TabsTrigger>
             </TabsList>
           </div>
@@ -143,7 +172,9 @@ export function ReportDetailsPage() {
               <p className="text-xs">{cfContactTeam} — {cfContactRole}</p>
             </div>
           </div>
-          <p className="text-[8px] text-center text-gray-400 font-mono pt-4">AUTHENTICITY VERIFIED VIA RISKGUARD SECURE TUNNEL • HASH: {crypto.randomUUID().slice(0, 8)}</p>
+          <p className="text-[8px] text-center text-gray-400 font-mono pt-4">
+            AUTHENTICITY VERIFIED VIA RISKGUARD SECURE TUNNEL • HASH: {id.slice(0, 8)}
+          </p>
         </div>
         <footer className="pt-16 text-center text-[10px] text-muted-foreground uppercase tracking-[0.4em] font-black opacity-40 border-t border-border/50 no-print">
           Confidential • Cloudflare ZTNA Precision Analytics v1.2 • Generated by RiskGuard AI

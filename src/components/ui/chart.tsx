@@ -23,8 +23,9 @@ const ChartContainer = React.forwardRef<
   React.ComponentProps<"div"> & {
     config: ChartConfig
     children: React.ReactNode
+    height?: string | number
   }
->(({ id, className, children, config, ...props }, ref) => {
+>(({ id, className, children, config, height = "450px", ...props }, ref) => {
   const uniqueId = React.useId?.() ?? ''
   const chartId = `chart-${id || uniqueId.replace(/:/g, "")}`
   const [mounted, setMounted] = React.useState(false)
@@ -38,12 +39,12 @@ const ChartContainer = React.forwardRef<
           {
             "--chart-style-id": `chart-style-${chartId}`,
             minWidth: "0px",
-            height: "450px",
+            height: height,
           } as React.CSSProperties
         }
         ref={ref}
         className={cn(
-          "relative flex flex-col min-w-0 w-full overflow-visible justify-center text-xs print:overflow-visible [&_.recharts-cartesian-axis-tick_text]:fill-muted-foreground [&_.recharts-cartesian-grid_line[stroke='#ccc']]:stroke-border/50 h-[450px]",
+          "relative flex flex-col min-w-0 w-full overflow-visible justify-center text-xs print:overflow-visible [&_.recharts-cartesian-axis-tick_text]:fill-muted-foreground [&_.recharts-cartesian-grid_line[stroke='#ccc']]:stroke-border/50",
           className
         )}
         {...props}
@@ -90,11 +91,12 @@ const ChartTooltipContent = React.forwardRef<HTMLDivElement, any>(
         {!hideLabel && <div className={cn("font-bold mb-1 border-b border-border/50 pb-1", labelClassName)}>{label}</div>}
         <div className="grid gap-1.5">
           {payload.map((item: any, index: number) => {
-            const configItem = config[item?.name as string] || config[item?.dataKey as string];
+            const configKey = item.name || item.dataKey
+            const configItem = config[configKey as string]
             return (
               <div key={index} className="flex w-full items-center gap-2">
                 <div className="h-2 w-2 rounded-full" style={{ backgroundColor: item?.color || item?.fill }} />
-                <span className="text-muted-foreground flex-1 font-medium">{configItem?.label || item?.name}</span>
+                <span className="text-muted-foreground flex-1 font-medium">{configItem?.label || item?.name || configKey}</span>
                 <span className="font-mono font-bold">{(item?.value ?? 0).toLocaleString()}</span>
               </div>
             );
