@@ -127,7 +127,11 @@ export function ReportDetailsPage() {
             <h2 id="scorecard-heading" className="text-[10px] font-black uppercase tracking-[0.4em] text-muted-foreground/60">Risk Scorecard</h2>
             <div className="h-px w-16 bg-[#F38020] mx-auto" aria-hidden="true" />
           </div>
-          <ExecutiveScorecard summary={safeSummary} score={report.score ?? 0} />
+          <ExecutiveScorecard 
+            summary={safeSummary} 
+            score={report.score ?? 0} 
+            powerUsers={report.powerUsers ?? []}
+          />
         </section>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <section className="lg:col-span-1" aria-labelledby="summary-heading">

@@ -56,13 +56,6 @@ export interface AppUsageEvent {
   bytesKB: number;
   prompt?: string;
 }
-export interface AssessmentReportDebug {
-  aiIds: string[];
-  totalAI: number;
-  managedIds: string[];
-  managedCount: number;
-  shadowUsage: number;
-}
 export interface AssessmentReport {
   id: string;
   date: string;
@@ -96,7 +89,6 @@ export interface AssessmentReport {
   }>;
   securityCharts: SecurityCharts;
   aiInsights?: AIInsights;
-  debug?: AssessmentReportDebug;
 }
 async function safeApi<T>(endpoint: string, options?: RequestInit): Promise<ApiResponse<T>> {
   const url = `/api${endpoint}`;

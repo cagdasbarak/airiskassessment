@@ -3,7 +3,7 @@ import { getAgentByName } from 'agents';
 import { ChatAgent } from './agent';
 import { Env, getAppController, registerSession } from "./core-utils";
 import { ChatHandler } from './chat';
-import type { AssessmentReport, AIInsights } from './app-controller';
+import type { AssessmentReport, AIInsights, PowerUser } from './app-controller';
 let coreRoutesRegistered = false;
 let userRoutesRegistered = false;
 const safeJSON = (text: string) => {
@@ -13,12 +13,8 @@ const safeJSON = (text: string) => {
     return {};
   }
 };
-/**
- * Robustly cleans AI-generated responses that might contain markdown wrappers.
- */
 const cleanAIResponse = (text: string): string => {
   let cleaned = text.trim();
-  // Remove markdown code blocks if present
   if (cleaned.startsWith('```')) {
     cleaned = cleaned.replace(/^```[a-z]*\n/i, '').replace(/\n```$/i, '');
   }
@@ -98,7 +94,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         data: {
           plan: ztSub?.id === 'zero_trust_enterprise' ? 'Zero Trust Enterprise' : 'ZTNA Standard',
           totalLicenses: seatCount || 50,
-          usedLicenses: Math.floor((seatCount || 50) * 0.42), 
+          usedLicenses: Math.floor((seatCount || 50) * 0.42),
           accessSub: hasAccess,
           gatewaySub: hasGateway,
           dlp: true,
@@ -165,19 +161,41 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       const managedIds = aiIds.filter((id: string) => managedIdsSet.has(id));
       const shadowCount = Math.max(0, totalAI - managedIds.length);
       const shadowUsage = totalAI > 0 ? Number(((shadowCount / totalAI) * 100).toFixed(3)) : 0;
-      // Phase 35: Forensic analysis of Cloudflare Access events
       const accessResp = await safeFetch('/access/events?per_page=1000', settings);
       const accessJson = safeJSON(await accessResp.text());
-      let dataExfiltrationKB = 0;
-      if (accessJson?.result && Array.isArray(accessJson.result)) {
-        // Filter events where gateway app is unapproved or unreviewed
-        const unmanagedEvents = accessJson.result.filter((ev: any) => 
-          ev.gatewayAppStatus === 'Unapproved' || ev.gatewayAppStatus === 'Unreviewed'
-        );
-        dataExfiltrationKB = unmanagedEvents.reduce((sum: number, ev: any) => 
-          sum + Math.floor(Number(ev.bytesSent || 0) / 1024), 0
-        );
-      }
+      const events = Array.isArray(accessJson?.result) ? accessJson.result : [];
+      // 3rd Metric: Unmanaged AI Traffic precision reduction
+      const unmanagedEvents = events.filter((ev: any) => 
+        ev.gatewayApp && 
+        ['Unapproved', 'Unreviewed'].includes(ev.gatewayApp.status) && 
+        Number(ev.bytesSent || 0) > 0
+      );
+      const dataExfiltrationKB = Math.floor(unmanagedEvents.reduce((sum: number, ev: any) => 
+        sum + (Number(ev.bytesSent || 0) / 1024), 0
+      ));
+      // 4th Metric: Power User Detection
+      const aiKeywords = /chatgpt|claude|gemini|copilot/i;
+      const aiUsageEvents = events.filter((ev: any) => 
+        ev.gatewayApp?.name && aiKeywords.test(ev.gatewayApp.name)
+      );
+      const userMap = new Map<string, number>();
+      aiUsageEvents.forEach((ev: any) => {
+        const email = ev.userEmail || 'anonymous@unknown.com';
+        userMap.set(email, (userMap.get(email) || 0) + 1);
+      });
+      const topPowerUsers: PowerUser[] = Array.from(userMap.entries())
+        .map(([email, count]) => ({
+          email,
+          name: email.split('@')[0],
+          prompts: count
+        }))
+        .sort((a, b) => b.prompts - a.prompts)
+        .slice(0, 3);
+      console.log('EVENTS_DEBUG', { 
+        unmg_ai_events: unmanagedEvents.length, 
+        power_users: topPowerUsers.length, 
+        total_events: events.length 
+      });
       const unapprovedAppsCount = unapproved.filter((id: string) => aiIds.includes(id)).length;
       const healthScore = Math.max(0, Math.min(100, 100 - (shadowUsage / 1.5) - (unapprovedAppsCount * 2)));
       let aiInsights: AIInsights | undefined;
@@ -188,7 +206,8 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         - Unapproved AI Apps Detected: ${unapprovedAppsCount}
         - Overall Security Health Score: ${healthScore.toFixed(0)}%
         - Total Detected AI Apps: ${totalAI}
-        - Forensic Unmanaged AI Traffic (bytesSent): ${formatRiskVolume(dataExfiltrationKB)}
+        - Forensic Unmanaged AI Traffic: ${formatRiskVolume(dataExfiltrationKB)}
+        - Top Power User Activity: ${topPowerUsers[0]?.email || 'None'} with ${topPowerUsers[0]?.prompts || 0} prompts.
         Provide your analysis in EXACTLY this JSON format:
         {
           "summary": "A 2-sentence executive summary of the risk posture.",
@@ -223,13 +242,13 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
           shadowAiApps: shadowCount,
           shadowUsage: Number(shadowUsage.toFixed(3)),
           unapprovedApps: unapprovedAppsCount,
-          dataExfiltrationKB: Math.floor(dataExfiltrationKB),
+          dataExfiltrationKB: dataExfiltrationKB,
           dataExfiltrationRisk: formatRiskVolume(dataExfiltrationKB),
           complianceScore: totalAI > 0 ? Math.round((managedIds.length / totalAI) * 100) : 100,
           libraryCoverage: 74,
           casbPosture: 92
         },
-        powerUsers: [],
+        powerUsers: topPowerUsers,
         appLibrary: [],
         securityCharts: {},
         aiInsights

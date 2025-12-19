@@ -1,8 +1,9 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { ShieldCheck, Activity, FileCheck, AlertTriangle, HardDriveUpload } from 'lucide-react';
+import { ShieldCheck, Activity, FileCheck, AlertTriangle, HardDriveUpload, User } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
+import { PowerUser } from '@/lib/api';
 interface ScorecardProps {
   summary: {
     totalApps: number;
@@ -16,6 +17,7 @@ interface ScorecardProps {
     libraryCoverage: number;
   };
   score: number;
+  powerUsers?: PowerUser[];
 }
 const COLOR_MAP = {
   orange: '#F38020',
@@ -64,16 +66,16 @@ const ProgressRing = ({ value, colorKey }: { value: number; colorKey: ColorKey }
     </div>
   );
 };
-export function ExecutiveScorecard({ summary, score }: ScorecardProps) {
+export function ExecutiveScorecard({ summary, score, powerUsers = [] }: ScorecardProps) {
   const shadowUsage = Number(summary?.shadowUsage || 0);
   const unapprovedCount = Number(summary?.unapprovedApps || 0);
   const dataRiskKB = Number(summary?.dataExfiltrationKB || 0);
   const healthScore = Number(score || 0);
   const complianceScore = Number(summary?.complianceScore || 0);
-  // Dynamic logic for Unmanaged Traffic (Card 3)
+  const topUser = powerUsers[0];
   const isTrafficRisk = dataRiskKB >= 1024;
-  const trafficColorKey: ColorKey = isTrafficRisk ? "red" : "purple";
-  const trafficProgress = Math.min(100, (dataRiskKB / 1024) * 100);
+  const trafficProgress = Math.min(100, (dataRiskKB / 2048) * 100);
+  const userProgress = Math.min(100, ((topUser?.prompts || 0) / 50) * 100);
   const cards = [
     {
       title: "Shadow AI Usage",
@@ -99,26 +101,26 @@ export function ExecutiveScorecard({ summary, score }: ScorecardProps) {
       description: "Non-corporate data volume",
       icon: HardDriveUpload,
       colorClass: isTrafficRisk ? "text-red-500" : "text-purple-500",
-      colorKey: trafficColorKey,
+      colorKey: (isTrafficRisk ? "red" : "purple") as ColorKey,
       progress: trafficProgress
+    },
+    {
+      title: "Top AI Users",
+      value: topUser ? topUser.email.split('@')[0] : 'None Detected',
+      description: topUser ? `${topUser.prompts} forensic events` : 'No AI activity tracked',
+      icon: User,
+      colorClass: "text-purple-500",
+      colorKey: "purple" as const,
+      progress: userProgress
     },
     {
       title: "Health Score",
       value: `${healthScore.toFixed(0)}%`,
       description: "Security posture",
       icon: ShieldCheck,
-      colorClass: "text-blue-500",
-      colorKey: "blue" as const,
+      colorClass: healthScore < 70 ? "text-red-500" : "text-blue-500",
+      colorKey: (healthScore < 70 ? "red" : "blue") as ColorKey,
       progress: healthScore
-    },
-    {
-      title: "Compliance",
-      value: `${complianceScore.toFixed(0)}%`,
-      description: "Managed ratio",
-      icon: FileCheck,
-      colorClass: "text-emerald-500",
-      colorKey: "emerald" as const,
-      progress: complianceScore
     }
   ];
   return (
@@ -139,9 +141,9 @@ export function ExecutiveScorecard({ summary, score }: ScorecardProps) {
                   <card.icon className={cn("h-8 w-8 animate-glow", card.colorClass)} />
                 </div>
               </div>
-              <div className="space-y-1">
+              <div className="space-y-1 w-full overflow-hidden">
                 <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/60">{card.title}</h3>
-                <p className="text-4xl font-black bg-gradient-to-r from-[#F38020] to-[#E55A1B] bg-clip-text text-transparent truncate w-full px-2">
+                <p className="text-2xl font-black bg-gradient-to-r from-[#F38020] to-[#E55A1B] bg-clip-text text-transparent truncate w-full px-2">
                   {card.value}
                 </p>
               </div>
