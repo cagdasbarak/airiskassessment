@@ -59,7 +59,7 @@ export function SettingsPage() {
       }
     };
     fetchSettings();
-  }, [updateStoreSettings, api]);
+  }, [updateStoreSettings]);
   const handleSave = async () => {
     setIsSaving(true);
     try {
@@ -133,7 +133,7 @@ export function SettingsPage() {
                         <Input
                           id="accountId"
                           value={accountId}
-                          onChange={(e) => updateStoreSettings(prev => ({ ...prev, accountId: e.target.value }))}
+                          onChange={(e) => updateStoreSettings({ ...useAppStore.getState().settings, accountId: e.target.value })}
                           placeholder="e.g. 1a2b3c4d5e6f7g8h9i0j"
                           className="bg-secondary/50"
                         />
@@ -144,7 +144,7 @@ export function SettingsPage() {
                           id="email"
                           type="email"
                           value={email}
-                          onChange={(e) => updateStoreSettings(prev => ({ ...prev, email: e.target.value }))}
+                          onChange={(e) => updateStoreSettings({ ...useAppStore.getState().settings, email: e.target.value })}
                           placeholder="admin@company.com"
                           className="bg-secondary/50"
                         />
@@ -155,7 +155,7 @@ export function SettingsPage() {
                           id="apiKey"
                           type="password"
                           value={apiKey}
-                          onChange={(e) => updateStoreSettings(prev => ({ ...prev, apiKey: e.target.value }))}
+                          onChange={(e) => updateStoreSettings({ ...useAppStore.getState().settings, apiKey: e.target.value })}
                           placeholder="••••••••••••••••••••••••"
                           className="bg-secondary/50"
                         />
@@ -163,7 +163,7 @@ export function SettingsPage() {
                     </div>
                   </CardContent>
                   <CardFooter className="flex justify-between border-t pt-6 bg-secondary/10">
-                    <Button variant="ghost" onClick={() => updateStoreSettings(prev => ({ ...prev, accountId: '', email: '', apiKey: '' }))}>Clear</Button>
+                    <Button variant="ghost" onClick={() => updateStoreSettings({ ...useAppStore.getState().settings, accountId: '', email: '', apiKey: '' })}>Clear</Button>
                     <Button onClick={handleSave} disabled={isSaving} className="btn-gradient">
                       {isSaving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
                       Save Integration
@@ -183,19 +183,19 @@ export function SettingsPage() {
                     <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label>Full Name</Label>
-                        <Input value={cfName} onChange={(e) => updateStoreSettings(prev => ({ ...prev, cloudflareContact: { ...prev.cloudflareContact, name: e.target.value } }))} className="bg-secondary/50" />
+                        <Input value={cfName} onChange={(e) => updateStoreSettings({ ...useAppStore.getState().settings, cloudflareContact: { ...useAppStore.getState().settings.cloudflareContact, name: e.target.value } })} className="bg-secondary/50" />
                       </div>
                       <div className="space-y-2">
                         <Label>Role</Label>
-                        <Input value={cfRole} onChange={(e) => updateStoreSettings(prev => ({ ...prev, cloudflareContact: { ...prev.cloudflareContact, role: e.target.value } }))} className="bg-secondary/50" />
+                        <Input value={cfRole} onChange={(e) => updateStoreSettings({ ...useAppStore.getState().settings, cloudflareContact: { ...useAppStore.getState().settings.cloudflareContact, role: e.target.value } })} className="bg-secondary/50" />
                       </div>
                       <div className="space-y-2">
                         <Label>Email</Label>
-                        <Input value={cfEmail} onChange={(e) => updateStoreSettings(prev => ({ ...prev, cloudflareContact: { ...prev.cloudflareContact, email: e.target.value } }))} className="bg-secondary/50" />
+                        <Input value={cfEmail} onChange={(e) => updateStoreSettings({ ...useAppStore.getState().settings, cloudflareContact: { ...useAppStore.getState().settings.cloudflareContact, email: e.target.value } })} className="bg-secondary/50" />
                       </div>
                       <div className="space-y-2">
                         <Label>Team</Label>
-                        <Input value={cfTeam} onChange={(e) => updateStoreSettings(prev => ({ ...prev, cloudflareContact: { ...prev.cloudflareContact, team: e.target.value } }))} className="bg-secondary/50" />
+                        <Input value={cfTeam} onChange={(e) => updateStoreSettings({ ...useAppStore.getState().settings, cloudflareContact: { ...useAppStore.getState().settings.cloudflareContact, team: e.target.value } })} className="bg-secondary/50" />
                       </div>
                     </CardContent>
                   </Card>
@@ -209,19 +209,19 @@ export function SettingsPage() {
                     <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label>Organization</Label>
-                        <Input value={custCo} onChange={(e) => updateStoreSettings(prev => ({ ...prev, customerContact: { ...prev.customerContact, customerName: e.target.value } }))} className="bg-secondary/50" />
+                        <Input value={custCo} onChange={(e) => updateStoreSettings({ ...useAppStore.getState().settings, customerContact: { ...useAppStore.getState().settings.customerContact, customerName: e.target.value } })} className="bg-secondary/50" />
                       </div>
                       <div className="space-y-2">
                         <Label>Full Name</Label>
-                        <Input value={custName} onChange={(e) => updateStoreSettings(prev => ({ ...prev, customerContact: { ...prev.customerContact, name: e.target.value } }))} className="bg-secondary/50" />
+                        <Input value={custName} onChange={(e) => updateStoreSettings({ ...useAppStore.getState().settings, customerContact: { ...useAppStore.getState().settings.customerContact, name: e.target.value } })} className="bg-secondary/50" />
                       </div>
                       <div className="space-y-2">
                         <Label>Role</Label>
-                        <Input value={custRole} onChange={(e) => updateStoreSettings(prev => ({ ...prev, customerContact: { ...prev.customerContact, role: e.target.value } }))} className="bg-secondary/50" />
+                        <Input value={custRole} onChange={(e) => updateStoreSettings({ ...useAppStore.getState().settings, customerContact: { ...useAppStore.getState().settings.customerContact, role: e.target.value } })} className="bg-secondary/50" />
                       </div>
                       <div className="space-y-2">
                         <Label>Email</Label>
-                        <Input value={custEmail} onChange={(e) => updateStoreSettings(prev => ({ ...prev, customerContact: { ...prev.customerContact, email: e.target.value } }))} className="bg-secondary/50" />
+                        <Input value={custEmail} onChange={(e) => updateStoreSettings({ ...useAppStore.getState().settings, customerContact: { ...useAppStore.getState().settings.customerContact, email: e.target.value } })} className="bg-secondary/50" />
                       </div>
                     </CardContent>
                     <CardFooter className="flex justify-end pt-4 bg-secondary/5">
