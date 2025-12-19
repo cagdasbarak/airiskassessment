@@ -73,8 +73,9 @@ export interface AssessmentReport {
     totalApps: number;
     aiApps: number;
     shadowAiApps: number;
-    shadowUsage: number; 
+    shadowUsage: number;
     unapprovedApps: number;
+    dataExfiltrationKB: number;
     dataExfiltrationRisk: string;
     complianceScore: number;
     libraryCoverage: number;

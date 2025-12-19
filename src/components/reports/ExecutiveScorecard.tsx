@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { ShieldCheck, Activity, Database, FileCheck, AlertTriangle, Info } from 'lucide-react';
+import { ShieldCheck, Activity, Database, FileCheck, AlertTriangle, Info, HardDriveUpload } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Badge } from '@/components/ui/badge';
@@ -12,6 +12,7 @@ interface ScorecardProps {
     shadowAiApps: number;
     shadowUsage: number;
     unapprovedApps: number;
+    dataExfiltrationKB: number;
     dataExfiltrationRisk: string;
     complianceScore: number;
     libraryCoverage: number;
@@ -21,12 +22,14 @@ interface ScorecardProps {
 export function ExecutiveScorecard({ summary, score }: ScorecardProps) {
   const shadowUsageValue = summary?.shadowUsage ?? 0;
   const unapprovedCount = summary?.unapprovedApps ?? 0;
+  const dataExfiltrationKB = summary?.dataExfiltrationKB ?? 0;
   const healthScore = score ?? 0;
-  const dataRisk = summary?.dataExfiltrationRisk ?? '0 MB';
+  const dataRiskLabel = summary?.dataExfiltrationRisk ?? '0 MB';
   const compliance = summary?.complianceScore ?? 0;
-  // Visual Risk Trigger strictly > 50.000
+  // Visual Risk Triggers
   const isHighRiskShadow = shadowUsageValue > 50;
   const isCriticalUnapproved = unapprovedCount > 0;
+  const isCriticalUpload = dataExfiltrationKB > 1024; // > 1MB
   const cards = [
     {
       title: "Shadow AI Usage",
@@ -37,7 +40,7 @@ export function ExecutiveScorecard({ summary, score }: ScorecardProps) {
       bg: isHighRiskShadow ? "bg-red-500/10" : "bg-[#F38020]/10",
       highlight: isHighRiskShadow,
       badge: isHighRiskShadow ? "High Risk" : null,
-      tooltip: "Percentage of detected AI applications not found in managed lists. High density suggests bypass of security controls."
+      tooltip: "Percentage of detected AI applications not found in managed lists."
     },
     {
       title: "Unapproved Apps",
@@ -48,7 +51,18 @@ export function ExecutiveScorecard({ summary, score }: ScorecardProps) {
       bg: isCriticalUnapproved ? "bg-red-500/10" : "bg-green-500/10",
       highlight: isCriticalUnapproved,
       badge: isCriticalUnapproved ? "Critical" : null,
-      tooltip: "Number of applications explicitly marked as 'Unapproved' with active traffic detected in Gateway logs."
+      tooltip: "Number of applications explicitly marked as 'Unapproved' with active traffic."
+    },
+    {
+      title: "Unrev/Unapp AI Upload",
+      value: `${dataExfiltrationKB.toLocaleString()} KB`,
+      description: "Sensitive data leak volume.",
+      icon: HardDriveUpload,
+      color: isCriticalUpload ? "text-red-500" : "text-purple-500",
+      bg: isCriticalUpload ? "bg-red-500/10" : "bg-purple-500/10",
+      highlight: isCriticalUpload,
+      badge: isCriticalUpload ? "Critical" : null,
+      tooltip: "Tracks sensitive data uploads to AI applications that haven't been formally reviewed or approved (Unreviewed or Unapproved status)."
     },
     {
       title: "Health Score",
@@ -58,15 +72,6 @@ export function ExecutiveScorecard({ summary, score }: ScorecardProps) {
       color: healthScore < 70 ? "text-amber-500" : "text-blue-500",
       bg: healthScore < 70 ? "bg-amber-500/10" : "bg-blue-500/10",
       tooltip: "Composite indicator of Zero Trust policy coverage and shadow AI usage density."
-    },
-    {
-      title: "Data Risk",
-      value: dataRisk,
-      description: "Shadow AI payload volume.",
-      icon: Database,
-      color: "text-purple-500",
-      bg: "bg-purple-500/10",
-      tooltip: "Estimated volume of sensitive data transmitted to unmanaged or unreviewed AI endpoints."
     },
     {
       title: "Compliance",
@@ -122,7 +127,7 @@ export function ExecutiveScorecard({ summary, score }: ScorecardProps) {
                     </Tooltip>
                   </div>
                   <span className={cn(
-                    "text-4xl font-bold tracking-tighter",
+                    "text-2xl font-bold tracking-tighter sm:text-3xl",
                     card.highlight ? "text-red-600" : "text-foreground"
                   )}>
                     {card.value}

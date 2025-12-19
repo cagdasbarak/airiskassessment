@@ -145,13 +145,26 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       const shadowUsage = totalAI > 0
         ? Number(((shadowCount / totalAI) * 100).toFixed(3))
         : 0;
+
+      // DLP Forensics: Fetch and sum upload volume for Unreviewed/Unapproved apps
+      const dlpResp = await safeFetch('/dlp/incidents?per_page=500', settings);
+      const dlpJson = safeJSON(await dlpResp.text());
+      let dataExfiltrationKB = 0;
+      if (dlpJson?.result) {
+        const unmanagedIncidents = dlpJson.result.filter((i: any) => 
+          i.gatewayApp?.status === 'Unreviewed' || i.gatewayApp?.status === 'Unapproved'
+        );
+        const totalBytes = unmanagedIncidents.reduce((sum: number, i: any) => sum + (i.fileSize || 0), 0);
+        dataExfiltrationKB = Math.floor(totalBytes / 1024);
+      }
       // Server-side Forensic Logging - Corrected Label DEBUG_SHADOW
       console.log('DEBUG_SHADOW', {
         aiIds: aiIds.slice(0, 10),
         totalAI,
         managedIds: managedIds.slice(0, 10),
         managedCount,
-        shadowUsage
+        shadowUsage,
+        dataExfiltrationKB
       });
       const unapprovedAppsCount = unapproved.filter((id: string) => aiIds.includes(id)).length;
       const healthScore = Math.max(0, Math.min(100, 100 - (shadowUsage / 1.5)));
@@ -196,6 +209,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
           shadowAiApps: shadowCount,
           shadowUsage: shadowUsage,
           unapprovedApps: unapprovedAppsCount,
+          dataExfiltrationKB: dataExfiltrationKB,
           dataExfiltrationRisk: shadowUsage > 40 ? '420 MB' : '12 MB',
           complianceScore: Math.round((managedCount / (totalAI || 1)) * 100),
           libraryCoverage: 62,

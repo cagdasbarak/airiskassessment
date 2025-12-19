@@ -76,6 +76,7 @@ export function ReportDetailsPage() {
     aiApps: report.summary?.aiApps ?? 0,
     shadowAiApps: report.summary?.shadowAiApps ?? 0,
     shadowUsage: report.summary?.shadowUsage ?? 0,
+    dataExfiltrationKB: report.summary?.dataExfiltrationKB ?? 0,
     unapprovedApps: report.summary?.unapprovedApps ?? 0,
     dataExfiltrationRisk: report.summary?.dataExfiltrationRisk ?? 'N/A',
     complianceScore: report.summary?.complianceScore ?? 0,
