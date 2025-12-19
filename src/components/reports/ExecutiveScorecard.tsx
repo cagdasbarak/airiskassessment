@@ -1,21 +1,22 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { ShieldCheck, Activity, FileCheck, AlertTriangle, HardDriveUpload, User } from 'lucide-react';
+import { ShieldCheck, Activity, AlertTriangle, HardDriveUpload, User } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { PowerUser } from '@/lib/api';
+interface ScorecardSummary {
+  totalApps: number;
+  aiApps: number;
+  shadowAiApps: number;
+  shadowUsage: number;
+  unapprovedApps: number;
+  dataExfiltrationKB: number;
+  dataExfiltrationRisk: string;
+  complianceScore: number;
+  libraryCoverage: number;
+}
 interface ScorecardProps {
-  summary: {
-    totalApps: number;
-    aiApps: number;
-    shadowAiApps: number;
-    shadowUsage: number;
-    unapprovedApps: number;
-    dataExfiltrationKB: number;
-    dataExfiltrationRisk: string;
-    complianceScore: number;
-    libraryCoverage: number;
-  };
+  summary: ScorecardSummary;
   score: number;
   powerUsers?: PowerUser[];
 }
@@ -67,12 +68,22 @@ const ProgressRing = ({ value, colorKey }: { value: number; colorKey: ColorKey }
   );
 };
 export function ExecutiveScorecard({ summary, score, powerUsers = [] }: ScorecardProps) {
-  const safeSummary = summary || {};
-  const shadowUsage = Number(safeSummary.shadowUsage || 0);
-  const unapprovedCount = Number(safeSummary.unapprovedApps || 0);
-  const dataRiskKB = Number(safeSummary.dataExfiltrationKB || 0);
+  const defaultSummary: ScorecardSummary = {
+    totalApps: 0,
+    aiApps: 0,
+    shadowAiApps: 0,
+    shadowUsage: 0,
+    unapprovedApps: 0,
+    dataExfiltrationKB: 0,
+    dataExfiltrationRisk: "0 KB",
+    complianceScore: 0,
+    libraryCoverage: 0
+  };
+  const safeSummary = summary || defaultSummary;
+  const shadowUsage = Number(safeSummary.shadowUsage ?? 0);
+  const unapprovedCount = Number(safeSummary.unapprovedApps ?? 0);
+  const dataRiskKB = Number(safeSummary.dataExfiltrationKB ?? 0);
   const healthScore = Number(score ?? 0);
-  const complianceScore = Number(summary?.complianceScore || 0);
   const topUser = powerUsers[0];
   const isTrafficRisk = dataRiskKB >= 1024;
   const trafficProgress = Math.min(100, (dataRiskKB / 2048) * 100);

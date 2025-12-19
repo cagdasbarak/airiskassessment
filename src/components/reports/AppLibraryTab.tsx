@@ -31,11 +31,11 @@ export function AppLibraryTab() {
             <ShieldCheck className="h-12 w-12 text-white animate-pulse" />
           </div>
         </div>
-        <CardTitle className="text-3xl font-black tracking-tight mb-4 uppercase">
+        <CardTitle className="text-3xl font-black tracking-tighter mb-4 uppercase text-foreground">
           Application Inventory Syncing
         </CardTitle>
-        <CardDescription className="max-w-md text-base font-medium leading-relaxed">
-          The deep-packet inspection engine is currently aggregating Gateway application logs. 
+        <CardDescription className="max-w-md text-base font-medium leading-relaxed text-muted-foreground">
+          The deep-packet inspection engine is currently aggregating Gateway application logs.
           Detailed per-app policy analysis and user telemetry will be available momentarily.
         </CardDescription>
         <div className="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-4 w-full max-w-2xl">
@@ -45,12 +45,12 @@ export function AppLibraryTab() {
             { label: 'Risk Mapping', val: 'Calculating...' }
           ].map((item, i) => (
             <div key={i} className="p-4 rounded-2xl bg-secondary/30 border border-border/50 flex flex-col items-center gap-1">
-              <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">{item.label}</span>
-              <span className="text-sm font-bold">{item.val}</span>
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60">{item.label}</span>
+              <span className="text-sm font-bold text-foreground">{item.val}</span>
             </div>
           ))}
         </div>
-        <div className="mt-12 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-[#F38020] animate-bounce cursor-default">
+        <div className="mt-12 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-[#F38020] animate-bounce cursor-default">
           Reviewing 42+ Corporate Policy Bindings <ArrowUpRight className="h-3 w-3" />
         </div>
       </Card>

@@ -2,13 +2,11 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Legend } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
-import { Activity, ShieldCheck } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { AssessmentReport } from '@/lib/api';
 interface SecurityForensicsTabProps {
   report: AssessmentReport;
 }
-// Exact HSL Mapping as per requirements
 const STATUS_COLORS: Record<string, string> = {
   'Unreviewed': 'hsl(0, 0%, 50%)',
   'Review': 'hsl(45, 100%, 70%)',
@@ -24,12 +22,10 @@ const FALLBACK_COLORS = [
 ];
 export function SecurityForensicsTab({ report }: SecurityForensicsTabProps) {
   const trendData = report.securityCharts?.topAppsTrends || [];
-  // Extract keys for Area components, excluding 'date'
   const appKeys = trendData.length > 0
     ? Object.keys(trendData[0]).filter(k => k !== 'date')
     : [];
   const chartConfig = appKeys.reduce((acc, key, idx) => {
-    // Try to map status based color if the key contains status info, else use fallback
     const color = STATUS_COLORS[key] || FALLBACK_COLORS[idx % FALLBACK_COLORS.length];
     acc[key] = {
       label: key,
@@ -45,20 +41,13 @@ export function SecurityForensicsTab({ report }: SecurityForensicsTabProps) {
     >
       <Card className="flex-1 border-border/50 shadow-soft bg-white/40 dark:bg-black/20 backdrop-blur-xl overflow-hidden flex flex-col">
         <CardHeader className="border-b border-border/10 pb-6 flex-shrink-0">
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <CardTitle className="text-2xl font-black uppercase tracking-tighter flex items-center gap-4">
-                <Activity className="h-8 w-8 text-[#F38020]" />
-                AI Adoption Velocity
-              </CardTitle>
-              <CardDescription className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground/60">
-                Executive Forensic Analysis: Unique Daily Users (30-Day Lookback)
-              </CardDescription>
-            </div>
-            <div className="flex items-center gap-3 px-4 py-2 rounded-2xl bg-[#F38020]/10 border border-[#F38020]/20">
-              <ShieldCheck className="h-4 w-4 text-[#F38020]" />
-              <span className="text-[10px] font-black uppercase tracking-widest text-[#F38020]">Precision Audit</span>
-            </div>
+          <div className="space-y-1">
+            <CardTitle className="text-xl font-black tracking-tight text-foreground">
+              Top 5 visited AI applications by user count
+            </CardTitle>
+            <CardDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60">
+              last 30days
+            </CardDescription>
           </div>
         </CardHeader>
         <CardContent className="flex-1 p-8 min-h-[500px]">
@@ -101,12 +90,12 @@ export function SecurityForensicsTab({ report }: SecurityForensicsTabProps) {
                 align="right"
                 layout="vertical"
                 iconType="circle"
-                wrapperStyle={{ 
-                  paddingLeft: '40px', 
-                  fontSize: '11px', 
-                  fontWeight: 900, 
-                  textTransform: 'uppercase', 
-                  letterSpacing: '0.1em' 
+                wrapperStyle={{
+                  paddingLeft: '40px',
+                  fontSize: '11px',
+                  fontWeight: 900,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.1em'
                 }}
               />
               {appKeys.map((key, idx) => {
