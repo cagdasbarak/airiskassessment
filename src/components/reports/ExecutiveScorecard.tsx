@@ -84,14 +84,14 @@ export function ExecutiveScorecard({ summary, score, powerUsers = [] }: Scorecar
   const unapprovedCount = Number(safeSummary.unapprovedApps ?? 0);
   const dataRiskKB = Number(safeSummary.dataExfiltrationKB ?? 0);
   const healthScore = Number(score ?? 0);
-  const topUser = powerUsers[0];
+  const topUser = powerUsers?.[0] || null;
   const isTrafficRisk = dataRiskKB >= 1024;
   const trafficProgress = Math.min(100, (dataRiskKB / 2048) * 100);
-  const userProgress = Math.min(100, ((topUser?.prompts || 0) / 50) * 100);
+  const userProgress = topUser ? Math.min(100, (topUser.prompts / 50) * 100) : 0;
   const cards = [
     {
       title: "Shadow AI Usage",
-      value: `${shadowUsage.toFixed(3)}%`,
+      value: `${shadowUsage.toFixed(2)}%`,
       description: "Unmanaged endpoints",
       icon: Activity,
       colorClass: "text-[#F38020]",
@@ -132,7 +132,8 @@ export function ExecutiveScorecard({ summary, score, powerUsers = [] }: Scorecar
       icon: ShieldCheck,
       colorClass: healthScore < 70 ? "text-red-500" : "text-blue-500",
       colorKey: (healthScore < 70 ? "red" : "blue") as ColorKey,
-      progress: healthScore
+      progress: healthScore,
+      isSpecial: true
     }
   ];
   return (
@@ -144,23 +145,29 @@ export function ExecutiveScorecard({ summary, score, powerUsers = [] }: Scorecar
           animate={{ opacity: 1, scale: 1, y: 0 }}
           transition={{ delay: idx * 0.1 }}
           whileHover={{ y: -8, transition: { duration: 0.2 } }}
-          className="group"
+          className="group flex flex-col"
         >
-          <Card className="relative overflow-hidden border-0 bg-white/5 backdrop-blur-xl shadow-2xl h-full transition-all duration-300 hover:bg-white/[0.08] before:absolute before:inset-0 before:bg-gradient-mesh before:opacity-10 before:transition-opacity group-hover:before:opacity-20">
-            <CardContent className="p-8 flex flex-col items-center text-center space-y-6">
-              <div className="relative">
-                <div className="h-14 w-14 rounded-2xl bg-white/10 flex items-center justify-center animate-float group-hover:shadow-glow-lg transition-all">
-                  <card.icon className={cn("h-8 w-8 animate-glow", card.colorClass)} />
+          <Card className={cn(
+            "relative overflow-hidden border-0 bg-white/5 backdrop-blur-xl shadow-2xl flex-1 transition-all duration-300 hover:bg-white/[0.08]",
+            "before:absolute before:inset-0 before:bg-gradient-mesh before:opacity-10 group-hover:before:opacity-20",
+            card.isSpecial && healthScore < 50 ? "ring-2 ring-red-500/20" : ""
+          )}>
+            <CardContent className="p-8 flex flex-col items-center text-center justify-between h-full min-h-[320px] space-y-4">
+              <div className="flex flex-col items-center space-y-4 w-full">
+                <div className="relative">
+                  <div className="h-14 w-14 rounded-2xl bg-white/10 flex items-center justify-center animate-float group-hover:shadow-glow-lg transition-all">
+                    <card.icon className={cn("h-8 w-8 animate-glow", card.colorClass)} />
+                  </div>
+                </div>
+                <div className="space-y-1 w-full overflow-hidden">
+                  <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60">{card.title}</h3>
+                  <p className="text-2xl font-black bg-gradient-to-r from-[#F38020] to-[#E55A1B] bg-clip-text text-transparent truncate w-full px-2">
+                    {card.value}
+                  </p>
                 </div>
               </div>
-              <div className="space-y-1 w-full overflow-hidden">
-                <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/60">{card.title}</h3>
-                <p className="text-2xl font-black bg-gradient-to-r from-[#F38020] to-[#E55A1B] bg-clip-text text-transparent truncate w-full px-2">
-                  {card.value}
-                </p>
-              </div>
               <ProgressRing value={card.progress} colorKey={card.colorKey} />
-              <p className="text-xs font-medium text-muted-foreground italic min-h-[1rem]">
+              <p className="text-xs font-medium text-muted-foreground italic h-8 flex items-center justify-center">
                 {card.description}
               </p>
             </CardContent>
