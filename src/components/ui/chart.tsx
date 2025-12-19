@@ -36,8 +36,9 @@ const ChartContainer = React.forwardRef<
         style={
           {
             "--chart-style-id": `chart-style-${chartId}`,
-            minHeight: '350px',
-            aspectRatio: '16/9'
+            minWidth: "0",
+            minHeight: "350px",
+            aspectRatio: "16/9"
           } as React.CSSProperties
         }
         ref={ref}
@@ -48,7 +49,7 @@ const ChartContainer = React.forwardRef<
         {...props}
       >
         <ChartStyle id={chartId} config={config} />
-        <RechartsPrimitive.ResponsiveContainer width="100%" height="100%" debounce={50}>
+        <RechartsPrimitive.ResponsiveContainer width="100%" height="100%" debounce={0}>
           {children as any}
         </RechartsPrimitive.ResponsiveContainer>
       </div>
