@@ -61,15 +61,25 @@ export class AppController extends DurableObject<Env> {
         email: 'ciso@enterprise.com',
       },
     };
-    return (await this.ctx.storage.get<UserSettings>('user_settings')) || defaultSettings;
+    try {
+      return (await this.ctx.storage.get<UserSettings>('user_settings')) || defaultSettings;
+    } catch (err) {
+      console.error("[AppController] Storage read error (settings):", err);
+      return defaultSettings;
+    }
   }
   async updateSettings(settings: UserSettings): Promise<void> {
     await this.ctx.storage.put('user_settings', settings);
   }
   async addReport(report: any): Promise<void> {
-    const reports = await this.ctx.storage.get<any[]>('reports') || [];
-    reports.unshift(report);
-    await this.ctx.storage.put('reports', reports.slice(0, 20));
+    try {
+      const reports = await this.ctx.storage.get<any[]>('reports') || [];
+      reports.unshift(report);
+      // Keep only last 20 reports to stay under 128KB limit if needed
+      await this.ctx.storage.put('reports', reports.slice(0, 20));
+    } catch (err) {
+      console.error("[AppController] Storage error (addReport):", err);
+    }
   }
   async listReports(): Promise<any[]> {
     return await this.ctx.storage.get<any[]>('reports') || [];
@@ -84,15 +94,19 @@ export class AppController extends DurableObject<Env> {
     await this.ctx.storage.put('reports', filtered);
   }
   async addLog(log: Omit<AuditLog, 'id'>): Promise<void> {
-    const logs = await this.ctx.storage.get<AuditLog[]>('audit_logs') || [];
-    const newLog: AuditLog = { ...log, id: crypto.randomUUID() };
-    logs.unshift(newLog); // Atomic push to history
-    await this.ctx.storage.put('audit_logs', logs.slice(0, 100));
+    try {
+      const logs = await this.ctx.storage.get<AuditLog[]>('audit_logs') || [];
+      const newLog: AuditLog = { ...log, id: crypto.randomUUID() };
+      logs.unshift(newLog);
+      await this.ctx.storage.put('audit_logs', logs.slice(0, 100));
+    } catch (err) {
+      console.error("[AppController] Storage error (addLog):", err);
+    }
   }
   async getLogs(): Promise<AuditLog[]> {
     return await this.ctx.storage.get<AuditLog[]>('audit_logs') || [];
   }
-  // Session Management (For Chat Agent)
+  // Session Management for Chat Persistence
   async addSession(sessionId: string, title?: string): Promise<void> {
     await this.ensureLoaded();
     const now = Date.now();
@@ -122,7 +136,6 @@ export class AppController extends DurableObject<Env> {
       await this.persistSessions();
     }
   }
-
   async updateSessionTitle(sessionId: string, title: string): Promise<boolean> {
     await this.ensureLoaded();
     const session = this.sessions.get(sessionId);
@@ -133,12 +146,6 @@ export class AppController extends DurableObject<Env> {
     }
     return false;
   }
-
-  async getSessionCount(): Promise<number> {
-    await this.ensureLoaded();
-    return this.sessions.size;
-  }
-
   async clearAllSessions(): Promise<number> {
     await this.ensureLoaded();
     const count = this.sessions.size;

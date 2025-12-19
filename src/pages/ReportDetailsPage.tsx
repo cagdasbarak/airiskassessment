@@ -116,7 +116,11 @@ export function ReportDetailsPage() {
           </Button>
         </header>
         <section className="space-y-8">
-          <ExecutiveScorecard summary={safeSummary} score={report.score} powerUsers={report.powerUsers} />
+          <ExecutiveScorecard 
+            summary={safeSummary} 
+            score={report.score} 
+            powerUsers={report.powerUsers ?? []} 
+          />
         </section>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-10">
           <div className="flex justify-center no-print">

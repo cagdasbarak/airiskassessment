@@ -8,16 +8,17 @@ interface SecurityForensicsTabProps {
   report: AssessmentReport;
 }
 const COLORS = [
-  '#F38020',
-  '#3B82F6',
-  '#A855F7',
-  '#10B981',
-  '#EC4899'
+  '#F38020', // Cloudflare Orange
+  '#3B82F6', // Blue
+  '#A855F7', // Purple
+  '#10B981', // Emerald
+  '#EC4899'  // Pink
 ];
 export function SecurityForensicsTab({ report }: SecurityForensicsTabProps) {
   const trendData = useMemo(() => report.securityCharts?.topAppsTrends || [], [report.securityCharts]);
   const appKeys = useMemo(() => {
     if (trendData.length === 0) return [];
+    // Get all keys except 'date'
     return Object.keys(trendData[0]).filter(k => k !== 'date');
   }, [trendData]);
   const chartConfig = useMemo(() => {
@@ -77,11 +78,12 @@ export function SecurityForensicsTab({ report }: SecurityForensicsTabProps) {
                   angle={-45}
                   textAnchor="end"
                 />
-                <YAxis 
-                  axisLine={false} 
-                  tickLine={false} 
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
                   tick={{ fontSize: 10, fontWeight: 700, fontFamily: 'JetBrains Mono', fill: 'currentColor' }}
                   className="text-foreground"
+                  allowDecimals={false}
                 />
                 <ChartTooltip content={<ChartTooltipContent />} />
                 <Legend
