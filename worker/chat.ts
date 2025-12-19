@@ -45,14 +45,26 @@ export class ChatHandler {
       return this.handleNonStreamResponse(completion, message, conversationHistory);
     } catch (error) {
       console.error('AI Service Exception:', error);
-      // Resilience Fallback: Return structured JSON recommendations so UI components don't crash
+      // Production Hardening: Return a perfectly structured fallback that avoids UI parsing crashes
       return {
         content: JSON.stringify({
-          summary: 'AI analysis service is currently under high load. Based on local heuristics, we recommend auditing shadow AI usage immediately.',
+          summary: 'The AI analysis service is currently unavailable. Based on local security heuristics, we recommend immediate review of shadow AI access and data loss policies.',
           recommendations: [
-            { title: 'Block Unapproved AI Endpoints', description: 'Immediate risk detected in shadow usage. Apply Gateway block policies.', type: 'critical' },
-            { title: 'Review DLP Incident Logs', description: 'Monitor for sensitive data fragments in AI prompts.', type: 'policy' },
-            { title: 'Configure CASB Scans', description: 'Identify data exposure in approved SaaS environments.', type: 'optimization' }
+            { 
+              title: 'Enforce Gateway Access Blocks', 
+              description: 'Immediately apply block policies to unapproved AI domains detected in your Gateway logs to prevent unauthorized access.', 
+              type: 'critical' 
+            },
+            { 
+              title: 'Audit DLP Policy Matches', 
+              description: 'Review real-time DLP incident telemetry to identify potential sensitive data transfers to GenAI endpoints.', 
+              type: 'policy' 
+            },
+            { 
+              title: 'Optimize Managed App Library', 
+              description: 'Consolidate shadow AI usage into corporate-sanctioned applications to ensure oversight and single-sign-on integration.', 
+              type: 'optimization' 
+            }
           ]
         }),
         toolCalls: []

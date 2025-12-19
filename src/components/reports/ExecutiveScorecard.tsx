@@ -24,7 +24,7 @@ export function ExecutiveScorecard({ summary, score }: ScorecardProps) {
   const unapprovedCount = summary?.unapprovedApps ?? 0;
   const dataExfiltrationKB = summary?.dataExfiltrationKB ?? 0;
   const healthScore = score ?? 0;
-  const dataRiskLabel = summary?.dataExfiltrationRisk ?? '0 MB';
+  const dataRiskLabel = summary?.dataExfiltrationRisk ?? '0 KB';
   const compliance = summary?.complianceScore ?? 0;
   // Visual Risk Triggers
   const isHighRiskShadow = shadowUsageValue > 50;
@@ -40,47 +40,47 @@ export function ExecutiveScorecard({ summary, score }: ScorecardProps) {
       bg: isHighRiskShadow ? "bg-red-500/10" : "bg-[#F38020]/10",
       highlight: isHighRiskShadow,
       badge: isHighRiskShadow ? "High Risk" : null,
-      tooltip: "Percentage of detected AI applications not found in managed lists."
+      tooltip: "Percentage of detected AI applications not present in your organization's managed and reviewed application list."
     },
     {
       title: "Unapproved Apps",
       value: unapprovedCount,
       description: "Active restricted AI assets.",
       icon: AlertTriangle,
-      color: isCriticalUnapproved ? "text-red-500" : "text-green-500",
-      bg: isCriticalUnapproved ? "bg-red-500/10" : "bg-green-500/10",
+      color: isCriticalUnapproved ? "text-red-500" : "text-emerald-500",
+      bg: isCriticalUnapproved ? "bg-red-500/10" : "bg-emerald-500/10",
       highlight: isCriticalUnapproved,
       badge: isCriticalUnapproved ? "Critical" : null,
-      tooltip: "Number of applications explicitly marked as 'Unapproved' with active traffic."
+      tooltip: "The count of AI applications explicitly marked as 'Unapproved' that still show active network telemetry."
     },
     {
-      title: "Unrev/Unapp AI Upload",
-      value: `${dataExfiltrationKB.toLocaleString()} KB`,
-      description: "Sensitive data leak volume.",
+      title: "Unmanaged AI Upload",
+      value: dataRiskLabel,
+      description: "Potential data leak volume.",
       icon: HardDriveUpload,
       color: isCriticalUpload ? "text-red-500" : "text-purple-500",
       bg: isCriticalUpload ? "bg-red-500/10" : "bg-purple-500/10",
       highlight: isCriticalUpload,
       badge: isCriticalUpload ? "Critical" : null,
-      tooltip: "Tracks sensitive data uploads to AI applications that haven't been formally reviewed or approved (Unreviewed or Unapproved status)."
+      tooltip: "Calculated from real-time Cloudflare DLP Incident Telemetry, tracking data sent to unreviewed or unapproved AI endpoints."
     },
     {
       title: "Health Score",
       value: `${healthScore.toFixed(0)}%`,
       description: "Aggregate security posture.",
       icon: ShieldCheck,
-      color: healthScore < 70 ? "text-amber-500" : "text-blue-500",
-      bg: healthScore < 70 ? "bg-amber-500/10" : "bg-blue-500/10",
-      tooltip: "Composite indicator of Zero Trust policy coverage and shadow AI usage density."
+      color: healthScore >= 85 ? "text-blue-500" : healthScore >= 70 ? "text-emerald-500" : "text-amber-500",
+      bg: healthScore >= 85 ? "bg-blue-500/10" : healthScore >= 70 ? "bg-emerald-500/10" : "bg-amber-500/10",
+      tooltip: "A composite indicator reflecting policy coverage, shadow usage density, and effective Cloudflare ZTNA configuration."
     },
     {
-      title: "Compliance",
+      title: "Compliance Rate",
       value: `${compliance}%`,
-      description: "Policy adherence rate.",
+      description: "Managed application ratio.",
       icon: FileCheck,
-      color: "text-emerald-500",
-      bg: "bg-emerald-500/10",
-      tooltip: "Ratio of managed AI applications against the total detected environment footprint."
+      color: "text-[#F38020]",
+      bg: "bg-[#F38020]/10",
+      tooltip: "The ratio of managed AI applications compared to the total detected environment footprint."
     }
   ];
   return (
@@ -91,49 +91,49 @@ export function ExecutiveScorecard({ summary, score }: ScorecardProps) {
             key={card.title}
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{
-              delay: idx * 0.12,
+            transition={{ 
+              delay: idx * 0.1,
               duration: 0.5,
-              ease: [0.23, 1, 0.32, 1]
+              ease: [0.23, 1, 0.32, 1] 
             }}
           >
             <Card className={cn(
-              "border-border/50 shadow-soft h-full transition-all duration-300 relative overflow-hidden group",
+              "border-border/50 shadow-soft h-full transition-all duration-300 relative overflow-hidden group hover:-translate-y-1 hover:shadow-xl",
               card.highlight && "ring-2 ring-red-500/50 shadow-lg shadow-red-500/10 bg-red-500/[0.01]"
             )}>
               <CardContent className="p-8 flex flex-col items-center text-center justify-between h-full space-y-6">
                 <div className="relative">
-                  <div className={cn("p-4 rounded-2xl transition-transform group-hover:scale-110 duration-300", card.bg)}>
+                  <div className={cn("p-4 rounded-2xl transition-transform group-hover:scale-110 duration-500", card.bg)}>
                     <card.icon className={cn("h-8 w-8", card.color)} />
                   </div>
                   {card.badge && (
-                    <Badge variant="destructive" className="absolute -top-3 -right-3 text-[8px] uppercase font-bold animate-pulse px-1.5 py-0 h-4 ring-2 ring-background">
+                    <Badge variant="destructive" className="absolute -top-3 -right-3 text-[8px] uppercase font-bold px-1.5 py-0 h-4 ring-2 ring-background opacity-90 animate-pulse duration-[2000ms]">
                       {card.badge}
                     </Badge>
                   )}
                 </div>
-                <div className="space-y-1">
-                  <div className="flex items-center justify-center gap-2">
+                <div className="space-y-1 w-full">
+                  <div className="flex items-center justify-center gap-2 mb-1">
                     <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{card.title}</h3>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <button className="focus:outline-none" aria-label={`Information about ${card.title}`}>
+                        <button className="focus:outline-none" aria-label={`Details for ${card.title}`}>
                           <Info className="h-3 w-3 text-muted-foreground/30 cursor-help" />
                         </button>
                       </TooltipTrigger>
-                      <TooltipContent side="top" className="text-xs max-w-[200px] bg-popover/90 backdrop-blur-sm border border-border/50 shadow-xl">
+                      <TooltipContent side="top" className="text-[11px] max-w-[180px] bg-popover/95 backdrop-blur-sm border border-border/50 shadow-2xl p-2.5">
                         {card.tooltip}
                       </TooltipContent>
                     </Tooltip>
                   </div>
                   <span className={cn(
-                    "text-2xl font-bold tracking-tighter sm:text-3xl",
+                    "text-2xl font-bold tracking-tighter sm:text-3xl transition-colors duration-300",
                     card.highlight ? "text-red-600" : "text-foreground"
                   )}>
                     {card.value}
                   </span>
                 </div>
-                <p className="text-[11px] text-muted-foreground/70 leading-tight">
+                <p className="text-[11px] text-muted-foreground/60 leading-tight font-medium">
                   {card.description}
                 </p>
               </CardContent>
