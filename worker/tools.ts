@@ -3,13 +3,7 @@ import { mcpManager } from './mcp-client';
 
 export type ToolResult = WeatherResult | { content: string } | ErrorResult;
 
-interface SerpApiResponse {
-  knowledge_graph?: { title?: string; description?: string; source?: { link?: string } };
-  answer_box?: { answer?: string; snippet?: string; title?: string; link?: string };
-  organic_results?: Array<{ title?: string; link?: string; snippet?: string }>;
-  local_results?: Array<{ title?: string; address?: string; phone?: string; rating?: number }>;
-  error?: string;
-}
+
 
 const customTools = [
   {
@@ -47,86 +41,8 @@ export async function getToolDefinitions() {
   return [...customTools, ...mcpTools];
 }
 
-const createSearchUrl = (query: string, apiKey: string, numResults: number) => {
-  const url = new URL('https://serpapi.com/search');
-  url.searchParams.set('engine', 'google');
-  url.searchParams.set('q', query);
-  url.searchParams.set('api_key', apiKey);
-  url.searchParams.set('num', Math.min(numResults, 10).toString());
-  return url.toString();
-};
-
-const formatSearchResults = (data: SerpApiResponse, query: string, numResults: number): string => {
-  const results: string[] = [];
-  
-  // Knowledge graph
-  if (data.knowledge_graph?.title && data.knowledge_graph.description) {
-    results.push(`**${data.knowledge_graph.title}**\n${data.knowledge_graph.description}`);
-    if (data.knowledge_graph.source?.link) results.push(`Source: ${data.knowledge_graph.source.link}`);
-  }
-  
-  // Answer box
-  if (data.answer_box) {
-    const { answer, snippet, title, link } = data.answer_box;
-    if (answer) results.push(`**Answer**: ${answer}`);
-    else if (snippet) results.push(`**${title || 'Answer'}**: ${snippet}`);
-    if (link) results.push(`Source: ${link}`);
-  }
-  
-  // Organic results
-  if (data.organic_results?.length) {
-    results.push('\n**Search Results:**');
-    data.organic_results.slice(0, numResults).forEach((result, index) => {
-      if (result.title && result.link) {
-        const text = [`${index + 1}. **${result.title}**`];
-        if (result.snippet) text.push(`   ${result.snippet}`);
-        text.push(`   Link: ${result.link}`);
-        results.push(text.join('\n'));
-      }
-    });
-  }
-  
-  // Local results
-  if (data.local_results?.length) {
-    results.push('\n**Local Results:**');
-    data.local_results.slice(0, 3).forEach((result, index) => {
-      if (result.title) {
-        const text = [`${index + 1}. **${result.title}**`];
-        if (result.address) text.push(`   Address: ${result.address}`);
-        if (result.phone) text.push(`   Phone: ${result.phone}`);
-        if (result.rating) text.push(`   Rating: ${result.rating} stars`);
-        results.push(text.join('\n'));
-      }
-    });
-  }
-  
-  return results.length ? `🔍 Search results for "${query}":\n\n${results.join('\n\n')}` 
-    : `No results found for "${query}". Try: https://www.google.com/search?q=${encodeURIComponent(query)}`;
-};
-
 async function performWebSearch(query: string, numResults = 5): Promise<string> {
-  const apiKey = process.env.SERPAPI_KEY;
-  if (!apiKey) {
-    return `🔍 Web search requires SerpAPI key. Get one at https://serpapi.com/\nFallback: https://www.google.com/search?q=${encodeURIComponent(query)}`;
-  }
-
-  try {
-    const response = await fetch(createSearchUrl(query, apiKey, numResults), {
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; WebBot/1.0)', 'Accept': 'application/json' },
-      signal: AbortSignal.timeout(15000)
-    });
-
-    if (!response.ok) throw new Error(`SerpAPI returned ${response.status}`);
-    
-    const data: SerpApiResponse = await response.json();
-    if (data.error) throw new Error(`SerpAPI error: ${data.error}`);
-    
-    return formatSearchResults(data, query, numResults);
-  } catch (error) {
-    const isTimeout = error instanceof Error && error.message.includes('timeout');
-    const fallback = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
-    return `Search failed: ${isTimeout ? 'timeout' : 'API error'}. Try: ${fallback}`;
-  }
+  return `🔍 Web search requires SerpAPI key. Get one at https://serpapi.com/\nFallback: https://www.google.com/search?q=${encodeURIComponent(query)}`;
 }
 
 const extractTextFromHtml = (html: string): string => html
