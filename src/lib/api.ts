@@ -133,5 +133,5 @@ export const api = {
   deleteReport: (id: string) => safeApi<void>(`/reports/${id}`, { method: 'DELETE' }),
   startAssessment: () => safeApi<AssessmentReport>('/assess', { method: 'POST' }),
   getLogs: () => safeApi<AuditLog[]>('/logs'),
-  getAiTrends: () => safeApi<{ topAppsTrends: Array<Record<string, any>> }>('/assess'), // Reusing assess data for trends in this phase
+  getAiTrends: () => safeApi<{ topAppsTrends: Array<Record<string, any>> }>('/ai-trends'),
 };

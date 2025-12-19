@@ -86,7 +86,7 @@ export class AppController extends DurableObject<Env> {
   async addLog(log: Omit<AuditLog, 'id'>): Promise<void> {
     const logs = await this.ctx.storage.get<AuditLog[]>('audit_logs') || [];
     const newLog: AuditLog = { ...log, id: crypto.randomUUID() };
-    logs.unshift(newLog);
+    logs.unshift(newLog); // Atomic push to history
     await this.ctx.storage.put('audit_logs', logs.slice(0, 100));
   }
   async getLogs(): Promise<AuditLog[]> {
