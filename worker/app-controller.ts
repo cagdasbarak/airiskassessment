@@ -23,8 +23,9 @@ export interface AuditLog {
   timestamp: string;
   action: string;
   user: string;
-  status: 'Success' | 'Failed' | 'Warning';
+  status: 'Success' | 'Failed' | 'Warning' | 'Error';
   description?: string;
+  details?: string;
 }
 export interface AIRecommendation {
   title: string;

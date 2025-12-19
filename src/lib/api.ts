@@ -10,8 +10,9 @@ export interface AuditLog {
   timestamp: string;
   action: string;
   user: string;
-  status: 'Success' | 'Failed' | 'Warning';
+  status: 'Success' | 'Failed' | 'Warning' | 'Error';
   description?: string;
+  details?: string;
 }
 export interface LicenseInfo {
   plan: string;
@@ -100,14 +101,22 @@ async function safeApi<T>(endpoint: string, options?: RequestInit): Promise<ApiR
       console.warn(`[API] ${options?.method || 'GET'} ${endpoint} error: ${res.status}`);
       let errorData;
       try {
-        errorData = JSON.parse(text);
+        errorData = text ? JSON.parse(text) : { error: `Server error ${res.status}` };
       } catch {
         errorData = { error: `Server error ${res.status}`, detail: text.slice(0, 100) };
       }
       return { success: false, error: errorData.error, detail: errorData.detail } as ApiResponse<T>;
     }
     if (!text || text.trim().length === 0) return { success: true } as ApiResponse<T>;
-    return JSON.parse(text) as ApiResponse<T>;
+    try {
+      return JSON.parse(text) as ApiResponse<T>;
+    } catch (e) {
+      return { 
+        success: false, 
+        error: 'Malformed response received from server', 
+        detail: 'The backend returned a non-JSON payload.' 
+      } as ApiResponse<T>;
+    }
   } catch (error: any) {
     console.error(`[API] Network failure for ${endpoint}:`, error.message);
     return { success: false, error: 'Network connection failed' } as ApiResponse<T>;
