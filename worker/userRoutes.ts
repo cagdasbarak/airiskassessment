@@ -4,6 +4,7 @@ import { ChatAgent } from './agent';
 import { ChatHandler } from './chat';
 import { API_RESPONSES } from './config';
 import { Env, getAppController, registerSession } from "./core-utils";
+import type { UserSettings, AuditLog, AssessmentReport, AIInsights } from './app-controller';
 export function coreRoutes(app: Hono<{ Bindings: Env }>) {
     app.all('/api/chat/:sessionId/*', async (c) => {
         try {
@@ -104,7 +105,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         if (!settings.accountId || !settings.apiKey) return c.json({ success: false, error: 'Credentials missing' }, { status: 400 });
         try {
             const headers = getCFHeaders(settings.email, settings.apiKey);
-            // Refined FETCH Sequence for precise AI Metrics
+            // EXACT JQ FETCH SEQUENCE
             const [typesR, reviewR, appsR, dlpR, accessR, gtwPolR, accPolR] = await Promise.all([
                 fetch(`https://api.cloudflare.com/client/v4/accounts/${settings.accountId}/gateway/app_types?per_page=1000`, { headers }),
                 fetch(`https://api.cloudflare.com/client/v4/accounts/${settings.accountId}/gateway/apps/review_status`, { headers }),
@@ -114,32 +115,40 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
                 fetch(`https://api.cloudflare.com/client/v4/accounts/${settings.accountId}/gateway/rules`, { headers }),
                 fetch(`https://api.cloudflare.com/client/v4/accounts/${settings.accountId}/access/policies`, { headers })
             ]);
-            const typesData = (await typesR.json() as any).result || [];
-            const reviewData = (await reviewR.json() as any).result || { approved_apps: [], in_review: [], unapproved_apps: [] };
-            const appsData = (await appsR.json() as any).result || [];
-            const dlpData = (await dlpR.json() as any).result || [];
-            const eventsData = (await accessR.json() as any).result || [];
+            const typesData = (await typesR.json() as any);
+            const reviewData = (await reviewR.json() as any);
+            const appsDataResult = (await appsR.json() as any).result || [];
+            const dlpDataResult = (await dlpR.json() as any).result || [];
+            const eventsDataResult = (await accessR.json() as any).result || [];
             const gtwPols = (await gtwPolR.json() as any).result || [];
             const accPols = (await accPolR.json() as any).result || [];
-            // FETCH1: Identify GenAI App IDs (Type 25)
-            const aiIds = typesData.filter((t: any) => t.application_type_id === 25).map((t: any) => t.id);
-            const aiApps = appsData.filter((a: any) => aiIds.includes(a.id) || a.categories?.some((cat: string) => cat.toLowerCase().includes('ai')));
-            // FETCH2: Managed Statuses
-            const managedIds = [
-                ...(reviewData.approved_apps || []),
-                ...(reviewData.in_review || []),
-                ...(reviewData.unapproved_apps || [])
+            // LOG RAW JSON FOR VERIFICATION
+            console.log('--- CLOUDFLARE API AGGREGATION RAW ---');
+            console.log('Types:', JSON.stringify(typesData.result?.slice(0, 5)));
+            console.log('Review:', JSON.stringify(reviewData.result));
+            // JQ MAPPING LOGIC
+            const ai_ids = (typesData.result || [])
+                .filter((t: any) => t.application_type_id === 25)
+                .map((t: any) => t.id);
+            const total_ai = ai_ids.length;
+            const statuses = reviewData.result || { approved_apps: [], in_review: [], unapproved_apps: [] };
+            const managed_ids = [
+                ...(statuses.approved_apps || []),
+                ...(statuses.in_review || []),
+                ...(statuses.unapproved_apps || [])
             ].map((a: any) => a.id);
-            // Metric 1: Shadow AI %
-            const shadowCount = aiIds.filter((id: any) => !managedIds.includes(id)).length;
-            const shadowUsage = aiIds.length > 0 ? Number((shadowCount / aiIds.length * 100).toFixed(1)) : 0;
-            // Metric 2: Unapproved Applications
-            const unapprovedAppsCount = (reviewData.unapproved_apps || []).filter((a: any) => aiIds.includes(a.id)).length;
+            const shadow_count = ai_ids.filter((id: any) => !managed_ids.includes(id)).length;
+            const shadowUsage = total_ai > 0 ? Math.round((shadow_count / total_ai * 100) * 1000) / 1000 : 0;
+            const unapprovedAppsCount = (statuses.unapproved_apps || [])
+                .filter((app: any) => ai_ids.includes(app.id)).length;
+            const aiApps = appsDataResult.filter((a: any) => 
+                ai_ids.includes(a.id) || a.categories?.some((cat: string) => cat.toLowerCase().includes('ai'))
+            );
             const approvedAppsCount = aiApps.filter((a: any) => a.status === 'Approved').length;
             const libCoverage = aiApps.length > 0 ? (approvedAppsCount / aiApps.length) * 100 : 0;
-            const totalExfilMB = Math.floor(dlpData.reduce((acc: number, cur: any) => acc + (cur.fileSize || 0), 0) / (1024 * 1024));
+            const totalExfilMB = Math.floor(dlpDataResult.reduce((acc: number, cur: any) => acc + (cur.fileSize || 0), 0) / (1024 * 1024));
             const casbPost = aiApps.length > 0 ? aiApps.reduce((acc: number, cur: any) => acc + (cur.risk_score || 0), 0) / aiApps.length : 0;
-            const userFreq = eventsData.reduce((acc: Record<string, number>, e: any) => {
+            const userFreq = eventsDataResult.reduce((acc: Record<string, number>, e: any) => {
                 if (e.userEmail) acc[e.userEmail] = (acc[e.userEmail] || 0) + 1;
                 return acc;
             }, {});
@@ -156,7 +165,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
                 name: a.name || 'Unknown AI',
                 category: 'Generative AI',
                 status: (a.status || 'Unreviewed') as any,
-                users: eventsData.filter((e: any) => e.appID === a.id).length || Math.floor(Math.random() * 20),
+                users: eventsDataResult.filter((e: any) => e.appID === a.id).length || Math.floor(Math.random() * 20),
                 risk: (a.risk_score || 50) > 70 ? 'High' : (a.risk_score || 50) > 30 ? 'Medium' : 'Low',
                 risk_score: a.risk_score || 50,
                 genai_score: a.genai_score || 75,
@@ -164,7 +173,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
                     ...gtwPols.filter((p: any) => JSON.stringify(p).includes(a.name || '')).map((p: any) => ({ name: p.name || '', action: p.action || '', type: 'Gateway' as const })),
                     ...accPols.filter((p: any) => JSON.stringify(p).includes(a.name || '')).map((p: any) => ({ name: p.name || '', action: 'Allow', type: 'Access' as const }))
                 ],
-                usage: eventsData.filter((e: any) => e.appID === a.id).slice(0, 50).map((e: any) => ({
+                usage: eventsDataResult.filter((e: any) => e.appID === a.id).slice(0, 50).map((e: any) => ({
                     clientIP: e.ipAddress || '0.0.0.0',
                     userEmail: e.userEmail || 'anonymous',
                     action: e.action || 'Allowed',
@@ -183,37 +192,25 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
                     { name: 'Medium', value: aiApps.filter((a: any) => (a.risk_score || 0) >= 30 && (a.risk_score || 0) < 70).length },
                     { name: 'High', value: aiApps.filter((a: any) => (a.risk_score || 0) >= 70).length }
                 ],
-                dataVolume: generateTrend(30, () => ({ value: Math.random() * 200 })),
-                mcpActivity: generateTrend(30, () => ({ value: Math.random() * 100 })),
-                loginEvents: generateTrend(30, () => ({ value: Math.floor(Math.random() * 50) })),
                 topAppsTrend: generateTrend(30, () => {
                     const obj: Record<string, number> = {};
                     appLibrary.slice(0, 5).forEach((app: any) => {
                         obj[app.name] = Math.floor(Math.random() * 100);
                     });
                     return obj;
-                }),
-                statusTrend: generateTrend(30, () => ({
-                    Unapproved: Math.floor(Math.random() * 10),
-                    Approved: Math.floor(Math.random() * 20),
-                    Review: Math.floor(Math.random() * 15),
-                    Unreviewed: Math.floor(Math.random() * 30)
-                })),
-                dataTrend: generateTrend(30, () => ({ total: Math.random() * 1000, delta: Math.random() * 50 })),
-                mcpAccessTrend: generateTrend(30, () => ({ servers: Math.floor(Math.random() * 5) })),
-                mcpLoginTrend: generateTrend(30, () => ({ events: Math.floor(Math.random() * 10) }))
+                })
             };
             const riskLevel = shadowUsage > 50 || unapprovedAppsCount > 5 ? 'High' as const : shadowUsage > 20 ? 'Medium' as const : 'Low' as const;
-            const report = {
+            const report: AssessmentReport = {
                 id: `rep_${Date.now()}`,
                 date: new Date().toISOString().split('T')[0],
-                status: 'Completed' as const,
+                status: 'Completed',
                 score: Math.max(0, 100 - (shadowUsage / 2)),
                 riskLevel,
                 summary: {
-                    totalApps: appsData.length,
+                    totalApps: appsDataResult.length,
                     aiApps: aiApps.length,
-                    shadowAiApps: shadowCount,
+                    shadowAiApps: shadow_count,
                     shadowUsage,
                     unapprovedApps: unapprovedAppsCount,
                     dataExfiltrationRisk: `${totalExfilMB} MB`,
@@ -226,25 +223,27 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
             try {
                 const chat = new ChatHandler(c.env.CF_AI_BASE_URL, c.env.CF_AI_API_KEY, 'google-ai-studio/gemini-2.0-flash');
                 const aiRes = await chat.processMessage(`Analyze risk summary: ${JSON.stringify(report.summary)}. Provide 3 critical recommendations in JSON format: { "summary": "string", "recommendations": [{ "title": "string", "description": "string", "type": "critical|policy|optimization" }] }.`, []);
-                const json = JSON.parse(aiRes.content.match(/\{[\s\S]*\}/)?.[0] || '{}');
+                const jsonMatch = aiRes.content.match(/\{[\s\S]*\}/);
+                const json = JSON.parse(jsonMatch?.[0] || '{}');
                 (report as any).aiInsights = {
                     summary: json.summary || "Manual review of detected AI applications is required to ensure data governance compliance.",
                     recommendations: Array.isArray(json.recommendations) ? json.recommendations : []
                 };
             } catch (e) {
-                (report as any).aiInsights = { 
-                    summary: "Telemetry analysis suggests increased shadow AI usage within the network perimeter.", 
-                    recommendations: [{ title: "Implement CASB Governance", description: "Review and approve discovered AI applications through the Cloudflare Zero Trust dashboard.", type: "critical" }] 
+                console.error('AI Insight Error:', e);
+                (report as any).aiInsights = {
+                    summary: "Telemetry analysis suggests increased shadow AI usage within the network perimeter.",
+                    recommendations: [{ title: "Implement CASB Governance", description: "Review and approve discovered AI applications through the Cloudflare Zero Trust dashboard.", type: "critical" }]
                 };
             }
-            await controller.addReport(report as AssessmentReport);
+            await controller.addReport(report);
             await controller.addLog({
                 timestamp: new Date().toISOString(),
                 action: 'Advanced Assessment Generated',
                 user: settings.email,
                 status: 'Success',
                 description: `Risk Level: ${riskLevel}, Shadow Usage: ${shadowUsage}%, Unapproved: ${unapprovedAppsCount}`
-            } as any);
+            });
             return c.json({ success: true, data: report });
         } catch (error: any) {
             console.error('Assessment Error:', error);

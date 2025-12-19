@@ -103,7 +103,7 @@ export function ReportDetailsPage() {
           </div>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-          <Card className="border-border/50 shadow-soft overflow-hidden group hover:shadow-md transition-all">
+          <Card className={cn("border-border/50 shadow-soft overflow-hidden group hover:shadow-md transition-all", (summary.shadowUsage) > 50 && "ring-2 ring-red-500 ring-inset")}>
             <CardContent className="p-6">
               <div className="p-2 rounded-lg w-fit mb-4 bg-red-500/10">
                 <Terminal className="h-5 w-5 text-red-500" />
@@ -114,21 +114,21 @@ export function ReportDetailsPage() {
                   {summary.shadowUsage}%
                 </p>
                 {(summary.shadowUsage) > 50 && (
-                  <Badge variant="destructive" className="text-[8px] h-4">HighRisk</Badge>
+                  <Badge variant="destructive" className="text-[8px] h-4">CRITICAL</Badge>
                 )}
               </div>
               <Progress value={summary.shadowUsage} className={cn("h-1 mt-2", (summary.shadowUsage) > 50 ? "[&>div]:bg-red-500" : "")} />
             </CardContent>
           </Card>
-          <Card className="border-border/50 shadow-soft overflow-hidden group hover:shadow-md transition-all">
+          <Card className="border-border/50 shadow-soft overflow-hidden group hover:shadow-md transition-all bg-red-50/10 dark:bg-red-950/5">
             <CardContent className="p-6">
               <div className="p-2 rounded-lg w-fit mb-4 bg-orange-500/10">
                 <ShieldAlert className="h-5 w-5 text-orange-500" />
               </div>
               <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-1">Unapproved Apps</p>
-              <div className="flex items-baseline gap-2">
-                <p className="text-3xl font-bold text-orange-500">{summary.unapprovedApps}</p>
-                <span className="text-xs text-muted-foreground">Blocked</span>
+              <div className="flex items-center gap-3">
+                <p className="text-3xl font-bold text-red-600 dark:text-red-500">{summary.unapprovedApps}</p>
+                <Badge className="bg-red-600 text-white border-none text-[10px] h-5">BLOCKED</Badge>
               </div>
             </CardContent>
           </Card>
@@ -187,7 +187,7 @@ export function ReportDetailsPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="h-[200px]">
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                       <PieChart>
                         <Pie
                           data={pieData}
@@ -301,7 +301,7 @@ export function ReportDetailsPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="h-[350px]">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height={350} minWidth={0} aspect={16/9}>
                   <AreaChart data={topAppsTrend}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.1} />
                     <XAxis dataKey="name" hide />
