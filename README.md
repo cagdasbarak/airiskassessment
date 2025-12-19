@@ -1,6 +1,6 @@
 # Cloudflare AI Chat Agents
 
-[![[cloudflarebutton]]](https://workers.cloudflare.com)
+[![[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/cagdasbarak/airiskassessment)]](https://workers.cloudflare.com)
 
 A production-ready, full-stack AI chat application built on Cloudflare Workers. Features multi-session management, real-time streaming responses, tool calling (weather, web search, MCP integration), and a modern React frontend.
 
@@ -99,7 +99,7 @@ Hot reload works for both FE/BE. Workers types auto-generated.
    ```
    Or one-click:
 
-   [![[cloudflarebutton]]](https://workers.cloudflare.com)
+   [![[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/cagdasbarak/airiskassessment)]](https://workers.cloudflare.com)
 
 3. **Custom Domain** (optional):
    ```bash
