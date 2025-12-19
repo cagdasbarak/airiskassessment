@@ -1,4 +1,4 @@
-import { Settings } from './store';
+import { Settings, DeepPartial } from './store';
 export interface ApiResponse<T> {
   success: boolean;
   data?: T;
@@ -98,7 +98,6 @@ async function safeApi<T>(endpoint: string, options?: RequestInit): Promise<ApiR
     const res = await fetch(url, options);
     const text = await res.text();
     if (!res.ok) {
-      console.warn(`[API] ${options?.method || 'GET'} ${endpoint} error: ${res.status}`);
       let errorData;
       try {
         errorData = text ? JSON.parse(text) : { error: `Server error ${res.status}` };
@@ -111,20 +110,19 @@ async function safeApi<T>(endpoint: string, options?: RequestInit): Promise<ApiR
     try {
       return JSON.parse(text) as ApiResponse<T>;
     } catch (e) {
-      return { 
-        success: false, 
-        error: 'Malformed response received from server', 
-        detail: 'The backend returned a non-JSON payload.' 
+      return {
+        success: false,
+        error: 'Malformed response received from server',
+        detail: 'The backend returned a non-JSON payload.'
       } as ApiResponse<T>;
     }
   } catch (error: any) {
-    console.error(`[API] Network failure for ${endpoint}:`, error.message);
     return { success: false, error: 'Network connection failed' } as ApiResponse<T>;
   }
 }
 export const api = {
   getSettings: () => safeApi<Settings>('/settings'),
-  updateSettings: (settings: Settings) => safeApi<void>('/settings', {
+  updateSettings: (settings: DeepPartial<Settings>) => safeApi<void>('/settings', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(settings),

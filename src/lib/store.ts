@@ -1,6 +1,10 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { produce } from 'immer';
+/** Recursive DeepPartial utility to allow nested updates */
+export type DeepPartial<T> = T extends object ? {
+  [P in keyof T]?: DeepPartial<T[P]>;
+} : T;
 export interface CloudflareContact {
   name: string;
   role: string;
@@ -25,7 +29,7 @@ interface AppState {
   username: string | null;
   settings: Settings;
   setAuthenticated: (val: boolean, username: string) => void;
-  updateSettings: (settings: Partial<Settings>) => void;
+  updateSettings: (settings: DeepPartial<Settings>) => void;
   logout: () => void;
 }
 const DEFAULT_SETTINGS: Settings = {
@@ -62,13 +66,13 @@ export const useAppStore = create<AppState>()(
               state.settings.cloudflareContact = {
                 ...state.settings.cloudflareContact,
                 ...newSettings.cloudflareContact,
-              };
+              } as CloudflareContact;
             }
             if (newSettings.customerContact) {
               state.settings.customerContact = {
                 ...state.settings.customerContact,
                 ...newSettings.customerContact,
-              };
+              } as CustomerContact;
             }
           })
         ),

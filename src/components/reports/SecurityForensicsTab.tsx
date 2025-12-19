@@ -7,16 +7,24 @@ import { AssessmentReport } from '@/lib/api';
 interface SecurityForensicsTabProps {
   report: AssessmentReport;
 }
-// Forensic HSL Color Palette (Light Blue, Dark Blue, Purple, Pink, Cyan)
+/**
+ * EXACT HSL COLORS FROM CLIENT:
+ * Light Blue: hsl(204, 75%, 70%)
+ * Dark Blue: hsl(217, 91%, 60%)
+ * Purple: hsl(271, 91%, 65%)
+ * Pink: hsl(329, 81%, 56%)
+ * Cyan: hsl(189, 94%, 43%)
+ */
 const COLORS = [
-  'hsl(204, 75%, 70%)', // Light Blue
-  'hsl(217, 91%, 60%)', // Dark Blue
-  'hsl(271, 91%, 65%)', // Purple
-  'hsl(329, 81%, 56%)', // Pink
-  'hsl(189, 94%, 43%)'  // Cyan
+  'hsl(204, 75%, 70%)',
+  'hsl(217, 91%, 60%)',
+  'hsl(271, 91%, 65%)',
+  'hsl(329, 81%, 56%)',
+  'hsl(189, 94%, 43%)'
 ];
 export function SecurityForensicsTab({ report }: SecurityForensicsTabProps) {
   const trendData = report.securityCharts?.topAppsTrends || [];
+  // Extract all keys except 'date'
   const appKeys = trendData.length > 0
     ? Object.keys(trendData[0]).filter(k => k !== 'date')
     : [];
@@ -37,10 +45,10 @@ export function SecurityForensicsTab({ report }: SecurityForensicsTabProps) {
         <CardHeader className="border-b border-border/10 pb-6 flex-shrink-0 flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div className="space-y-1">
             <CardTitle className="text-xl font-black tracking-tight text-foreground uppercase">
-              Top 5 visited AI applications by user count
+              Top 5 Visited AI Applications
             </CardTitle>
             <CardDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60">
-              Last 30 days • Forensic Telemetry
+              Last 30 Days • Aggregated User Activity
             </CardDescription>
           </div>
           <div className="text-[10px] font-mono text-muted-foreground/40 uppercase tracking-tighter hidden md:block">
@@ -52,9 +60,8 @@ export function SecurityForensicsTab({ report }: SecurityForensicsTabProps) {
             <BarChart
               data={trendData}
               margin={{ top: 20, right: 140, left: 10, bottom: 40 }}
-              barCategoryGap={20}
-              barSize={30}
-              barGap={4}
+              barCategoryGap={12}
+              barSize={24}
             >
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" opacity={0.3} />
               <XAxis
@@ -99,7 +106,7 @@ export function SecurityForensicsTab({ report }: SecurityForensicsTabProps) {
                   dataKey={key}
                   stackId="a"
                   fill={COLORS[idx % COLORS.length]}
-                  radius={[idx === appKeys.length - 1 ? 4 : 0, idx === appKeys.length - 1 ? 4 : 0, 0, 0]}
+                  radius={[0, 0, 0, 0]}
                   animationDuration={1500}
                 />
               ))}
@@ -109,7 +116,7 @@ export function SecurityForensicsTab({ report }: SecurityForensicsTabProps) {
       </Card>
       <div className="flex items-center justify-between text-[10px] font-black text-muted-foreground/40 uppercase tracking-[0.2em] px-2 py-4">
         <span>30-Day Aggregated Visibility</span>
-        <span>Secure Protocol verified</span>
+        <span>Secure Protocol Verified</span>
       </div>
     </motion.div>
   );

@@ -34,7 +34,7 @@ const ChartContainer = React.forwardRef<
           {
             "--chart-style-id": `chart-style-${chartId}`,
             minWidth: "0",
-            minHeight: "400px", // Fixed minHeight to resolve Recharts dimension warnings
+            minHeight: "450px", // Increased minHeight to ensure stable dimensions
           } as React.CSSProperties
         }
         ref={ref}
@@ -45,8 +45,7 @@ const ChartContainer = React.forwardRef<
         {...props}
       >
         <ChartStyle id={chartId} config={config} />
-        {/* Debounce added to stabilize layout during tab switching and resizing */}
-        <RechartsPrimitive.ResponsiveContainer width="100%" height="100%" debounce={16}>
+        <RechartsPrimitive.ResponsiveContainer width="100%" height="100%" debounce={32}>
           {children as any}
         </RechartsPrimitive.ResponsiveContainer>
       </div>
@@ -81,16 +80,16 @@ const ChartTooltipContent = React.forwardRef<HTMLDivElement, any>(
     const { config } = useChart()
     if (!active || !payload?.length) return null
     return (
-      <div ref={ref} className={cn("grid min-w-[8rem] items-start gap-1.5 rounded-lg border border-border/50 bg-background px-2.5 py-1.5 text-xs shadow-xl", className)}>
-        {!hideLabel && <div className={cn("font-medium", labelClassName)}>{label}</div>}
+      <div ref={ref} className={cn("grid min-w-[10rem] items-start gap-1.5 rounded-lg border border-border/50 bg-background px-3 py-2 text-xs shadow-xl backdrop-blur-md", className)}>
+        {!hideLabel && <div className={cn("font-bold mb-1 border-b border-border/50 pb-1", labelClassName)}>{label}</div>}
         <div className="grid gap-1.5">
           {payload.map((item: any, index: number) => {
             const configItem = config[item.name as string] || config[item.dataKey as string];
             return (
               <div key={index} className="flex w-full items-center gap-2">
                 <div className="h-2 w-2 rounded-full" style={{ backgroundColor: item.color || item.fill }} />
-                <span className="text-muted-foreground flex-1">{configItem?.label || item.name}</span>
-                <span className="font-mono font-medium">{(item.value ?? 0).toLocaleString()}</span>
+                <span className="text-muted-foreground flex-1 font-medium">{configItem?.label || item.name}</span>
+                <span className="font-mono font-bold">{(item.value ?? 0).toLocaleString()}</span>
               </div>
             );
           })}

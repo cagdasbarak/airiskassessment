@@ -64,6 +64,7 @@ export function SettingsPage() {
   const handleSave = async () => {
     setIsSaving(true);
     try {
+      // Get the latest settings from the store
       const currentSettings = useAppStore.getState().settings;
       const res = await api.updateSettings(currentSettings);
       if (res.success) {

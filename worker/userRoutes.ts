@@ -3,7 +3,7 @@ import { getAgentByName } from 'agents';
 import { ChatAgent } from './agent';
 import { Env, getAppController } from "./core-utils";
 import type { AssessmentReport, AIInsights } from './app-controller';
-console.log('SAFE_LOAD: userRoutes imported success');
+console.log('[RISKGUARD] Registering user routes...');
 let coreRoutesRegistered = false;
 let userRoutesRegistered = false;
 const DEFAULT_SUMMARY = "This report provides a definitive analysis of organizational AI usage patterns. Current telemetry suggests a dynamic risk landscape that requires proactive Cloudflare Gateway management to ensure data integrity.";
@@ -43,31 +43,31 @@ const MOCK_APP_LIBRARY: any[] = [
     name: 'ChatGPT',
     category: 'LLM Assistant',
     status: 'Approved',
-    users: 145,
+    users: 350,
     risk: 'Medium',
     risk_score: 42,
     genai_score: 88,
     policies: [{ name: 'Corporate AI Policy', action: 'Allow', type: 'Gateway' }],
-    usage: Array(5).fill(0).map(() => ({ clientIP: '10.0.0.1', userEmail: 'user@org.com', action: 'Query', date: new Date().toISOString(), bytesKB: 12 }))
-  },
-  {
-    appId: 'github-copilot',
-    name: 'GitHub Copilot',
-    category: 'Code Assistant',
-    status: 'Approved',
-    users: 210,
-    risk: 'Low',
-    risk_score: 12,
-    genai_score: 90,
-    policies: [{ name: 'Dev Productivity Allowance', action: 'Allow', type: 'Access' }],
     usage: []
   },
   {
-    appId: 'gemini',
-    name: 'Gemini',
+    appId: 'microsoft-copilot',
+    name: 'Microsoft Copilot',
+    category: 'Productivity AI',
+    status: 'Approved',
+    users: 300,
+    risk: 'Low',
+    risk_score: 12,
+    genai_score: 90,
+    policies: [{ name: 'Microsoft 365 Policy', action: 'Allow', type: 'Access' }],
+    usage: []
+  },
+  {
+    appId: 'google-gemini',
+    name: 'Google Gemini',
     category: 'LLM Assistant',
     status: 'Approved',
-    users: 85,
+    users: 200,
     risk: 'Low',
     risk_score: 20,
     genai_score: 92,
@@ -79,7 +79,7 @@ const MOCK_APP_LIBRARY: any[] = [
     name: 'DeepSeek',
     category: 'LLM Assistant',
     status: 'Review',
-    users: 45,
+    users: 100,
     risk: 'Medium',
     risk_score: 55,
     genai_score: 85,
@@ -91,7 +91,7 @@ const MOCK_APP_LIBRARY: any[] = [
     name: 'Perplexity',
     category: 'Search AI',
     status: 'Unapproved',
-    users: 62,
+    users: 50,
     risk: 'High',
     risk_score: 72,
     genai_score: 80,
@@ -140,24 +140,28 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
   });
   app.post('/api/assess', async (c) => {
     const controller = getAppController(c.env);
-    // Generate 30 days of high-fidelity timeseries data
+    // Generate 30 days of high-fidelity timeseries data with specific user bases
     const topAppsTrends = [];
     const now = new Date();
-    const appNames = ['ChatGPT', 'GitHub Copilot', 'Gemini', 'DeepSeek', 'Perplexity'];
+    const apps = [
+      { name: 'ChatGPT', base: 350 },
+      { name: 'Microsoft Copilot', base: 300 },
+      { name: 'Google Gemini', base: 200 },
+      { name: 'DeepSeek', base: 100 },
+      { name: 'Perplexity', base: 50 }
+    ];
     for (let i = 29; i >= 0; i--) {
       const date = new Date(now);
       date.setDate(now.getDate() - i);
       const dateStr = date.toISOString().split('T')[0];
       const dayData: Record<string, any> = { date: dateStr };
-      appNames.forEach(name => {
-        // Realistic distribution with some randomness
-        const base = name === 'ChatGPT' ? 350 : name === 'GitHub Copilot' ? 300 : name === 'Gemini' ? 200 : name === 'Perplexity' ? 100 : 50;
-        dayData[name] = Math.floor(base + (Math.random() * 100) - 50);
+      apps.forEach(app => {
+        // Variation of +/- 50 users
+        const variance = Math.floor(Math.random() * 101) - 50;
+        dayData[app.name] = Math.max(0, app.base + variance);
       });
       topAppsTrends.push(dayData);
     }
-    console.log(`[FORENSIC] TIMESERIES slots len: ${topAppsTrends.length}`);
-    console.log(`[FORENSIC] Identified top5 apps: ${appNames.join(', ')}`);
     const report: AssessmentReport = {
       id: crypto.randomUUID(),
       date: new Date().toISOString().split('T')[0],
@@ -211,15 +215,6 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const id = c.req.param('id');
     const controller = getAppController(c.env);
     const deleted = await controller.removeReport(id);
-    if (deleted) {
-      await controller.addLog({
-        timestamp: new Date().toISOString(),
-        action: 'Report Deleted',
-        user: 'admin',
-        status: 'Warning',
-        details: `Report ID: ${id}`
-      });
-    }
     return c.json({ success: deleted });
   });
   app.get('/api/logs', async (c) => {
@@ -227,29 +222,6 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     return c.json({ success: true, data: await controller.getLogs() });
   });
   app.post('/api/license-check', async (c) => {
-    const controller = getAppController(c.env);
-    const settings = await controller.getSettings();
-    if (!settings.accountId || !settings.apiKey) {
-      return c.json({ success: true, data: MOCK_LICENSE_DATA });
-    }
-    try {
-      await controller.addLog({
-        timestamp: new Date().toISOString(),
-        action: 'License Check Performed',
-        user: settings.email || 'admin',
-        status: 'Success',
-        details: 'Verification successful'
-      });
-      return c.json({ success: true, data: MOCK_LICENSE_DATA });
-    } catch (error) {
-      await controller.addLog({
-        timestamp: new Date().toISOString(),
-        action: 'License Check Failed',
-        user: settings.email || 'admin',
-        status: 'Error',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      });
-      return c.json({ success: false, error: 'License check failed' });
-    }
+    return c.json({ success: true, data: MOCK_LICENSE_DATA });
   });
 }
