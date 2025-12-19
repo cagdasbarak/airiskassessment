@@ -38,8 +38,12 @@ export function DashboardPage() {
       success: (res) => {
         setIsAssessing(false);
         if (res.success && res.data) {
+          // Forensic Logging to Browser Console
+          if (res.data.debug) {
+            console.log('DEBUG_IDS', res.data.debug);
+          }
           navigate(`/reports/${res.data.id}`);
-          return 'Assessment complete!';
+          return 'Assessment complete! Check console for DEBUG_SHADOW';
         }
         throw new Error(res.error || 'Assessment failed');
       },
@@ -134,8 +138,8 @@ export function DashboardPage() {
                 <div className="space-y-6">
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                     {[
-                      { label: 'Health Score', value: `${lastReport?.score ?? 0}%`, color: 'text-foreground' },
-                      { label: 'Shadow Usage', value: `${lastReport?.summary?.shadowUsage ?? 0}%`, color: 'text-orange-500' },
+                      { label: 'Health Score', value: `${lastReport?.score?.toFixed(0) ?? 0}%`, color: 'text-foreground' },
+                      { label: 'Shadow Usage', value: `${lastReport?.summary?.shadowUsage?.toFixed(2) ?? 0}%`, color: 'text-orange-500' },
                       { label: 'Unapproved Apps', value: lastReport?.summary?.unapprovedApps ?? 0, color: 'text-red-500' },
                       { label: 'Risk Level', value: lastReport?.riskLevel ?? 'N/A', color: 'text-blue-500' },
                     ].map((stat, i) => (

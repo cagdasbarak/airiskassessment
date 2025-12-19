@@ -56,6 +56,13 @@ export interface AppUsageEvent {
   bytesKB: number;
   prompt?: string;
 }
+export interface AssessmentReportDebug {
+  aiIds: string[];
+  totalAI: number;
+  managedIds: string[];
+  managedCount: number;
+  shadowUsage: number;
+}
 export interface AssessmentReport {
   id: string;
   date: string;
@@ -66,7 +73,7 @@ export interface AssessmentReport {
     totalApps: number;
     aiApps: number;
     shadowAiApps: number;
-    shadowUsage: number; // Precision float (e.g. 98.122)
+    shadowUsage: number; 
     unapprovedApps: number;
     dataExfiltrationRisk: string;
     complianceScore: number;
@@ -88,6 +95,7 @@ export interface AssessmentReport {
   }>;
   securityCharts: SecurityCharts;
   aiInsights?: AIInsights;
+  debug?: AssessmentReportDebug;
 }
 async function safeApi<T>(endpoint: string, options?: RequestInit): Promise<ApiResponse<T>> {
   const url = `/api${endpoint}`;

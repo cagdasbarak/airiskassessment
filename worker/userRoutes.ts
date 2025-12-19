@@ -114,7 +114,6 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       return c.json({ success: false, error: 'Cloudflare API credentials missing in Settings' }, { status: 400 });
     }
     try {
-      // 1. Fetch App Types with Robust Regex Fallback
       const appTypesResp = await safeFetch('/gateway/app_types?per_page=1000', settings);
       const appTypesText = await appTypesResp.text();
       const appTypesJson = safeJSON(appTypesText);
@@ -132,7 +131,6 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       }
       aiIds = Array.from(new Set(aiIds));
       const totalAI = aiIds.length;
-      // 2. Fetch Review Statuses
       const reviewResp = await safeFetch('/gateway/apps/review_status', settings);
       const reviewText = await reviewResp.text();
       const reviewJson = safeJSON(reviewText);
@@ -140,23 +138,23 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       let approved = (statuses.approved_apps || []).map(String);
       let inReview = (statuses.in_review_apps || []).map(String);
       let unapproved = (statuses.unapproved_apps || []).map(String);
-      if (!reviewJson?.result) {
-        const unappMatch = reviewText.match(/"unapproved_apps":\s*\[(.*?)\]/);
-        if (unappMatch) {
-          unapproved = (unappMatch[1].match(/"([^"]+)"/g) || []).map(m => m.replace(/"/g, ''));
-        }
-      }
-      // 3. Precision Shadow AI Usage Calculation
       const managedIdsSet = new Set([...approved, ...inReview, ...unapproved]);
-      // Fixed implicit any error by adding explicit string type to filter parameter
-      const managedCount = aiIds.filter((id: string) => managedIdsSet.has(id)).length;
+      const managedIds = aiIds.filter((id: string) => managedIdsSet.has(id));
+      const managedCount = managedIds.length;
       const shadowCount = totalAI - managedCount;
       const shadowUsage = totalAI > 0
         ? Number(((shadowCount / totalAI) * 100).toFixed(3))
         : 0;
+      // Server-side Forensic Logging
+      console.log('DEBUG_IDS', {
+        aiIds: aiIds.slice(0, 10),
+        totalAI,
+        managedIds: managedIds.slice(0, 10),
+        managedCount,
+        shadowUsage
+      });
       const unapprovedAppsCount = unapproved.filter((id: string) => aiIds.includes(id)).length;
       const healthScore = Math.max(0, Math.min(100, 100 - (shadowUsage / 1.5)));
-      // 4. Generate AI Insights
       let aiInsights: AIInsights | undefined;
       try {
         const chatHandler = new ChatHandler(c.env.CF_AI_BASE_URL, c.env.CF_AI_API_KEY, 'google-ai-studio/gemini-2.0-flash');
@@ -205,7 +203,14 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         powerUsers: [],
         appLibrary: [],
         securityCharts: {},
-        aiInsights
+        aiInsights,
+        debug: {
+          aiIds: aiIds.slice(0, 10),
+          totalAI,
+          managedIds: managedIds.slice(0, 10),
+          managedCount,
+          shadowUsage
+        }
       };
       await controller.addReport(report);
       await controller.addLog({

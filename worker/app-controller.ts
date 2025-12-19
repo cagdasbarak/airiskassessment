@@ -59,6 +59,13 @@ export interface SecurityCharts {
   dataTrends?: any[];
   mcpTrends?: any[];
 }
+export interface AssessmentReportDebug {
+  aiIds: string[];
+  totalAI: number;
+  managedIds: string[];
+  managedCount: number;
+  shadowUsage: number;
+}
 export interface AssessmentReport {
   id: string;
   date: string;
@@ -69,7 +76,7 @@ export interface AssessmentReport {
     totalApps: number;
     aiApps: number;
     shadowAiApps: number;
-    shadowUsage: number; // Stored with 3-decimal precision
+    shadowUsage: number; 
     unapprovedApps: number;
     dataExfiltrationRisk: string;
     complianceScore: number;
@@ -91,6 +98,7 @@ export interface AssessmentReport {
   }>;
   securityCharts: SecurityCharts;
   aiInsights?: AIInsights;
+  debug?: AssessmentReportDebug;
 }
 export class AppController extends DurableObject<Env> {
   private sessions = new Map<string, SessionInfo>();
@@ -141,7 +149,6 @@ export class AppController extends DurableObject<Env> {
   async addReport(report: AssessmentReport): Promise<void> {
     const reports = await this.ctx.storage.get<AssessmentReport[]>('reports') || [];
     reports.unshift(report);
-    // Keep last 10 reports
     await this.ctx.storage.put('reports', reports.slice(0, 10));
   }
   async listReports(): Promise<AssessmentReport[]> {
