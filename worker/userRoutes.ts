@@ -5,19 +5,9 @@ import { Env, getAppController } from "./core-utils";
 import { ChatHandler } from "./chat";
 import type { AssessmentReport, AIInsights } from './app-controller';
 import { extractJson } from "./utils";
-console.log('[RISKGUARD] Registering user routes...');
+console.log('[RISKGUARD] Registering production-grade routes...');
 let coreRoutesRegistered = false;
 let userRoutesRegistered = false;
-const AI_APP_TYPES: Record<string, string> = {
-  'chatgpt': 'ChatGPT',
-  'claude': 'Claude',
-  'gemini': 'Google Gemini',
-  'copilot': 'Microsoft Copilot',
-  'perplexity': 'Perplexity',
-  'deepseek': 'DeepSeek',
-  'midjourney': 'Midjourney',
-  'mistral': 'Mistral AI'
-};
 const MOCK_AI_INSIGHTS: AIInsights = {
   summary: "Telemetry suggests a dynamic risk landscape requiring Cloudflare Gateway management to ensure data integrity.",
   recommendations: [
@@ -43,150 +33,73 @@ const MOCK_APP_LIBRARY: any[] = [
   { appId: 'deepseek', name: 'DeepSeek', category: 'LLM Assistant', status: 'Review', users: 100, risk: 'Medium', risk_score: 55, genai_score: 85, policies: [], usage: [] },
   { appId: 'perplexity', name: 'Perplexity', category: 'Search AI', status: 'Unapproved', users: 50, risk: 'High', risk_score: 72, genai_score: 80, policies: [], usage: [] }
 ];
-async function generateTrendingData() {
-  const topAppsTrends = [];
-  const now = new Date();
-  const apps = [
-    { name: 'ChatGPT', base: 350 },
-    { name: 'Microsoft Copilot', base: 300 },
-    { name: 'Google Gemini', base: 200 },
-    { name: 'DeepSeek', base: 100 },
-    { name: 'Perplexity', base: 50 }
-  ];
-  for (let i = 29; i >= 0; i--) {
-    const date = new Date(now);
-    date.setDate(now.getDate() - i);
-    const dateStr = date.toISOString().split('T')[0];
-    const dayData: Record<string, any> = { date: dateStr };
-    apps.forEach(app => {
-      const variance = Math.floor(Math.random() * 101) - 50;
-      dayData[app.name] = Math.max(0, app.base + variance);
-    });
-    topAppsTrends.push(dayData);
-  }
-  return topAppsTrends;
-}
-
-async function fetchShadowITTrends(settings: any): Promise<any[]> {
-  const DOMAINS: Record<string, string> = {
-    'chatgpt': 'chat.openai.com',
-    'claude': 'claude.ai',
-    'gemini': 'gemini.google.com',
-    'copilot': 'copilot.microsoft.com',
-    'perplexity': 'www.perplexity.ai',
-    'deepseek': 'platform.deepseek.com',
-    'midjourney': 'www.midjourney.com',
-    'mistral': 'chat.mistral.ai'
+async function fetchRealAiTrends(settings: any): Promise<any[]> {
+  const { accountId, email, apiKey } = settings;
+  const headers = {
+    'X-Auth-Email': email,
+    'X-Auth-Key': apiKey,
+    'Content-Type': 'application/json'
   };
-  
-  const thirtyDaysAgo = Math.floor((Date.now() - 30 * 24 * 60 * 60 * 1000) / 1000 / 3600) * 3600;
-  const query = `
-    query GetTopAppsTrends($accountTag: String!, $filter: GatewayRequestsAdaptiveGroupsFilterInput!) {
-      viewer {
-        accounts(filter: {accountTag: $accountTag}) {
-          gatewayRequestsAdaptiveGroups(
-            filter: $filter
-            granularity: HOUR
-            limit: 1000
-            orderBy: CLIENT_REQUEST_HTTP_HOST_COUNT
-            orderMode: DESC
-          ) {
-            sum {
-              clientRequestHttpHostCount
-            }
-            dimensions {
-              datetimeHour
-            }
-          }
-        }
-      }
-    }
-  `;
-  
-  const response = await fetch('https://api.cloudflare.com/client/v4/graphql', {
+  // Step 1: Fetch app_types to map IDs to names
+  const typesRes = await fetch(`https://api.cloudflare.com/client/v4/accounts/${accountId}/gateway/app_types?per_page=1000`, { headers });
+  const typesData: any = await typesRes.json();
+  const appNames: Record<string, string> = {};
+  if (typesData.success && typesData.result) {
+    typesData.result.forEach((app: any) => {
+      appNames[app.id] = app.name;
+    });
+    console.log(`[RISKGUARD] app_types len: ${typesData.result.length}`);
+  }
+  // Step 2: Fetch Shadow IT Timeseries
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const tsRes = await fetch(`https://api.cloudflare.com/client/v4/accounts/${accountId}/gateway/analytics/query/shadow_it/timeseries`, {
     method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${settings.apiKey}`,
-      'Content-Type': 'application/json'
-    },
+    headers,
     body: JSON.stringify({
-      query,
-      variables: {
-        accountTag: settings.accountId,
-        filter: {
-          datetime_geq: thirtyDaysAgo,
-          httpHost_in: Object.values(DOMAINS)
-        }
-      }
+      from: thirtyDaysAgo,
+      to: new Date().toISOString(),
+      metrics: ['uniqueUserCount'],
+      groupBy: [{ datetimeGranularity: 'day' }, 'appId'],
+      filters: [{ name: 'applicationTypeId', op: 'eq', values: ['25'] }], // Type 25 = AI
+      orderBy: [{ datetime: 'desc' }],
+      limit: 1000
     })
   });
-
-  interface GraphQLResponse {
-    data?: {
-      viewer: {
-        accounts: Array<{
-          gatewayRequestsAdaptiveGroups: Array<{
-            sum: { clientRequestHttpHostCount: number };
-            dimensions: { datetimeHour: number };
-          }>;
-        }>;
-      };
-    };
-    errors?: Array<any>;
-  }
-
-  const raw: GraphQLResponse = await response.json();
-  if (raw.errors) {
-    throw new Error(`GraphQL Errors: ${JSON.stringify(raw.errors)}`);
-  }
-  console.log('REAL slots.len', raw.data?.viewer?.accounts?.[0]?.gatewayRequestsAdaptiveGroups?.length || 0);
-
-  // Aggregate daily sums for top 5 hosts
+  const tsData: any = await tsRes.json();
+  const slots = tsData?.result?.[0]?.slots || [];
+  console.log(`[RISKGUARD] REAL slots.len: ${slots.length}`);
+  if (slots.length === 0) return [];
+  // Group by date and calculate top apps
   const dailyData: Record<string, Record<string, number>> = {};
-  const hostTotals: Record<string, number> = {};
-
-  raw.data?.viewer?.accounts?.[0]?.gatewayRequestsAdaptiveGroups?.forEach((slot: any) => {
-    const datetimeHour = slot.dimensions?.datetimeHour;
-    if (!datetimeHour) return;
-
-    const date = new Date(datetimeHour * 1000).toISOString().split('T')[0];
-    const count = slot.sum?.clientRequestHttpHostCount || 0;
-
+  const appTotals: Record<string, number> = {};
+  slots.forEach((slot: any) => {
+    const date = slot.datetime.split('T')[0];
+    const appId = slot.appId;
+    const count = slot.uniqueUserCount || 0;
     if (!dailyData[date]) dailyData[date] = {};
-    // Distribute total hourly requests proportionally across tracked AI domains
-    const totalKnown = Object.values(DOMAINS).length;
-    Object.entries(DOMAINS).forEach(([appKey, domain]) => {
-      const dailyCount = Math.floor(count / totalKnown);
-      dailyData[date][domain] = (dailyData[date][domain] || 0) + dailyCount;
-      hostTotals[domain] = (hostTotals[domain] || 0) + dailyCount;
-    });
+    dailyData[date][appId] = count;
+    appTotals[appId] = (appTotals[appId] || 0) + count;
   });
-
-  // Map domains to app names and get top 5
-  const topHosts = Object.entries(hostTotals)
-    .map(([host, total]) => ({ host, total }))
-    .sort((a, b) => b.total - a.total)
+  // Determine top 5 app IDs by total volume
+  const topAppIds = Object.entries(appTotals)
+    .sort(([, a], [, b]) => b - a)
     .slice(0, 5)
-    .map(({ host }) => host);
-
-  // Format 30 days of data
+    .map(([id]) => id);
+  // Format 30 days of data for the top 5 apps
+  const result: any[] = [];
   const now = new Date();
-  const topAppsTrends: any[] = [];
   for (let i = 29; i >= 0; i--) {
-    const date = new Date(now);
-    date.setDate(now.getDate() - i);
-    const dateStr = date.toISOString().split('T')[0];
-    const dayData: Record<string, any> = { date: dateStr };
-
-    topHosts.forEach(host => {
-      const appName = Object.entries(DOMAINS).find(([_, domain]) => domain === host)?.[0]?.toUpperCase() || host;
-      dayData[appName] = dailyData[dateStr]?.[host] || 0;
+    const d = new Date(now);
+    d.setDate(now.getDate() - i);
+    const dateStr = d.toISOString().split('T')[0];
+    const entry: Record<string, any> = { date: dateStr };
+    topAppIds.forEach(id => {
+      const name = appNames[id] || `App ${id}`;
+      entry[name] = dailyData[dateStr]?.[id] || 0;
     });
-
-    topAppsTrends.push(dayData);
+    result.push(entry);
   }
-  
-  return topAppsTrends;
+  return result;
 }
 export function coreRoutes(app: Hono<{ Bindings: Env }>) {
   if (coreRoutesRegistered) return;
@@ -230,37 +143,29 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
   app.get('/api/ai-trends', async (c) => {
     const controller = getAppController(c.env);
     const settings = await controller.getSettings();
-    let topAppsTrends = await generateTrendingData();
-
-    if (settings.accountId && settings.apiKey?.length > 0) {
-      try {
-        topAppsTrends = await fetchShadowITTrends(settings);
-      } catch (e) {
-        console.error('CF Shadow IT API failed:', e);
-        topAppsTrends = await generateTrendingData();
-      }
+    if (!settings.accountId || !settings.email || !settings.apiKey) {
+      return c.json({ success: false, error: 'Missing creds' }, { status: 400 });
     }
-
-    console.log(`[RISKGUARD] TIMESERIES data len: ${topAppsTrends.length}`);
-    return c.json({
-      success: true,
-      data: { topAppsTrends }
-    });
+    try {
+      const topAppsTrends = await fetchRealAiTrends(settings);
+      return c.json({ success: true, data: { topAppsTrends } });
+    } catch (e: any) {
+      console.error('[RISKGUARD] Trends API Error:', e.message);
+      return c.json({ success: false, error: 'Forensic fetch failed' }, { status: 500 });
+    }
   });
   app.post('/api/assess', async (c) => {
     const controller = getAppController(c.env);
     const settings = await controller.getSettings();
-    let topAppsTrends = await generateTrendingData();
-
-    if (settings.accountId && settings.apiKey?.length > 0) {
+    let topAppsTrends: any[] = [];
+    if (settings.accountId && settings.email && settings.apiKey) {
       try {
-        topAppsTrends = await fetchShadowITTrends(settings);
+        topAppsTrends = await fetchRealAiTrends(settings);
+        console.log(`[RISKGUARD] Assess bound trends len: ${topAppsTrends.length}`);
       } catch (e) {
-        console.error('CF Shadow IT API failed:', e);
-        topAppsTrends = await generateTrendingData();
+        console.error('[RISKGUARD] Assess trends fetch failed');
       }
     }
-
     const summaryData = {
       totalApps: 1420,
       aiApps: MOCK_APP_LIBRARY.length,
