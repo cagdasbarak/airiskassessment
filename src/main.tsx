@@ -63,7 +63,7 @@ createRoot(document.getElementById('root')!).render(
   <QueryClientProvider client={queryClient}>
     <ErrorBoundary>
       <RouterProvider router={router} />
-      <Toaster richColors closeButton position="top-right" />
     </ErrorBoundary>
+    <Toaster richColors closeButton position="top-right" />
   </QueryClientProvider>
 )
