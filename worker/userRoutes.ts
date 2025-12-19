@@ -88,8 +88,18 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     return report ? c.json({ success: true, data: report }) : c.json({ success: false, error: 'Not found' }, { status: 404 });
   });
   app.delete('/api/reports/:id', async (c) => {
+    const reportId = c.req.param('id');
     const controller = getAppController(c.env);
-    const removed = await controller.removeReport(c.req.param('id'));
+    const removed = await controller.removeReport(reportId);
+    if (removed) {
+      await controller.addLog({
+        timestamp: new Date().toISOString(),
+        action: 'Report Deleted',
+        user: 'System Admin',
+        status: 'Success',
+        description: `Permanently removed report reference: ${reportId}`
+      });
+    }
     return c.json({ success: removed });
   });
   app.get('/api/logs', async (c) => {
@@ -107,7 +117,6 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       // 1. Fetch App Types with Robust Regex Fallback
       const appTypesResp = await safeFetch('/gateway/app_types?per_page=1000', settings);
       const appTypesText = await appTypesResp.text();
-      console.log('RAW_APP_TYPES', appTypesText.slice(0, 300));
       const appTypesJson = safeJSON(appTypesText);
       let aiIds: string[] = [];
       if (appTypesJson?.result) {
@@ -115,7 +124,6 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
           .filter((t: any) => t.application_type_id === 25)
           .map((t: any) => String(t.id));
       } else {
-        // Regex grep-style extraction for AI IDs (type 25)
         const aiMatches = appTypesText.match(/application_type_id.*?25.*?id":\s*"([^"]+)"/g) || [];
         aiIds = aiMatches.map(m => {
           const match = m.match(/id":\s*"([^"]+)"/);
@@ -124,17 +132,15 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       }
       aiIds = Array.from(new Set(aiIds));
       const totalAI = aiIds.length;
-      // 2. Fetch Review Statuses with Robust Regex Fallback
+      // 2. Fetch Review Statuses
       const reviewResp = await safeFetch('/gateway/apps/review_status', settings);
       const reviewText = await reviewResp.text();
-      console.log('RAW_REVIEW_STATUS', reviewText.slice(0, 300));
       const reviewJson = safeJSON(reviewText);
       const statuses = reviewJson?.result || {};
       let approved = (statuses.approved_apps || []).map(String);
       let inReview = (statuses.in_review_apps || []).map(String);
       let unapproved = (statuses.unapproved_apps || []).map(String);
       if (!reviewJson?.result) {
-        // Robust Regex extraction for status lists if JSON fails
         const unappMatch = reviewText.match(/"unapproved_apps":\s*\[(.*?)\]/);
         if (unappMatch) {
           unapproved = (unappMatch[1].match(/"([^"]+)"/g) || []).map(m => m.replace(/"/g, ''));
@@ -142,23 +148,14 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       }
       // 3. Precision Shadow AI Usage Calculation
       const managedIdsSet = new Set([...approved, ...inReview, ...unapproved]);
-      const managedCount = aiIds.filter(id => managedIdsSet.has(id)).length;
+      // Fixed implicit any error by adding explicit string type to filter parameter
+      const managedCount = aiIds.filter((id: string) => managedIdsSet.has(id)).length;
       const shadowCount = totalAI - managedCount;
-      // FORMULA: +((1 - managedCount/totalAI)*100).toFixed(3)
-      const shadowUsage = totalAI > 0 
-        ? Number(((shadowCount / totalAI) * 100).toFixed(3)) 
+      const shadowUsage = totalAI > 0
+        ? Number(((shadowCount / totalAI) * 100).toFixed(3))
         : 0;
-      const unapprovedAppsCount = unapproved.filter(id => aiIds.includes(id)).length;
+      const unapprovedAppsCount = unapproved.filter((id: string) => aiIds.includes(id)).length;
       const healthScore = Math.max(0, Math.min(100, 100 - (shadowUsage / 1.5)));
-      console.log('SHADOW_DEBUG', JSON.stringify({
-        totalAI,
-        aiIdsSample: aiIds.slice(0, 5),
-        managedIdsLen: managedIdsSet.size,
-        managedCount,
-        shadowCount,
-        shadowUsage,
-        unapprovedAppsCount
-      }));
       // 4. Generate AI Insights
       let aiInsights: AIInsights | undefined;
       try {
@@ -179,9 +176,8 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         const aiResponse = await chatHandler.processMessage(aiPrompt, []);
         aiInsights = JSON.parse(aiResponse.content);
       } catch (aiErr) {
-        console.warn('AI Insight Generation Failed, using fallback:', aiErr);
         aiInsights = {
-          summary: `Shadow AI usage at ${shadowUsage.toFixed(3)}% represents a significant blind spot in the current Zero Trust posture. Immediate management of unreviewed AI endpoints is recommended.`,
+          summary: `Shadow AI usage at ${shadowUsage.toFixed(3)}% represents a blind spot. Immediate management of unmanaged endpoints is recommended.`,
           recommendations: [
             { title: "Block Unapproved Endpoints", description: `Apply Cloudflare Gateway block policies to the ${unapprovedAppsCount} detected unapproved apps.`, type: "critical" },
             { title: "Enforce Data Loss Prevention", description: "Deploy DLP profiles to monitor sensitive strings in Generative AI prompts.", type: "policy" },

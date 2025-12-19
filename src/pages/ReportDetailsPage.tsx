@@ -71,15 +71,22 @@ export function ReportDetailsPage() {
       </AppLayout>
     );
   }
-  const shadowUsageText = report.summary.shadowUsage.toFixed(3);
+  // Defensive check for shadowUsage with 3-decimal precision fallback
+  const shadowUsageText = report.summary?.shadowUsage?.toFixed(3) ?? '0.000';
   return (
     <AppLayout container>
       <div className="space-y-16 pb-24 max-w-6xl mx-auto">
         {/* Header Controls */}
-        <div className="flex flex-col items-center justify-center space-y-6 text-center relative">
+        <header className="flex flex-col items-center justify-center space-y-6 text-center relative" role="banner">
           <div className="no-print lg:absolute top-0 left-0">
-            <Button variant="ghost" size="sm" onClick={handleBack} className="rounded-xl gap-2 text-muted-foreground hover:text-foreground">
-              <ChevronLeft className="h-4 w-4" /> Back to List
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={handleBack} 
+              className="rounded-xl gap-2 text-muted-foreground hover:text-foreground"
+              aria-label="Return to report archive"
+            >
+              <ChevronLeft className="h-4 w-4" /> Back to Archive
             </Button>
           </div>
           <div className="space-y-4">
@@ -91,33 +98,39 @@ export function ReportDetailsPage() {
             </h1>
             <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs font-mono text-muted-foreground uppercase tracking-widest border-y border-border/50 py-3 px-8">
               <span>Ref: {report.id.toUpperCase()}</span>
-              <span className="hidden sm:inline">•</span>
+              <span className="hidden sm:inline" aria-hidden="true">•</span>
               <span>Generated: {report.date}</span>
-              <span className="hidden sm:inline">•</span>
+              <span className="hidden sm:inline" aria-hidden="true">•</span>
               <span>Cloudflare ZTNA Analytics</span>
             </div>
           </div>
-          <Button variant="outline" size="lg" className="rounded-2xl no-print hover:bg-secondary border-border/50 shadow-soft" onClick={handlePrint}>
+          <Button 
+            variant="outline" 
+            size="lg" 
+            className="rounded-2xl no-print hover:bg-secondary border-border/50 shadow-soft" 
+            onClick={handlePrint}
+            aria-label="Download or print report as PDF"
+          >
             <Printer className="h-4 w-4 mr-2" /> Download Executive PDF
           </Button>
-        </div>
+        </header>
         {/* The Core Analytical Grid */}
-        <div className="space-y-12">
-          <div className="text-center space-y-2 no-print">
-            <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground/60">Risk Scorecard</h2>
-            <div className="h-px w-12 bg-[#F38020] mx-auto" />
+        <section aria-labelledby="scorecard-heading">
+          <div className="text-center space-y-2 no-print mb-8">
+            <h2 id="scorecard-heading" className="text-sm font-bold uppercase tracking-widest text-muted-foreground/60">Risk Scorecard</h2>
+            <div className="h-px w-12 bg-[#F38020] mx-auto" aria-hidden="true" />
           </div>
           <ExecutiveScorecard summary={report.summary} score={report.score} />
-        </div>
+        </section>
         {/* Executive Summary Section */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-1">
+          <section className="lg:col-span-1" aria-labelledby="summary-heading">
             <Card className="border-border/50 shadow-soft h-full bg-[#F38020]/5 overflow-hidden relative">
-              <div className="absolute top-0 right-0 p-4 opacity-10">
+              <div className="absolute top-0 right-0 p-4 opacity-10" aria-hidden="true">
                 <ShieldAlert className="h-24 w-24" />
               </div>
               <CardHeader>
-                <CardTitle className="text-xl font-bold">Executive Summary</CardTitle>
+                <CardTitle id="summary-heading" className="text-xl font-bold">Executive Summary</CardTitle>
                 <CardDescription>AI-generated posture analysis</CardDescription>
               </CardHeader>
               <CardContent>
@@ -126,11 +139,11 @@ export function ReportDetailsPage() {
                 </p>
               </CardContent>
             </Card>
-          </div>
-          <div className="lg:col-span-2">
+          </section>
+          <section className="lg:col-span-2" aria-labelledby="recommendations-heading">
             <div className="space-y-4">
-              <h3 className="text-lg font-bold tracking-tight px-1 flex items-center gap-2">
-                <Zap className="h-5 w-5 text-[#F38020]" />
+              <h3 id="recommendations-heading" className="text-lg font-bold tracking-tight px-1 flex items-center gap-2">
+                <Zap className="h-5 w-5 text-[#F38020]" aria-hidden="true" />
                 Actionable Remediation Steps
               </h3>
               <div className="grid gap-4">
@@ -153,7 +166,7 @@ export function ReportDetailsPage() {
                           rec.type === 'critical' ? "bg-red-500/10 text-red-500" :
                           rec.type === 'policy' ? "bg-blue-500/10 text-blue-500" :
                           "bg-emerald-500/10 text-emerald-500"
-                        )}>
+                        )} aria-hidden="true">
                           {rec.type === 'critical' ? <ShieldAlert className="h-5 w-5" /> :
                            rec.type === 'policy' ? <FileCheck className="h-5 w-5" /> :
                            <AlertCircle className="h-5 w-5" />}
@@ -168,9 +181,9 @@ export function ReportDetailsPage() {
                 ))}
               </div>
             </div>
-          </div>
+          </section>
         </div>
-        <footer className="pt-16 text-center text-[10px] text-muted-foreground uppercase tracking-[0.2em] font-medium opacity-50 no-print">
+        <footer className="pt-16 text-center text-[10px] text-muted-foreground uppercase tracking-[0.2em] font-medium opacity-50 no-print" role="contentinfo">
           Internal Enterprise Compliance Use Only • Cloudflare Zero Trust Precision Analytics v1.0
         </footer>
       </div>
