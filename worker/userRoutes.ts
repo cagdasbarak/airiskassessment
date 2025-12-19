@@ -70,7 +70,19 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
             const totalMatch = rawText.match(/"name":"users","value":(\d+)/);
             const totalLicenses = totalMatch ? parseInt(totalMatch[1]) : 50;
             const usersRes = await fetch(`https://api.cloudflare.com/client/v4/accounts/${settings.accountId}/access/users?per_page=1`, { headers });
-            const usersData: any = await usersRes.json();
+            let usersData: any;
+            if (!usersRes.ok) {
+                console.error('Users API failed:', usersRes.status, await usersRes.text());
+                usersData = { success: false, result_info: { total_count: 0 } };
+            } else {
+                const usersRawText = await usersRes.text();
+                try {
+                    usersData = JSON.parse(usersRawText);
+                } catch (e) {
+                    console.error('Users JSON parse failed:', e);
+                    usersData = { success: false, result_info: { total_count: 0 } };
+                }
+            }
             const usedLicenses = usersData.result_info?.total_count || 0;
             const accessSub = results.some((s: any) => s.rate_plan?.id?.includes('teams') || s.rate_plan?.id?.includes('access'));
             const gatewaySub = results.some((s: any) => s.rate_plan?.id?.includes('teams') || s.rate_plan?.id?.includes('gateway'));
@@ -141,7 +153,19 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
             // Real API Metric Gathering
             // 1. Shadow AI (Gateway Apps)
             const appsRes = await fetch(`https://api.cloudflare.com/client/v4/accounts/${settings.accountId}/gateway/apps`, { headers });
-            const appsData: any = await appsRes.json();
+            let appsData: any;
+            if (!appsRes.ok) {
+                console.error('Apps API failed:', appsRes.status, await appsRes.text());
+                appsData = { success: false, result: [] };
+            } else {
+                const rawText = await appsRes.text();
+                try {
+                    appsData = JSON.parse(rawText);
+                } catch (e) {
+                    console.error('Apps JSON parse failed:', e);
+                    appsData = { success: false, result: [] };
+                }
+            }
             const rawApps = appsData.result || [];
             const aiApps = rawApps.filter((a: any) => a.categories?.includes('AI'));
             const shadowAiApps = aiApps.filter((a: any) => a.status === 'Unapproved');
@@ -149,12 +173,36 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
             const casbPosture = aiApps.length > 0 ? aiApps.reduce((acc: number, cur: any) => acc + (cur.risk_score || 50), 0) / aiApps.length : 85;
             // 2. Data Exfiltration (DLP Incidents)
             const dlpRes = await fetch(`https://api.cloudflare.com/client/v4/accounts/${settings.accountId}/dlp/incidents`, { headers });
-            const dlpData: any = await dlpRes.json();
+            let dlpData: any;
+            if (!dlpRes.ok) {
+                console.error('DLP API failed:', dlpRes.status, await dlpRes.text());
+                dlpData = { success: false, result: [] };
+            } else {
+                const rawText = await dlpRes.text();
+                try {
+                    dlpData = JSON.parse(rawText);
+                } catch (e) {
+                    console.error('DLP JSON parse failed:', e);
+                    dlpData = { success: false, result: [] };
+                }
+            }
             const incidents = dlpData.result || [];
             const totalExfilMB = incidents.reduce((acc: number, cur: any) => acc + (cur.fileSize || 0), 0) / (1024 * 1024);
             // 3. Power Users (Access Events)
             const eventsRes = await fetch(`https://api.cloudflare.com/client/v4/accounts/${settings.accountId}/access/events`, { headers });
-            const eventsData: any = await eventsRes.json();
+            let eventsData: any;
+            if (!eventsRes.ok) {
+                console.error('Events API failed:', eventsRes.status, await eventsRes.text());
+                eventsData = { success: false, result: [] };
+            } else {
+                const rawText = await eventsRes.text();
+                try {
+                    eventsData = JSON.parse(rawText);
+                } catch (e) {
+                    console.error('Events JSON parse failed:', e);
+                    eventsData = { success: false, result: [] };
+                }
+            }
             const events = eventsData.result || [];
             const userFreq: Record<string, number> = {};
             events.forEach((e: any) => { if (e.userEmail) userFreq[e.userEmail] = (userFreq[e.userEmail] || 0) + 1; });
@@ -192,15 +240,15 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
                 score: Math.min(100, Math.max(0, 100 - (shadowAiApps.length * 5) - (incidents.length * 2))),
                 riskLevel: shadowAiApps.length > 5 ? 'High' : shadowAiApps.length > 2 ? 'Medium' : 'Low',
                 summary: {
-                    totalApps: rawApps.length || 150,
-                    aiApps: aiApps.length || 25,
-                    shadowAiApps: shadowAiApps.length || 3,
+                    totalApps: rawApps.length || 0,
+                    aiApps: aiApps.length || 0,
+                    shadowAiApps: shadowAiApps.length || 0,
                     dataExfiltrationRisk: `${totalExfilMB.toFixed(2)} MB`,
                     complianceScore: Math.floor(libraryCoverage),
                     libraryCoverage: Math.floor(libraryCoverage),
                     casbPosture: Math.floor(casbPosture)
                 },
-                powerUsers,
+                powerUsers: Array.isArray(powerUsers) ? powerUsers : [],
                 appLibrary: finalApps.length > 0 ? finalApps : [
                     { appId: 'mock-1', name: 'ChatGPT', category: 'Assistant', status: 'Approved', users: 42, risk: 'Low', risk_score: 12, genai_score: 95, policies: [], usage: [] }
                 ],
@@ -218,7 +266,8 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
             let aiInsights;
             try {
                 const chatHandler = new ChatHandler(c.env.CF_AI_BASE_URL, c.env.CF_AI_API_KEY, 'google-ai-studio/gemini-2.0-flash');
-                const prompt = `Assess this ZTNA security state: ${JSON.stringify(baseReport.summary)}. Shadow AI detected: ${baseReport.summary.shadowAiApps}. Top Users: ${JSON.stringify(powerUsers)}. Provide 2-sentence summary and 3 categorized recommendations in JSON.`;
+                const safePowerUsers = Array.isArray(baseReport.powerUsers) ? baseReport.powerUsers : [];
+                const prompt = `Assess this ZTNA security state: ${JSON.stringify(baseReport.summary)}. Shadow AI detected: ${baseReport.summary.shadowAiApps}. Top Users: ${JSON.stringify(safePowerUsers)}. Provide 2-sentence summary and 3 categorized recommendations in JSON.`;
                 const aiRes = await chatHandler.processMessage(prompt, []);
                 const jsonMatch = aiRes.content.match(/\{[\s\S]*\}/);
                 aiInsights = JSON.parse(jsonMatch ? jsonMatch[0] : aiRes.content);

@@ -67,16 +67,22 @@ export function ReportDetailsPage() {
       </AppLayout>
     );
   }
-  const { summary, appLibrary, securityCharts } = report;
-  const statusCounts = appLibrary.reduce((acc: Record<string, number>, app) => {
+
+  const safeAppLibrary = report.appLibrary ?? [];
+  const safePowerUsers = report.powerUsers ?? [];
+  const safeSummary = report.summary ?? {totalApps:0, aiApps:0, shadowAiApps:0, dataExfiltrationRisk:'0 MB', complianceScore:0, libraryCoverage:0, casbPosture:0};
+  const safeCharts = report.securityCharts ?? {usageOverTime:[], riskDistribution:[], dataVolume:[], mcpActivity:[], loginEvents:[]};
+  const safeAiInsights = report.aiInsights ?? null;
+
+  const statusCounts = safeAppLibrary.reduce((acc: Record<string, number>, app) => {
     acc[app.status] = (acc[app.status] || 0) + 1;
     return acc;
   }, {});
-  const pieData = Object.entries(statusCounts).map(([name, value]) => ({ 
-    name, 
-    value: Number(value) 
+  const pieData = Object.entries(statusCounts).map(([name, value]) => ({
+    name,
+    value: Number(value)
   }));
-  const filteredApps = selectedStatus ? appLibrary.filter(a => a.status === selectedStatus) : appLibrary;
+  const filteredApps = selectedStatus ? safeAppLibrary.filter(a => a.status === selectedStatus) : safeAppLibrary;
   return (
     <AppLayout container>
       <div className="space-y-8">
@@ -86,8 +92,8 @@ export function ReportDetailsPage() {
               <ChevronLeft className="h-5 w-5" />
             </Button>
             <div>
-              <h1 className="text-3xl font-bold tracking-tight">Assessment {report.id.slice(-6)}</h1>
-              <p className="text-muted-foreground">Audit Date: {report.date} • Cloudflare Zero Trust</p>
+              <h1 className="text-3xl font-bold tracking-tight">Assessment {(report.id ?? '').slice(-6)}</h1>
+              <p className="text-muted-foreground">Audit Date: {report.date ?? 'Unknown'} • Cloudflare Zero Trust</p>
             </div>
           </div>
           <Button className="btn-gradient">
@@ -96,13 +102,13 @@ export function ReportDetailsPage() {
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           {[
-            { label: 'Total Apps', value: summary.totalApps, icon: BrainCircuit, color: 'text-blue-500', bg: 'bg-blue-500/10' },
-            { label: 'AI Apps', value: summary.aiApps, icon: Activity, color: 'text-[#F38020]', bg: 'bg-[#F38020]/10' },
-            { label: 'Shadow AI', value: summary.shadowAiApps, icon: ShieldAlert, color: 'text-red-500', bg: 'bg-red-500/10' },
-            { label: 'Risk Level', value: report.riskLevel, icon: AlertTriangle, color: 'text-orange-500', bg: 'bg-orange-500/10' },
-            { label: 'Library Coverage', value: `${summary.libraryCoverage}%`, icon: Lock, color: 'text-green-500', bg: 'bg-green-500/10' },
+            { label: 'Total Apps', value: safeSummary.totalApps ?? 0, icon: BrainCircuit, color: 'text-blue-500', bg: 'bg-blue-500/10' },
+            { label: 'AI Apps', value: safeSummary.aiApps ?? 0, icon: Activity, color: 'text-[#F38020]', bg: 'bg-[#F38020]/10' },
+            { label: 'Shadow AI', value: safeSummary.shadowAiApps ?? 0, icon: ShieldAlert, color: 'text-red-500', bg: 'bg-red-500/10' },
+            { label: 'Risk Level', value: report.riskLevel ?? 'LOW', icon: AlertTriangle, color: 'text-orange-500', bg: 'bg-orange-500/10' },
+            { label: 'Library Coverage', value: `${safeSummary.libraryCoverage ?? 0}%`, icon: Lock, color: 'text-green-500', bg: 'bg-green-500/10' },
           ].map((stat, i) => (
-            <Card key={i} className="border-border/50 shadow-soft overflow-hidden group hover:scale-[1.02] transition-transform">
+            <Card key={`stat-${i}`} className="border-border/50 shadow-soft overflow-hidden group hover:scale-[1.02] transition-transform">
               <CardContent className="p-6 relative">
                 <div className={`absolute -right-2 -bottom-2 opacity-10 group-hover:opacity-20 transition-opacity`}>
                   <stat.icon className={`h-16 w-16 ${stat.color}`} />
@@ -149,7 +155,7 @@ export function ReportDetailsPage() {
                   <div className="space-y-2 mt-4">
                     {pieData.map((entry, i) => (
                       <button
-                        key={i}
+                        key={`pie-${entry.name}`}
                         onClick={() => setSelectedStatus(selectedStatus === entry.name ? null : entry.name)}
                         className={cn(
                           "flex items-center justify-between w-full p-2 rounded-lg text-xs transition-colors hover:bg-secondary/50",
@@ -191,31 +197,31 @@ export function ReportDetailsPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredApps.map((app) => (
-                        <React.Fragment key={app.appId}>
+                      {filteredApps.map((app, index) => (
+                        <React.Fragment key={`app-${index}`}>
                           <TableRow
                             className="cursor-pointer hover:bg-secondary/10 transition-colors border-l-2 border-transparent data-[state=expanded]:border-l-[#F38020] data-[state=expanded]:bg-secondary/30"
-                            data-state={expandedRow === app.appId ? "expanded" : "collapsed"}
-                            onClick={() => setExpandedRow(expandedRow === app.appId ? null : app.appId)}
+                            data-state={expandedRow === `app-${index}` ? "expanded" : "collapsed"}
+                            onClick={() => setExpandedRow(expandedRow === `app-${index}` ? null : `app-${index}`)}
                           >
-                            <TableCell className="text-center font-bold text-muted-foreground">{expandedRow === app.appId ? '-' : '+'}</TableCell>
-                            <TableCell className="font-bold">{app.name}</TableCell>
+                            <TableCell className="text-center font-bold text-muted-foreground">{expandedRow === `app-${index}` ? '-' : '+'}</TableCell>
+                            <TableCell className="font-bold">{app.name ?? 'Unknown'}</TableCell>
                             <TableCell>
                               <div className="flex items-center gap-2">
                                 <div className="h-1.5 w-16 bg-secondary rounded-full overflow-hidden">
-                                  <div className={`h-full ${app.risk_score > 70 ? 'bg-red-500' : 'bg-green-500'}`} style={{ width: `${app.risk_score}%` }} />
+                                  <div className={`h-full ${(app.risk_score ?? 0) > 70 ? 'bg-red-500' : 'bg-green-500'}`} style={{ width: `${app.risk_score ?? 0}%` }} />
                                 </div>
-                                <span className="text-xs font-medium">{app.risk_score}</span>
+                                <span className="text-xs font-medium">{app.risk_score ?? 0}</span>
                               </div>
                             </TableCell>
-                            <TableCell className="text-xs font-mono">{app.genai_score}</TableCell>
+                            <TableCell className="text-xs font-mono">{app.genai_score ?? 0}</TableCell>
                             <TableCell>
-                              <Badge style={{ backgroundColor: PIE_COLORS[app.status], color: 'white' }}>{app.status}</Badge>
+                              <Badge style={{ backgroundColor: PIE_COLORS[app.status ?? ''] ?? '#CBD5E1', color: 'white' }}>{app.status ?? 'Unknown'}</Badge>
                             </TableCell>
-                            <TableCell className="text-right font-medium">{app.users}</TableCell>
+                            <TableCell className="text-right font-medium">{app.users ?? 0}</TableCell>
                           </TableRow>
                           <AnimatePresence>
-                            {expandedRow === app.appId && (
+                            {expandedRow === `app-${index}` && (
                               <TableRow className="bg-secondary/5 border-b border-[#F38020]/10">
                                 <TableCell colSpan={6} className="p-0">
                                   <motion.div
@@ -253,7 +259,7 @@ export function ReportDetailsPage() {
                   </CardHeader>
                   <CardContent className="h-[300px]">
                     <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={securityCharts.dataVolume}>
+                      <AreaChart data={safeCharts.dataVolume}>
                         <defs>
                           <linearGradient id="colorExfil" x1="0" y1="0" x2="0" y2="1">
                             <stop offset="5%" stopColor="#3182CE" stopOpacity={0.3}/>
@@ -280,7 +286,7 @@ export function ReportDetailsPage() {
                   </CardHeader>
                   <CardContent className="h-[300px]">
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={securityCharts.mcpActivity}>
+                      <BarChart data={safeCharts.mcpActivity}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} />
                         <XAxis dataKey="name" hide />
                         <YAxis />
@@ -298,7 +304,7 @@ export function ReportDetailsPage() {
                   </CardHeader>
                   <CardContent className="h-[300px]">
                     <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={securityCharts.loginEvents}>
+                      <LineChart data={safeCharts.loginEvents}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} />
                         <XAxis dataKey="name" hide />
                         <YAxis />
@@ -318,7 +324,7 @@ export function ReportDetailsPage() {
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
                         <Pie
-                          data={securityCharts.riskDistribution}
+                          data={safeCharts.riskDistribution}
                           cx="50%"
                           cy="50%"
                           innerRadius={60}
@@ -326,9 +332,9 @@ export function ReportDetailsPage() {
                           paddingAngle={8}
                           dataKey="value"
                         >
-                          <Cell fill="#10B981" />
-                          <Cell fill="#F59E0B" />
-                          <Cell fill="#EF4444" />
+                          {safeCharts.riskDistribution.map((entry, index) => (
+                            <Cell key={`risk-${index}`} fill={['#10B981', '#F59E0B', '#EF4444'][index % 3]} />
+                          ))}
                         </Pie>
                         <Tooltip />
                       </PieChart>
@@ -338,10 +344,10 @@ export function ReportDetailsPage() {
              </div>
           </TabsContent>
           <TabsContent value="recommendations">
-            {report.aiInsights ? (
+            {safeAiInsights ? (
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2">
-                  <AIInsightsSection insights={report.aiInsights} />
+                  <AIInsightsSection insights={safeAiInsights} />
                 </div>
                 <div className="space-y-6">
                   <Card className="border-border/50 shadow-soft bg-gradient-to-br from-primary/5 to-transparent">
@@ -351,13 +357,13 @@ export function ReportDetailsPage() {
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      {report.powerUsers.map((u, i) => (
-                        <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-background border border-border/40">
+                      {safePowerUsers.map((u, i) => (
+                        <div key={`pu_${report.id}_${u.email ?? `user${i}`}`} className="flex items-center justify-between p-3 rounded-xl bg-background border border-border/40">
                           <div className="overflow-hidden">
-                            <p className="text-xs font-bold truncate">{u.email}</p>
+                            <p className="text-xs font-bold truncate">{u.email ?? 'Unknown User'}</p>
                             <p className="text-[10px] text-muted-foreground uppercase">GenAI Interactions</p>
                           </div>
-                          <Badge variant="secondary" className="font-mono">{u.events}</Badge>
+                          <Badge variant="secondary" className="font-mono">{u.events ?? 0}</Badge>
                         </div>
                       ))}
                     </CardContent>
@@ -369,7 +375,7 @@ export function ReportDetailsPage() {
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="text-center py-6">
-                      <div className="text-5xl font-black text-foreground mb-2">{summary.casbPosture}</div>
+                      <div className="text-5xl font-black text-foreground mb-2">{safeSummary.casbPosture ?? 0}</div>
                       <p className="text-xs text-muted-foreground uppercase tracking-widest">Aggregate CASB Risk</p>
                     </CardContent>
                   </Card>
