@@ -6,14 +6,15 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
 import {
   PieChart, Pie, Cell, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, LineChart, Line, Legend
 } from 'recharts';
 import {
-  ChevronLeft, Download, ShieldAlert, Users, Lock, Loader2, Activity, ShieldCheck, Database, Globe
+  ChevronLeft, Download, ShieldAlert, Users, Lock, Loader2, Activity, ShieldCheck, Database, Globe, Terminal, Sparkles
 } from 'lucide-react';
-import { api, AssessmentReport } from '@/lib/api';
+import { api, AssessmentReport, SecurityCharts } from '@/lib/api';
 import { AIInsightsSection } from '@/components/reports/AIInsightsSection';
 import { AppDetailsDrillDown } from '@/components/reports/AppDetailsDrillDown';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -61,32 +62,23 @@ export function ReportDetailsPage() {
     </AppLayout>
   );
   const safeAppLibrary = report.appLibrary ?? [];
-  const safeSummary = report.summary ?? { 
-    totalApps: 0, 
-    aiApps: 0, 
-    shadowAiApps: 0, 
-    dataExfiltrationRisk: '0 MB', 
-    complianceScore: 0, 
-    libraryCoverage: 0, 
-    casbPosture: 0 
-  };
-  // Explicitly typing the fallbacks to avoid TS2339 property access errors
-  const safeCharts = report.securityCharts ?? {};
-  const topAppsTrend = safeCharts.topAppsTrend ?? [];
-  const statusTrend = safeCharts.statusTrend ?? [];
-  const dataTrend = safeCharts.dataTrend ?? [];
-  const mcpAccessTrend = safeCharts.mcpAccessTrend ?? [];
-  const mcpLoginTrend = safeCharts.mcpLoginTrend ?? [];
+  const summary = report.summary;
+  const charts = (report.securityCharts || {}) as SecurityCharts;
+  const topAppsTrend = charts.topAppsTrend ?? [];
+  const statusTrend = charts.statusTrend ?? [];
+  const dataTrend = charts.dataTrend ?? [];
+  const mcpAccessTrend = charts.mcpAccessTrend ?? [];
+  const mcpLoginTrend = charts.mcpLoginTrend ?? [];
   const statusCounts = safeAppLibrary.reduce((acc: Record<string, number>, app) => {
     acc[app.status] = (acc[app.status] || 0) + 1;
     return acc;
   }, {});
-  const pieData = Object.entries(statusCounts).map(([name, value]) => ({ 
-    name, 
-    value: Number(value) 
+  const pieData = Object.entries(statusCounts).map(([name, value]) => ({
+    name,
+    value: Number(value)
   }));
-  const filteredApps = selectedStatus 
-    ? safeAppLibrary.filter(a => a.status === selectedStatus) 
+  const filteredApps = selectedStatus
+    ? safeAppLibrary.filter(a => a.status === selectedStatus)
     : safeAppLibrary;
   return (
     <AppLayout container>
@@ -109,24 +101,75 @@ export function ReportDetailsPage() {
             <Button className="btn-gradient rounded-xl"><Download className="h-4 w-4 mr-2" /> PDF Report</Button>
           </div>
         </div>
+        {/* Executive Scorecard Refinement */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-          {[
-            { label: 'Shadow AI', value: safeSummary.shadowAiApps, icon: ShieldAlert, color: 'text-red-500', bg: 'bg-red-500/10' },
-            { label: 'Library Coverage', value: `${safeSummary.libraryCoverage}%`, icon: Lock, color: 'text-green-500', bg: 'bg-green-500/10' },
-            { label: 'Data Exfil Risk', value: safeSummary.dataExfiltrationRisk, icon: Database, color: 'text-blue-500', bg: 'bg-blue-500/10' },
-            { label: 'Power Users', value: report.powerUsers?.length || 0, icon: Users, color: 'text-purple-500', bg: 'bg-purple-500/10' },
-            { label: 'CASB Posture', value: `${safeSummary.casbPosture}/100`, icon: ShieldCheck, color: 'text-[#F38020]', bg: 'bg-[#F38020]/10' },
-          ].map((stat, i) => (
-            <Card key={`stat-${i}`} className="border-border/50 shadow-soft overflow-hidden group hover:shadow-md transition-all">
-              <CardContent className="p-6">
-                <div className={cn("p-2 rounded-lg w-fit mb-4", stat.bg)}>
-                  <stat.icon className={cn("h-5 w-5", stat.color)} />
+          <Card className="border-border/50 shadow-soft overflow-hidden group hover:shadow-md transition-all">
+            <CardContent className="p-6">
+              <div className="p-2 rounded-lg w-fit mb-4 bg-red-500/10">
+                <Terminal className="h-5 w-5 text-red-500" />
+              </div>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-1">Shadow AI Usage</p>
+              <div className="flex items-baseline gap-2">
+                <p className="text-3xl font-bold text-red-500">{summary.shadowAiApps}</p>
+                <span className="text-xs text-muted-foreground">Endpoints</span>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="border-border/50 shadow-soft overflow-hidden group hover:shadow-md transition-all">
+            <CardContent className="p-6">
+              <div className="p-2 rounded-lg w-fit mb-4 bg-green-500/10">
+                <Lock className="h-5 w-5 text-green-500" />
+              </div>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-1">Library Coverage</p>
+              <div className="space-y-2">
+                <p className="text-2xl font-bold text-green-500">{summary.libraryCoverage}%</p>
+                <Progress value={summary.libraryCoverage} className="h-1.5" />
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="border-border/50 shadow-soft overflow-hidden group hover:shadow-md transition-all">
+            <CardContent className="p-6">
+              <div className="p-2 rounded-lg w-fit mb-4 bg-blue-500/10">
+                <Database className="h-5 w-5 text-blue-500" />
+              </div>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-1">Data Exfil Risk</p>
+              <p className="text-2xl font-bold text-blue-500">{summary.dataExfiltrationRisk}</p>
+              <p className="text-[10px] text-muted-foreground mt-1">DLP Incident Volume</p>
+            </CardContent>
+          </Card>
+          <Card className="border-border/50 shadow-soft overflow-hidden group hover:shadow-md transition-all">
+            <CardContent className="p-6">
+              <div className="p-2 rounded-lg w-fit mb-4 bg-purple-500/10">
+                <Users className="h-5 w-5 text-purple-500" />
+              </div>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-1">Top Power Users</p>
+              <div className="space-y-1.5 mt-2">
+                {report.powerUsers.map((user, idx) => (
+                  <div key={idx} className="flex justify-between items-center text-[10px]">
+                    <span className="font-medium text-foreground truncate max-w-[80px]">{user.name}</span>
+                    <span className="text-purple-500 font-bold">{user.prompts} reqs</span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="border-border/50 shadow-soft overflow-hidden group hover:shadow-md transition-all">
+            <CardContent className="p-6">
+              <div className="p-2 rounded-lg w-fit mb-4 bg-orange-500/10">
+                <Activity className="h-5 w-5 text-[#F38020]" />
+              </div>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-1">CASB Posture Score</p>
+              <div className="flex flex-col">
+                <p className="text-2xl font-bold text-[#F38020]">{summary.casbPosture}/100</p>
+                <div className="h-1 w-full bg-secondary mt-2 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-[#F38020]" 
+                    style={{ width: `${summary.casbPosture}%` }} 
+                  />
                 </div>
-                <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-1">{stat.label}</p>
-                <p className={cn("text-2xl font-bold", stat.color)}>{stat.value}</p>
-              </CardContent>
-            </Card>
-          ))}
+              </div>
+            </CardContent>
+          </Card>
         </div>
         <Tabs defaultValue="library" className="w-full">
           <TabsList className="w-full justify-start border-b rounded-none bg-transparent h-auto p-0 mb-8 space-x-8">
@@ -136,18 +179,18 @@ export function ReportDetailsPage() {
           </TabsList>
           <TabsContent value="library" className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-              <Card className="lg:col-span-1 border-border/50 shadow-soft">
+              <Card className="lg:col-span-1 border-border/50 shadow-soft h-fit">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-xs uppercase tracking-widest text-muted-foreground font-bold">Review Status Split</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="h-[250px]">
+                  <div className="h-[200px]">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
                         <Pie
                           data={pieData}
-                          innerRadius={70}
-                          outerRadius={90}
+                          innerRadius={60}
+                          outerRadius={80}
                           paddingAngle={5}
                           dataKey="value"
                           onClick={(data) => setSelectedStatus(selectedStatus === data.name ? null : data.name)}
@@ -181,7 +224,7 @@ export function ReportDetailsPage() {
                   </div>
                 </CardContent>
               </Card>
-              <Card className="lg:col-span-3 border-border/50 shadow-soft">
+              <Card className="lg:col-span-3 border-border/50 shadow-soft overflow-hidden">
                 <CardHeader className="flex flex-row items-center justify-between pb-4 border-b">
                   <div>
                     <CardTitle className="text-lg">AI Discovery Log</CardTitle>
@@ -230,9 +273,9 @@ export function ReportDetailsPage() {
                           <AnimatePresence>
                             {expandedRow === app.appId && (
                               <TableRow className="bg-secondary/5">
-                                <TableCell colSpan={6} className="p-0">
+                                <TableCell colSpan={6} className="p-0 border-b">
                                   <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-                                    <div className="p-6 border-b border-border/50">
+                                    <div className="p-6">
                                       <AppDetailsDrillDown app={app as any} />
                                     </div>
                                   </motion.div>
@@ -335,7 +378,10 @@ export function ReportDetailsPage() {
           </TabsContent>
           <TabsContent value="recommendations">
             {report.aiInsights ? <AIInsightsSection insights={report.aiInsights} /> : (
-              <div className="text-center py-20 opacity-50">AI analysis data missing for this report.</div>
+              <div className="text-center py-20 opacity-50 flex flex-col items-center gap-4">
+                <Sparkles className="h-10 w-10 text-muted-foreground opacity-20" />
+                <p>AI analysis data missing for this report.</p>
+              </div>
             )}
           </TabsContent>
         </Tabs>

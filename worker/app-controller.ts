@@ -24,6 +24,7 @@ export interface AuditLog {
   action: string;
   user: string;
   status: 'Success' | 'Failed' | 'Warning';
+  description?: string;
 }
 export interface AIRecommendation {
   title: string;
@@ -48,7 +49,8 @@ export interface AppUsageEvent {
 }
 export interface PowerUser {
   email: string;
-  events: number;
+  name: string;
+  prompts: number;
 }
 export interface AssessmentReport {
   id: string;
@@ -60,10 +62,10 @@ export interface AssessmentReport {
     totalApps: number;
     aiApps: number;
     shadowAiApps: number;
-    dataExfiltrationRisk: string; // in MB formatted
+    dataExfiltrationRisk: string;
     complianceScore: number;
-    libraryCoverage: number; // percentage
-    casbPosture: number; // avg risk score
+    libraryCoverage: number;
+    casbPosture: number;
   };
   powerUsers: PowerUser[];
   appLibrary: Array<{
@@ -78,13 +80,7 @@ export interface AssessmentReport {
     policies: AppPolicy[];
     usage: AppUsageEvent[];
   }>;
-  securityCharts: {
-    usageOverTime: Array<{ name: string; usage: number }>;
-    riskDistribution: Array<{ name: string; value: number }>;
-    dataVolume: Array<{ name: string; value: number }>;
-    mcpActivity: Array<{ name: string; value: number }>;
-    loginEvents: Array<{ name: string; value: number }>;
-  };
+  securityCharts: any;
   aiInsights?: AIInsights;
 }
 export class AppController extends DurableObject<Env> {

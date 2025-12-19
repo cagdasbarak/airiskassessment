@@ -10,6 +10,7 @@ export interface AuditLog {
   action: string;
   user: string;
   status: 'Success' | 'Failed' | 'Warning';
+  description?: string;
 }
 export interface LicenseInfo {
   plan: string;
@@ -35,14 +36,15 @@ export interface AppUsageEvent {
 }
 export interface PowerUser {
   email: string;
-  events: number;
+  name: string;
+  prompts: number;
 }
 export interface SecurityCharts {
-  usageOverTime: Array<{ name: string; usage: number }>;
-  riskDistribution: Array<{ name: string; value: number }>;
-  dataVolume: Array<{ name: string; value: number }>;
-  mcpActivity: Array<{ name: string; value: number }>;
-  loginEvents: Array<{ name: string; value: number }>;
+  usageOverTime?: Array<{ name: string; usage: number }>;
+  riskDistribution?: Array<{ name: string; value: number }>;
+  dataVolume?: Array<{ name: string; value: number }>;
+  mcpActivity?: Array<{ name: string; value: number }>;
+  loginEvents?: Array<{ name: string; value: number }>;
   topAppsTrend?: Array<Record<string, any>>;
   statusTrend?: Array<{ name: string; Approved: number; Review: number; Unapproved: number; Unreviewed: number }>;
   dataTrend?: Array<{ name: string; total: number; delta: number }>;
