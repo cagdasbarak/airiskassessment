@@ -122,4 +122,28 @@ export class AppController extends DurableObject<Env> {
       await this.persistSessions();
     }
   }
+
+  async updateSessionTitle(sessionId: string, title: string): Promise<boolean> {
+    await this.ensureLoaded();
+    const session = this.sessions.get(sessionId);
+    if (session) {
+      session.title = title;
+      await this.persistSessions();
+      return true;
+    }
+    return false;
+  }
+
+  async getSessionCount(): Promise<number> {
+    await this.ensureLoaded();
+    return this.sessions.size;
+  }
+
+  async clearAllSessions(): Promise<number> {
+    await this.ensureLoaded();
+    const count = this.sessions.size;
+    this.sessions.clear();
+    await this.persistSessions();
+    return count;
+  }
 }
