@@ -121,11 +121,12 @@ export function userRoutes(app: Hono<any>) {
       debugInfo = { aiIds: ai_ids, managedIds: managed_ids, total_ai, managed_count, shadowUsage };
       console.log(`SHADOW_COMPUTE_RAW total_ai=${total_ai} managed=${managed_count} shadowUsage=${shadowUsage}`);
     }
+    const baseReport = getBaseReport();
     const report = {
-      ...getBaseReport(),
+      ...baseReport,
       id: `rep_${Date.now()}`,
       summary: {
-        ...getBaseReport().summary,
+        ...(baseReport.summary || {}),
         shadowUsage,
         shadowAiApps: total_ai - (managed_count || 0),
         aiApps: total_ai
@@ -182,4 +183,4 @@ export function userRoutes(app: Hono<any>) {
     return c.json({ success: true, data: licenseData });
   });
 }
-export function coreRoutes(app: Hono<any>): void {}
+export function coreRoutes(app: Hono<any>): void { /* Routes now inline hardcoded in worker/index.ts */ }
