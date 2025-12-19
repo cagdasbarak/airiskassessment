@@ -40,7 +40,7 @@ export function ReportDetailsPage() {
   if (isLoading) {
     return (
       <AppLayout container>
-        <div className="flex flex-col items-center justify-center h-96 space-y-6">
+        <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-6">
           <div className="relative">
             <Loader2 className="h-16 w-16 animate-spin text-[#F38020]" />
             <FileText className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-6 w-6 text-[#F38020]/40" />
@@ -71,18 +71,25 @@ export function ReportDetailsPage() {
       </AppLayout>
     );
   }
-  // Defensive check for shadowUsage with 3-decimal precision fallback
-  const shadowUsageText = report.summary?.shadowUsage?.toFixed(3) ?? '0.000';
+  const safeSummary = {
+    totalApps: report.summary?.totalApps ?? 0,
+    aiApps: report.summary?.aiApps ?? 0,
+    shadowAiApps: report.summary?.shadowAiApps ?? 0,
+    shadowUsage: report.summary?.shadowUsage ?? 0,
+    unapprovedApps: report.summary?.unapprovedApps ?? 0,
+    dataExfiltrationRisk: report.summary?.dataExfiltrationRisk ?? 'N/A',
+    complianceScore: report.summary?.complianceScore ?? 0,
+    libraryCoverage: report.summary?.libraryCoverage ?? 0,
+  };
   return (
     <AppLayout container>
       <div className="space-y-16 pb-24 max-w-6xl mx-auto">
-        {/* Header Controls */}
         <header className="flex flex-col items-center justify-center space-y-6 text-center relative" role="banner">
           <div className="no-print lg:absolute top-0 left-0">
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={handleBack} 
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleBack}
               className="rounded-xl gap-2 text-muted-foreground hover:text-foreground"
               aria-label="Return to report archive"
             >
@@ -104,25 +111,23 @@ export function ReportDetailsPage() {
               <span>Cloudflare ZTNA Analytics</span>
             </div>
           </div>
-          <Button 
-            variant="outline" 
-            size="lg" 
-            className="rounded-2xl no-print hover:bg-secondary border-border/50 shadow-soft" 
+          <Button
+            variant="outline"
+            size="lg"
+            className="rounded-2xl no-print hover:bg-secondary border-border/50 shadow-soft"
             onClick={handlePrint}
             aria-label="Download or print report as PDF"
           >
             <Printer className="h-4 w-4 mr-2" /> Download Executive PDF
           </Button>
         </header>
-        {/* The Core Analytical Grid */}
         <section aria-labelledby="scorecard-heading">
           <div className="text-center space-y-2 no-print mb-8">
             <h2 id="scorecard-heading" className="text-sm font-bold uppercase tracking-widest text-muted-foreground/60">Risk Scorecard</h2>
             <div className="h-px w-12 bg-[#F38020] mx-auto" aria-hidden="true" />
           </div>
-          <ExecutiveScorecard summary={report.summary} score={report.score} />
+          <ExecutiveScorecard summary={safeSummary} score={report.score ?? 0} />
         </section>
-        {/* Executive Summary Section */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <section className="lg:col-span-1" aria-labelledby="summary-heading">
             <Card className="border-border/50 shadow-soft h-full bg-[#F38020]/5 overflow-hidden relative">
@@ -135,7 +140,7 @@ export function ReportDetailsPage() {
               </CardHeader>
               <CardContent>
                 <p className="text-foreground leading-relaxed italic text-base">
-                  "{report.aiInsights?.summary || `This report provides a high-fidelity snapshot of Generative AI usage patterns. The metrics highlight a shadow usage density of ${shadowUsageText}%, which represents traffic bypassing standard organizational review.`}"
+                  "{report.aiInsights?.summary || `This report provides a high-fidelity snapshot of Generative AI usage patterns. The metrics highlight a shadow usage density of ${safeSummary.shadowUsage.toFixed(3)}%, which represents traffic bypassing standard organizational review.`}"
                 </p>
               </CardContent>
             </Card>

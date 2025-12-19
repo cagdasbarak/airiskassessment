@@ -135,9 +135,9 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       const reviewText = await reviewResp.text();
       const reviewJson = safeJSON(reviewText);
       const statuses = reviewJson?.result || {};
-      let approved = (statuses.approved_apps || []).map(String);
-      let inReview = (statuses.in_review_apps || []).map(String);
-      let unapproved = (statuses.unapproved_apps || []).map(String);
+      const approved = (statuses.approved_apps || []).map(String);
+      const inReview = (statuses.in_review_apps || []).map(String);
+      const unapproved = (statuses.unapproved_apps || []).map(String);
       const managedIdsSet = new Set([...approved, ...inReview, ...unapproved]);
       const managedIds = aiIds.filter((id: string) => managedIdsSet.has(id));
       const managedCount = managedIds.length;
@@ -145,8 +145,8 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       const shadowUsage = totalAI > 0
         ? Number(((shadowCount / totalAI) * 100).toFixed(3))
         : 0;
-      // Server-side Forensic Logging
-      console.log('DEBUG_IDS', {
+      // Server-side Forensic Logging - Corrected Label DEBUG_SHADOW
+      console.log('DEBUG_SHADOW', {
         aiIds: aiIds.slice(0, 10),
         totalAI,
         managedIds: managedIds.slice(0, 10),
@@ -168,7 +168,8 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
           "summary": "A 2-sentence executive summary of the risk posture.",
           "recommendations": [
             { "title": "Actionable Title", "description": "Specific remediation steps.", "type": "critical|policy|optimization" },
-            ... (exactly 3 recommendations)
+            { "title": "Actionable Title", "description": "Specific remediation steps.", "type": "critical|policy|optimization" },
+            { "title": "Actionable Title", "description": "Specific remediation steps.", "type": "critical|policy|optimization" }
           ]
         }`;
         const aiResponse = await chatHandler.processMessage(aiPrompt, []);

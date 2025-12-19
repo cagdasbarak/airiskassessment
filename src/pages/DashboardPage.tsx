@@ -36,15 +36,19 @@ export function DashboardPage() {
     toast.promise(promise, {
       loading: 'Analyzing Cloudflare Zero Trust logs...',
       success: (res) => {
-        setIsAssessing(false);
         if (res.success && res.data) {
-          // Forensic Logging to Browser Console
+          // Forensic Logging to Browser Console synchronized with toast label
           if (res.data.debug) {
-            console.log('DEBUG_IDS', res.data.debug);
+            console.log('DEBUG_SHADOW', res.data.debug);
           }
-          navigate(`/reports/${res.data.id}`);
+          // Delaying navigation slightly for better visual feedback
+          setTimeout(() => {
+            setIsAssessing(false);
+            navigate(`/reports/${res.data.id}`);
+          }, 500);
           return 'Assessment complete! Check console for DEBUG_SHADOW';
         }
+        setIsAssessing(false);
         throw new Error(res.error || 'Assessment failed');
       },
       error: (err) => {
