@@ -15,6 +15,8 @@ export function ReportDetailsPage() {
   const navigate = useNavigate();
   const [report, setReport] = useState<AssessmentReport | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('forensics');
+  // Adhering to Zustand Primitive Selection Law
   const cfContactName = useAppStore(s => s.settings.cloudflareContact.name);
   const cfContactTeam = useAppStore(s => s.settings.cloudflareContact.team);
   const cfContactRole = useAppStore(s => s.settings.cloudflareContact.role);
@@ -144,7 +146,11 @@ export function ReportDetailsPage() {
             />
           </div>
         </section>
-        <Tabs defaultValue="forensics" className="w-full space-y-10">
+        <Tabs 
+          value={activeTab} 
+          onValueChange={setActiveTab} 
+          className="w-full space-y-10"
+        >
           <div className="flex justify-center no-print">
             <TabsList className="bg-white/40 dark:bg-black/20 backdrop-blur-xl border border-border/50 p-1 h-auto rounded-2xl shadow-soft">
               <TabsTrigger value="library" className="flex items-center gap-2 px-6 py-2.5 rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm dark:data-[state=active]:bg-secondary">
@@ -162,13 +168,13 @@ export function ReportDetailsPage() {
             </TabsList>
           </div>
           <TabsContent value="library" className="focus-visible:outline-none">
-            <AppLibraryTab report={report} />
+            {activeTab === 'library' && <AppLibraryTab report={report} />}
           </TabsContent>
           <TabsContent value="forensics" className="focus-visible:outline-none">
-            <SecurityForensicsTab report={report} />
+            {activeTab === 'forensics' && <SecurityForensicsTab report={report} />}
           </TabsContent>
           <TabsContent value="summary" className="focus-visible:outline-none">
-            <SummaryRemediationTab report={report} />
+            {activeTab === 'summary' && <SummaryRemediationTab report={report} />}
           </TabsContent>
         </Tabs>
         <div className="hidden print:flex flex-col border-t border-black pt-8 space-y-4">

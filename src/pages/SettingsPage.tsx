@@ -27,11 +27,20 @@ const FeatureCheck = ({ label, enabled }: { label: string, enabled: boolean }) =
   </div>
 );
 export function SettingsPage() {
+  // Adhering to Zustand Primitive Selection Law
   const accountId = useAppStore(s => s.settings.accountId);
   const email = useAppStore(s => s.settings.email);
   const apiKey = useAppStore(s => s.settings.apiKey);
-  const cfContact = useAppStore(s => s.settings.cloudflareContact);
-  const custContact = useAppStore(s => s.settings.customerContact);
+  // Cloudflare Contact Primitives
+  const cfName = useAppStore(s => s.settings.cloudflareContact.name);
+  const cfRole = useAppStore(s => s.settings.cloudflareContact.role);
+  const cfEmail = useAppStore(s => s.settings.cloudflareContact.email);
+  const cfTeam = useAppStore(s => s.settings.cloudflareContact.team);
+  // Customer Contact Primitives
+  const custOrg = useAppStore(s => s.settings.customerContact.customerName);
+  const custName = useAppStore(s => s.settings.customerContact.name);
+  const custRole = useAppStore(s => s.settings.customerContact.role);
+  const custEmail = useAppStore(s => s.settings.customerContact.email);
   const updateStoreSettings = useAppStore(s => s.updateSettings);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -60,12 +69,10 @@ export function SettingsPage() {
       if (res.success) {
         toast.success('Settings saved securely');
       } else {
-        console.error('Settings save failed API error:', res.error);
-        toast.warning('Save failed—check console logs');
+        toast.error(res.error || 'Save failed');
       }
     } catch (err) {
-      console.error('Network error while saving settings:', err);
-      toast.warning('Save failed—check console logs');
+      toast.error('Network error while saving settings');
     } finally {
       setIsSaving(false);
     }
@@ -175,19 +182,19 @@ export function SettingsPage() {
                   <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>Full Name</Label>
-                      <Input value={cfContact.name} onChange={(e) => updateStoreSettings({ cloudflareContact: { ...cfContact, name: e.target.value } })} className="bg-secondary/50" />
+                      <Input value={cfName} onChange={(e) => updateStoreSettings({ cloudflareContact: { name: e.target.value } })} className="bg-secondary/50" />
                     </div>
                     <div className="space-y-2">
                       <Label>Role</Label>
-                      <Input value={cfContact.role} onChange={(e) => updateStoreSettings({ cloudflareContact: { ...cfContact, role: e.target.value } })} className="bg-secondary/50" />
+                      <Input value={cfRole} onChange={(e) => updateStoreSettings({ cloudflareContact: { role: e.target.value } })} className="bg-secondary/50" />
                     </div>
                     <div className="space-y-2">
                       <Label>Email</Label>
-                      <Input value={cfContact.email} onChange={(e) => updateStoreSettings({ cloudflareContact: { ...cfContact, email: e.target.value } })} className="bg-secondary/50" />
+                      <Input value={cfEmail} onChange={(e) => updateStoreSettings({ cloudflareContact: { email: e.target.value } })} className="bg-secondary/50" />
                     </div>
                     <div className="space-y-2">
                       <Label>Team</Label>
-                      <Input value={cfContact.team} onChange={(e) => updateStoreSettings({ cloudflareContact: { ...cfContact, team: e.target.value } })} className="bg-secondary/50" />
+                      <Input value={cfTeam} onChange={(e) => updateStoreSettings({ cloudflareContact: { team: e.target.value } })} className="bg-secondary/50" />
                     </div>
                   </CardContent>
                 </Card>
@@ -201,19 +208,19 @@ export function SettingsPage() {
                   <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>Organization</Label>
-                      <Input value={custContact.customerName} onChange={(e) => updateStoreSettings({ customerContact: { ...custContact, customerName: e.target.value } })} className="bg-secondary/50" />
+                      <Input value={custOrg} onChange={(e) => updateStoreSettings({ customerContact: { customerName: e.target.value } })} className="bg-secondary/50" />
                     </div>
                     <div className="space-y-2">
                       <Label>Full Name</Label>
-                      <Input value={custContact.name} onChange={(e) => updateStoreSettings({ customerContact: { ...custContact, name: e.target.value } })} className="bg-secondary/50" />
+                      <Input value={custName} onChange={(e) => updateStoreSettings({ customerContact: { name: e.target.value } })} className="bg-secondary/50" />
                     </div>
                     <div className="space-y-2">
                       <Label>Role</Label>
-                      <Input value={custContact.role} onChange={(e) => updateStoreSettings({ customerContact: { ...custContact, role: e.target.value } })} className="bg-secondary/50" />
+                      <Input value={custRole} onChange={(e) => updateStoreSettings({ customerContact: { role: e.target.value } })} className="bg-secondary/50" />
                     </div>
                     <div className="space-y-2">
                       <Label>Email</Label>
-                      <Input value={custContact.email} onChange={(e) => updateStoreSettings({ customerContact: { ...custContact, email: e.target.value } })} className="bg-secondary/50" />
+                      <Input value={custEmail} onChange={(e) => updateStoreSettings({ customerContact: { email: e.target.value } })} className="bg-secondary/50" />
                     </div>
                   </CardContent>
                   <CardFooter className="flex justify-end pt-4 bg-secondary/5">
