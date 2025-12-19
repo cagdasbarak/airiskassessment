@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { api, AssessmentReport } from '@/lib/api';
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, AreaChart, Area, Cell, PieChart as RePieChart, Pie
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area, Cell, PieChart as RePieChart, Pie
 } from 'recharts';
 import { AppDetailsDrillDown } from '@/components/reports/AppDetailsDrillDown';
 import { AIInsightsSection } from '@/components/reports/AIInsightsSection';
@@ -89,7 +89,7 @@ export function ReportDetailsPage() {
               <h1 className="text-3xl font-bold tracking-tight text-foreground">Cloudflare ZTNA Audit</h1>
               <div className="flex items-center gap-2 text-muted-foreground">
                 <Globe className="h-3 w-3" />
-                <span className="text-xs font-mono">Snapshot ID: {report.id} • Date: {report.date}</span>
+                <span className="text-xs font-mono">Snapshot ID: {report.id} �� Date: {report.date}</span>
               </div>
             </div>
           </div>
@@ -106,9 +106,7 @@ export function ReportDetailsPage() {
             <TabsTrigger value="inventory" className="data-[state=active]:border-[#F38020] border-b-2 border-transparent rounded-none px-0 h-full font-bold">Inventory & Logs</TabsTrigger>
           </TabsList>
           <TabsContent value="trends" className="space-y-10 animate-in fade-in slide-in-from-bottom-2">
-            {report.aiInsights && (
-              <AIInsightsSection insights={report.aiInsights} />
-            )}
+            <AIInsightsSection insights={report.aiInsights} />
             <div className="grid grid-cols-1 gap-8">
               <Card className="border-border/50 shadow-soft">
                 <CardHeader>
@@ -119,7 +117,7 @@ export function ReportDetailsPage() {
                 </CardHeader>
                 <CardContent className="h-[350px]">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={report.securityCharts?.usageTrends}>
+                    <BarChart data={report.securityCharts?.usageTrends ?? []}>
                       <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
                       <XAxis dataKey="date" tick={{ fontSize: 10 }} hide />
                       <YAxis tick={{ fontSize: 10 }} />
@@ -135,7 +133,11 @@ export function ReportDetailsPage() {
               </Card>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <Card className="border-border/50 shadow-soft">
-                  <CardHeader><CardTitle className="text-sm font-bold flex items-center gap-2"><Zap className="h-4 w-4 text-blue-500" /> Top Power Users</CardTitle></CardHeader>
+                  <CardHeader>
+                    <CardTitle className="text-sm font-bold flex items-center gap-2">
+                      <Zap className="h-4 w-4 text-blue-500" /> Top Power Users
+                    </CardTitle>
+                  </CardHeader>
                   <CardContent>
                     <Table>
                       <TableHeader>
@@ -145,7 +147,7 @@ export function ReportDetailsPage() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {report.powerUsers?.map((u) => (
+                        {(report.powerUsers ?? []).map((u) => (
                           <TableRow key={u.email}>
                             <TableCell>
                               <div className="font-bold text-sm">{u.name}</div>
@@ -164,7 +166,7 @@ export function ReportDetailsPage() {
                   <CardHeader><CardTitle className="text-sm font-bold">Data Upload Trends (KB)</CardTitle></CardHeader>
                   <CardContent className="h-[250px]">
                     <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={report.securityCharts?.dataTrends}>
+                      <AreaChart data={report.securityCharts?.dataTrends ?? []}>
                         <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
                         <XAxis dataKey="date" hide />
                         <YAxis tick={{ fontSize: 10 }} />
@@ -251,10 +253,10 @@ export function ReportDetailsPage() {
                               <div className="text-[9px] text-muted-foreground font-normal">{app.category}</div>
                             </TableCell>
                             <TableCell>
-                              <Badge variant="outline" className="text-[9px]" style={{ color: PIE_COLORS[app.status], borderColor: PIE_COLORS[app.status] + '40' }}>{app.status}</Badge>
+                              <Badge variant="outline" className="text-[9px]" style={{ color: PIE_COLORS[app.status], borderColor: (PIE_COLORS[app.status] ?? '#808080') + '40' }}>{app.status}</Badge>
                             </TableCell>
                             <TableCell className="text-right">
-                              <span className={cn("font-mono font-bold", app.risk_score > 70 ? "text-red-500" : "text-green-500")}>{app.risk_score}</span>
+                              <span className={cn("font-mono font-bold", (app.risk_score ?? 0) > 70 ? "text-red-500" : "text-green-500")}>{app.risk_score ?? 0}</span>
                             </TableCell>
                           </TableRow>
                           {expandedApp === app.appId && (

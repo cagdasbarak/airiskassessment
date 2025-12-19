@@ -34,6 +34,15 @@ export interface SecurityCharts {
   dataTrends?: any[];
   mcpTrends?: any[];
 }
+export interface AIRecommendation {
+  title: string;
+  description: string;
+  type: 'critical' | 'policy' | 'optimization';
+}
+export interface AIInsights {
+  summary: string;
+  recommendations: AIRecommendation[];
+}
 export interface AppPolicy {
   name: string;
   action: string;
@@ -78,6 +87,7 @@ export interface AssessmentReport {
     usage: AppUsageEvent[];
   }>;
   securityCharts: SecurityCharts;
+  aiInsights?: AIInsights;
 }
 async function safeApi<T>(endpoint: string, options?: RequestInit): Promise<ApiResponse<T>> {
   const url = `/api${endpoint}`;
