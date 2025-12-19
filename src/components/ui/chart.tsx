@@ -15,10 +15,7 @@ type ChartContextProps = {
 }
 const ChartContext = React.createContext<ChartContextProps | null>(null)
 function useChart() {
-  const context = React.useContext(ChartContext)
-  if (!context) {
-    throw new Error("useChart must be used within a <ChartContainer />")
-  }
+  const context = React.useContext(ChartContext) ?? { config: {} }
   return context
 }
 const ChartContainer = React.forwardRef<
@@ -28,7 +25,7 @@ const ChartContainer = React.forwardRef<
     children: React.ReactNode
   }
 >(({ id, className, children, config, ...props }, ref) => {
-  const uniqueId = React.useId()
+  const uniqueId = React.useId?.() ?? ''
   const chartId = `chart-${id || uniqueId.replace(/:/g, "")}`
   return (
     <ChartContext.Provider value={{ config }}>
@@ -37,8 +34,7 @@ const ChartContainer = React.forwardRef<
           {
             "--chart-style-id": `chart-style-${chartId}`,
             minWidth: "0",
-            minHeight: "200px",
-            aspectRatio: "16/9"
+            minHeight: "400px"
           } as React.CSSProperties
         }
         ref={ref}
@@ -49,7 +45,7 @@ const ChartContainer = React.forwardRef<
         {...props}
       >
         <ChartStyle id={chartId} config={config} />
-        <RechartsPrimitive.ResponsiveContainer width="100%" height="100%" debounce={10}>
+        <RechartsPrimitive.ResponsiveContainer width="100%" height="100%" debounce={0}>
           {children as any}
         </RechartsPrimitive.ResponsiveContainer>
       </div>
@@ -71,7 +67,8 @@ ${colorEntries.map(([key, item]) => {
     const color = item.theme?.[theme as keyof typeof THEMES] || item.color
     return color ? `  --color-${key}: ${color};` : null
   }).filter(Boolean).join("\n")}
-}`)
+}
+`)
           .join("\n"),
       }}
     />

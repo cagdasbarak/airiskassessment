@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -12,35 +11,38 @@ import { SummaryRemediationTab } from '@/components/reports/SummaryRemediationTa
 import { useAppStore } from '@/lib/store';
 import { motion } from 'framer-motion';
 export function ReportDetailsPage() {
-  const { id } = useParams();
-  const navigate = useNavigate();
+  const pathname = window.location.pathname;
+  const id = pathname.split('/').pop() || '';
+  const goBack = () => { window.location.href = '/reports'; };
   const [report, setReport] = useState<AssessmentReport | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const cfContact = useAppStore(s => s.settings.cloudflareContact);
   const custContact = useAppStore(s => s.settings.customerContact);
   useEffect(() => {
-    let isMounted = true;
-    const fetchReport = async () => {
-      if (!id) {
-        setIsLoading(false);
-        return;
-      }
-      try {
-        setIsLoading(true);
-        const res = await api.getReport(id);
-        if (isMounted && res.success && res.data) {
-          setReport(res.data);
-        }
-      } catch (err) {
+        let isMounted = true;
+        const fetchReport = async () => {
+          if (!id) {
+            setIsLoading(false);
+            return;
+          }
+          try {
+            setIsLoading(true);
+            const res = await api.getReport(id);
+            if (isMounted && res.success && res.data) {
+              setReport(res.data);
+            }
+          } catch (err) {
         console.error('[ReportDetails] Fetch failed:', err);
       } finally {
         if (isMounted) setIsLoading(false);
       }
     };
     fetchReport();
-    return () => { isMounted = false; };
-  }, [id]);
-  const handleBack = () => navigate('/reports');
+    return () => { 
+      isMounted = false; 
+    };
+  }, []);
+  const handleBack = goBack;
   const handlePrint = () => window.print();
   if (isLoading) {
     return (
