@@ -196,29 +196,8 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         .slice(0, 3);
       const unapprovedAppsCount = unapproved.filter((id: string) => aiIds.includes(id)).length;
       const healthScore = Math.max(0, Math.min(100, 100 - (shadowUsage / 1.5) - (unapprovedAppsCount * 2)));
-      let aiInsights: AIInsights | undefined;
-      try {
-        const chatHandler = new ChatHandler(c.env.CF_AI_BASE_URL, c.env.CF_AI_API_KEY, 'google-ai-studio/gemini-2.0-flash');
-        const aiPrompt = `Perform an executive security analysis based on these Cloudflare ZTNA metrics:
-        - Shadow AI Usage: ${shadowUsage.toFixed(3)}%
-        - Unapproved AI Apps Detected: ${unapprovedAppsCount}
-        - Overall Security Health Score: ${healthScore.toFixed(0)}%
-        - Total Detected AI Apps: ${totalAI}
-        - Forensic Unmanaged AI Traffic: ${formatRiskVolume(dataExfiltrationKB)}
-        - Top Power User Activity: ${topPowerUsers[0]?.email || 'None'} with ${topPowerUsers[0]?.prompts || 0} prompts.
-        Provide your analysis in EXACTLY this JSON format:
-        {
-          "summary": "A 2-sentence executive summary of the risk posture.",
-          "recommendations": [
-            { "title": "Actionable Title", "description": "Specific remediation steps.", "type": "critical|policy|optimization" },
-            { "title": "Actionable Title", "description": "Specific remediation steps.", "type": "critical|policy|optimization" },
-            { "title": "Actionable Title", "description": "Specific remediation steps.", "type": "critical|policy|optimization" }
-          ]
-        }`;
-        const aiResponse = await chatHandler.processMessage(aiPrompt, []);
-        const cleanedContent = cleanAIResponse(aiResponse.content);
-        aiInsights = JSON.parse(cleanedContent);
-      } catch (aiErr) {
+      let aiInsights: AIInsights;
+      if (!c.env.CF_AI_BASE_URL || !c.env.CF_AI_API_KEY) {
         aiInsights = {
           summary: `Shadow AI usage at ${shadowUsage.toFixed(3)}% represents a blind spot. Immediate policy enforcement is recommended.`,
           recommendations: [
@@ -227,6 +206,38 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
             { title: "Sanitize App Library", description: "Consolidate AI usage to enterprise-sanctioned platforms.", type: "optimization" }
           ]
         };
+      } else {
+        try {
+          const chatHandler = new ChatHandler(c.env.CF_AI_BASE_URL, c.env.CF_AI_API_KEY, 'google-ai-studio/gemini-2.0-flash');
+          const aiPrompt = `Perform an executive security analysis based on these Cloudflare ZTNA metrics:
+          - Shadow AI Usage: ${shadowUsage.toFixed(3)}%
+          - Unapproved AI Apps Detected: ${unapprovedAppsCount}
+          - Overall Security Health Score: ${healthScore.toFixed(0)}%
+          - Total Detected AI Apps: ${totalAI}
+          - Forensic Unmanaged AI Traffic: ${formatRiskVolume(dataExfiltrationKB)}
+          - Top Power User Activity: ${topPowerUsers[0]?.email || 'None'} with ${topPowerUsers[0]?.prompts || 0} prompts.
+          Provide your analysis in EXACTLY this JSON format:
+          {
+            "summary": "A 2-sentence executive summary of the risk posture.",
+            "recommendations": [
+              { "title": "Actionable Title", "description": "Specific remediation steps.", "type": "critical|policy|optimization" },
+              { "title": "Actionable Title", "description": "Specific remediation steps.", "type": "critical|policy|optimization" },
+              { "title": "Actionable Title", "description": "Specific remediation steps.", "type": "critical|policy|optimization" }
+            ]
+          }`;
+          const aiResponse = await chatHandler.processMessage(aiPrompt, []);
+          const cleanedContent = cleanAIResponse(aiResponse.content);
+          aiInsights = JSON.parse(cleanedContent);
+        } catch (aiErr) {
+          aiInsights = {
+            summary: `Shadow AI usage at ${shadowUsage.toFixed(3)}% represents a blind spot. Immediate policy enforcement is recommended.`,
+            recommendations: [
+              { title: "Block Unmanaged Endpoints", description: "Apply gateway policies to restrict access to non-corporate AI tools.", type: "critical" },
+              { title: "Enable DLP Scanning", description: "Audit data transfer patterns for potential PII leakage.", type: "policy" },
+              { title: "Sanitize App Library", description: "Consolidate AI usage to enterprise-sanctioned platforms.", type: "optimization" }
+            ]
+          };
+        }
       }
       const report: AssessmentReport = {
         id: `rep_${Date.now()}`,
