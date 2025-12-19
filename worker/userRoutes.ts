@@ -105,7 +105,6 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         if (!settings.accountId || !settings.apiKey) return c.json({ success: false, error: 'Credentials missing' }, { status: 400 });
         try {
             const headers = getCFHeaders(settings.email, settings.apiKey);
-            // EXACT JQ FETCH SEQUENCE
             const [typesR, reviewR, appsR, dlpR, accessR, gtwPolR, accPolR] = await Promise.all([
                 fetch(`https://api.cloudflare.com/client/v4/accounts/${settings.accountId}/gateway/app_types?per_page=1000`, { headers }),
                 fetch(`https://api.cloudflare.com/client/v4/accounts/${settings.accountId}/gateway/apps/review_status`, { headers }),
@@ -122,11 +121,6 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
             const eventsDataResult = (await accessR.json() as any).result || [];
             const gtwPols = (await gtwPolR.json() as any).result || [];
             const accPols = (await accPolR.json() as any).result || [];
-            // LOG RAW JSON FOR VERIFICATION
-            console.log('--- CLOUDFLARE API AGGREGATION RAW ---');
-            console.log('Types:', JSON.stringify(typesData.result?.slice(0, 5)));
-            console.log('Review:', JSON.stringify(reviewData.result));
-            // JQ MAPPING LOGIC
             const ai_ids = (typesData.result || [])
                 .filter((t: any) => t.application_type_id === 25)
                 .map((t: any) => t.id);
@@ -138,16 +132,19 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
                 ...(statuses.unapproved_apps || [])
             ].map((a: any) => a.id);
             const shadow_count = ai_ids.filter((id: any) => !managed_ids.includes(id)).length;
-            const shadowUsage = total_ai > 0 ? Math.round((shadow_count / total_ai * 100) * 1000) / 1000 : 0;
+            let shadowUsage = total_ai > 0 ? Math.round((shadow_count / total_ai * 100) * 100) / 100 : 0;
+            if (!Number.isFinite(shadowUsage)) shadowUsage = 0;
             const unapprovedAppsCount = (statuses.unapproved_apps || [])
                 .filter((app: any) => ai_ids.includes(app.id)).length;
             const aiApps = appsDataResult.filter((a: any) => 
                 ai_ids.includes(a.id) || a.categories?.some((cat: string) => cat.toLowerCase().includes('ai'))
             );
             const approvedAppsCount = aiApps.filter((a: any) => a.status === 'Approved').length;
-            const libCoverage = aiApps.length > 0 ? (approvedAppsCount / aiApps.length) * 100 : 0;
+            let libCoverage = aiApps.length > 0 ? (approvedAppsCount / aiApps.length) * 100 : 0;
+            if (!Number.isFinite(libCoverage)) libCoverage = 0;
             const totalExfilMB = Math.floor(dlpDataResult.reduce((acc: number, cur: any) => acc + (cur.fileSize || 0), 0) / (1024 * 1024));
-            const casbPost = aiApps.length > 0 ? aiApps.reduce((acc: number, cur: any) => acc + (cur.risk_score || 0), 0) / aiApps.length : 0;
+            let casbPost = aiApps.length > 0 ? aiApps.reduce((acc: number, cur: any) => acc + (cur.risk_score || 0), 0) / aiApps.length : 0;
+            if (!Number.isFinite(casbPost)) casbPost = 0;
             const userFreq = eventsDataResult.reduce((acc: Record<string, number>, e: any) => {
                 if (e.userEmail) acc[e.userEmail] = (acc[e.userEmail] || 0) + 1;
                 return acc;
@@ -158,10 +155,10 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
                     name: email.split('@')[0],
                     prompts: prompts as number
                 }))
-                .sort((a: any, b: any) => b.prompts - a.prompts)
+                .sort((a, b) => b.prompts - a.prompts)
                 .slice(0, 3);
             const appLibrary = aiApps.map((a: any) => ({
-                appId: a.id || crypto.randomUUID(),
+                appId: String(a.id || crypto.randomUUID()),
                 name: a.name || 'Unknown AI',
                 category: 'Generative AI',
                 status: (a.status || 'Unreviewed') as any,
@@ -205,7 +202,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
                 id: `rep_${Date.now()}`,
                 date: new Date().toISOString().split('T')[0],
                 status: 'Completed',
-                score: Math.max(0, 100 - (shadowUsage / 2)),
+                score: Math.max(0, 100 - Math.round(shadowUsage / 2)),
                 riskLevel,
                 summary: {
                     totalApps: appsDataResult.length,
@@ -222,17 +219,20 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
             };
             try {
                 const chat = new ChatHandler(c.env.CF_AI_BASE_URL, c.env.CF_AI_API_KEY, 'google-ai-studio/gemini-2.0-flash');
-                const aiRes = await chat.processMessage(`Analyze risk summary: ${JSON.stringify(report.summary)}. Provide 3 critical recommendations in JSON format: { "summary": "string", "recommendations": [{ "title": "string", "description": "string", "type": "critical|policy|optimization" }] }.`, []);
+                const aiRes = await chat.processMessage(`Analyze risk summary: ${JSON.stringify(report.summary)}. Provide 3 critical recommendations in valid JSON format: { "summary": "string", "recommendations": [{ "title": "string", "description": "string", "type": "critical|policy|optimization" }] }.`, []);
+                // Advanced extraction for markdown-wrapped JSON
                 const jsonMatch = aiRes.content.match(/\{[\s\S]*\}/);
                 const json = JSON.parse(jsonMatch?.[0] || '{}');
                 (report as any).aiInsights = {
-                    summary: json.summary || "Manual review of detected AI applications is required to ensure data governance compliance.",
-                    recommendations: Array.isArray(json.recommendations) ? json.recommendations : []
+                    summary: json.summary || `Environment risk level is ${riskLevel}. Major visibility gap detected with ${shadow_count} shadow applications.`,
+                    recommendations: Array.isArray(json.recommendations) ? json.recommendations : [
+                        { title: "Governance Audit", description: "Review unapproved AI application usage immediately to prevent data leakage.", type: "critical" }
+                    ]
                 };
             } catch (e) {
                 console.error('AI Insight Error:', e);
                 (report as any).aiInsights = {
-                    summary: "Telemetry analysis suggests increased shadow AI usage within the network perimeter.",
+                    summary: `Automated analysis detected a ${riskLevel} risk posture with ${shadowUsage}% shadow AI footprint.`,
                     recommendations: [{ title: "Implement CASB Governance", description: "Review and approve discovered AI applications through the Cloudflare Zero Trust dashboard.", type: "critical" }]
                 };
             }
@@ -242,7 +242,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
                 action: 'Advanced Assessment Generated',
                 user: settings.email,
                 status: 'Success',
-                description: `Risk Level: ${riskLevel}, Shadow Usage: ${shadowUsage}%, Unapproved: ${unapprovedAppsCount}`
+                description: `Risk: ${riskLevel}, Shadow Usage: ${shadowUsage}%, Unapproved: ${unapprovedAppsCount}, Coverage: ${libCoverage}%`
             });
             return c.json({ success: true, data: report });
         } catch (error: any) {
@@ -252,7 +252,8 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     });
     app.get('/api/sessions', async (c) => c.json({ success: true, data: await getAppController(c.env).listSessions() }));
     app.post('/api/sessions', async (c) => {
-        const { title, sessionId: sid } = await c.req.json().catch(() => ({}));
+        const body = await c.req.json().catch(() => ({}));
+        const { title, sessionId: sid } = body;
         const sessionId = sid || crypto.randomUUID();
         await registerSession(c.env, sessionId, title || 'New Chat');
         return c.json({ success: true, data: { sessionId } });

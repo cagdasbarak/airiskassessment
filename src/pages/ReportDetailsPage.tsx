@@ -31,6 +31,7 @@ export function ReportDetailsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState('library');
   useEffect(() => {
     const fetchReport = async () => {
       if (!id) return;
@@ -56,7 +57,7 @@ export function ReportDetailsPage() {
       </div>
     </AppLayout>
   );
-  if (!report) return (
+  if (!report || !report.summary) return (
     <AppLayout container>
       <div className="text-center py-24">
         <h2 className="text-2xl font-bold">Security report not found</h2>
@@ -103,21 +104,21 @@ export function ReportDetailsPage() {
           </div>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-          <Card className={cn("border-border/50 shadow-soft overflow-hidden group hover:shadow-md transition-all", (summary.shadowUsage) > 50 && "ring-2 ring-red-500 ring-inset")}>
+          <Card className={cn("border-border/50 shadow-soft overflow-hidden group hover:shadow-md transition-all", (summary.shadowUsage || 0) > 50 && "ring-2 ring-red-500 ring-inset")}>
             <CardContent className="p-6">
               <div className="p-2 rounded-lg w-fit mb-4 bg-red-500/10">
                 <Terminal className="h-5 w-5 text-red-500" />
               </div>
               <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-1">Shadow AI Usage</p>
               <div className="flex items-baseline gap-2">
-                <p className={cn("text-3xl font-bold", (summary.shadowUsage) > 50 ? "text-red-500" : "text-foreground")}>
-                  {summary.shadowUsage}%
+                <p className={cn("text-3xl font-bold", (summary.shadowUsage || 0) > 50 ? "text-red-500" : "text-foreground")}>
+                  {summary.shadowUsage || 0}%
                 </p>
-                {(summary.shadowUsage) > 50 && (
+                {(summary.shadowUsage || 0) > 50 && (
                   <Badge variant="destructive" className="text-[8px] h-4">CRITICAL</Badge>
                 )}
               </div>
-              <Progress value={summary.shadowUsage} className={cn("h-1 mt-2", (summary.shadowUsage) > 50 ? "[&>div]:bg-red-500" : "")} />
+              <Progress value={summary.shadowUsage || 0} className={cn("h-1 mt-2", (summary.shadowUsage || 0) > 50 ? "[&>div]:bg-red-500" : "")} />
             </CardContent>
           </Card>
           <Card className="border-border/50 shadow-soft overflow-hidden group hover:shadow-md transition-all bg-red-50/10 dark:bg-red-950/5">
@@ -127,7 +128,7 @@ export function ReportDetailsPage() {
               </div>
               <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-1">Unapproved Apps</p>
               <div className="flex items-center gap-3">
-                <p className="text-3xl font-bold text-red-600 dark:text-red-500">{summary.unapprovedApps}</p>
+                <p className="text-3xl font-bold text-red-600 dark:text-red-500">{summary.unapprovedApps || 0}</p>
                 <Badge className="bg-red-600 text-white border-none text-[10px] h-5">BLOCKED</Badge>
               </div>
             </CardContent>
@@ -138,7 +139,7 @@ export function ReportDetailsPage() {
                 <Database className="h-5 w-5 text-blue-500" />
               </div>
               <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-1">Data Exfil Risk</p>
-              <p className="text-2xl font-bold text-blue-500">{summary.dataExfiltrationRisk}</p>
+              <p className="text-2xl font-bold text-blue-500">{summary.dataExfiltrationRisk || '0 MB'}</p>
               <p className="text-[10px] text-muted-foreground mt-1">DLP Incident Volume</p>
             </CardContent>
           </Card>
@@ -149,7 +150,7 @@ export function ReportDetailsPage() {
               </div>
               <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-1">Top Power Users</p>
               <div className="space-y-1.5 mt-2">
-                {(report.powerUsers ?? []).map((user, idx) => (
+                {(report.powerUsers ?? []).slice(0, 3).map((user, idx) => (
                   <div key={idx} className="flex justify-between items-center text-[10px]">
                     <span className="font-medium text-foreground truncate max-w-[80px]">{user.name}</span>
                     <span className="text-purple-500 font-bold">{user.prompts} reqs</span>
@@ -165,15 +166,15 @@ export function ReportDetailsPage() {
               </div>
               <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-1">Posture Score</p>
               <div className="flex flex-col">
-                <p className="text-2xl font-bold text-green-500">{summary.casbPosture}/100</p>
+                <p className="text-2xl font-bold text-green-500">{summary.casbPosture || 0}/100</p>
                 <div className="h-1 w-full bg-secondary mt-2 rounded-full overflow-hidden">
-                  <div className="h-full bg-green-500" style={{ width: `${summary.casbPosture}%` }} />
+                  <div className="h-full bg-green-500" style={{ width: `${summary.casbPosture || 0}%` }} />
                 </div>
               </div>
             </CardContent>
           </Card>
         </div>
-        <Tabs defaultValue="library" className="w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="w-full justify-start border-b rounded-none bg-transparent h-auto p-0 mb-8 space-x-8 no-print">
             <TabsTrigger value="library" className="rounded-none border-b-2 border-transparent data-[state=active]:border-[#F38020] data-[state=active]:bg-transparent px-0 py-4 font-bold text-sm">Application Inventory</TabsTrigger>
             <TabsTrigger value="security" className="rounded-none border-b-2 border-transparent data-[state=active]:border-[#F38020] data-[state=active]:bg-transparent px-0 py-4 font-bold text-sm">Security Analytics</TabsTrigger>
@@ -186,25 +187,33 @@ export function ReportDetailsPage() {
                   <CardTitle className="text-xs uppercase tracking-widest text-muted-foreground font-bold">Review Status Split</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="h-[200px]">
-                    <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-                      <PieChart>
-                        <Pie
-                          data={pieData}
-                          innerRadius={60}
-                          outerRadius={80}
-                          paddingAngle={5}
-                          dataKey="value"
-                          onClick={(data) => setSelectedStatus(selectedStatus === data.name ? null : data.name)}
-                          className="cursor-pointer"
-                        >
-                          {pieData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={PIE_COLORS[entry.name] || '#CBD5E1'} strokeWidth={selectedStatus === entry.name ? 4 : 0} stroke="currentColor" className="text-background" />
-                          ))}
-                        </Pie>
-                        <Tooltip />
-                      </PieChart>
-                    </ResponsiveContainer>
+                  <div className="h-[200px] w-full">
+                    {activeTab === 'library' && (
+                      <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+                        <PieChart>
+                          <Pie
+                            data={pieData}
+                            innerRadius={60}
+                            outerRadius={80}
+                            paddingAngle={5}
+                            dataKey="value"
+                            onClick={(data) => setSelectedStatus(selectedStatus === data.name ? null : data.name)}
+                            className="cursor-pointer outline-none"
+                          >
+                            {pieData.map((entry, index) => (
+                              <Cell 
+                                key={`cell-${index}`} 
+                                fill={PIE_COLORS[entry.name] || '#CBD5E1'} 
+                                strokeWidth={selectedStatus === entry.name ? 4 : 0} 
+                                stroke="currentColor" 
+                                className="text-background outline-none" 
+                              />
+                            ))}
+                          </Pie>
+                          <Tooltip />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    )}
                   </div>
                   <div className="space-y-1 mt-4">
                     {pieData.map((entry) => (
@@ -300,19 +309,29 @@ export function ReportDetailsPage() {
                   <Activity className="h-4 w-4 text-blue-500" /> Top 5 Visited AI Apps (30 Day Trend)
                 </CardTitle>
               </CardHeader>
-              <CardContent className="h-[350px]">
-                <ResponsiveContainer width="100%" height={350} minWidth={0} aspect={16/9}>
-                  <AreaChart data={topAppsTrend}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.1} />
-                    <XAxis dataKey="name" hide />
-                    <YAxis />
-                    <Tooltip />
-                    <Legend />
-                    {trendKeys.map((key, i) => (
-                      <Area key={key} type="monotone" dataKey={key} stackId="1" stroke={`hsl(${i * 60}, 70%, 50%)`} fill={`hsl(${i * 60}, 70%, 50%)`} fillOpacity={0.4} />
-                    ))}
-                  </AreaChart>
-                </ResponsiveContainer>
+              <CardContent className="h-[400px]">
+                {activeTab === 'security' && (
+                  <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+                    <AreaChart data={topAppsTrend} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.1} />
+                      <XAxis dataKey="name" hide />
+                      <YAxis />
+                      <Tooltip />
+                      <Legend />
+                      {trendKeys.map((key, i) => (
+                        <Area 
+                          key={key} 
+                          type="monotone" 
+                          dataKey={key} 
+                          stackId="1" 
+                          stroke={`hsl(${i * 60}, 70%, 50%)`} 
+                          fill={`hsl(${i * 60}, 70%, 50%)`} 
+                          fillOpacity={0.4} 
+                        />
+                      ))}
+                    </AreaChart>
+                  </ResponsiveContainer>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
