@@ -19,11 +19,17 @@ interface ScorecardProps {
   score: number;
 }
 export function ExecutiveScorecard({ summary, score }: ScorecardProps) {
-  const isHighRiskShadow = summary.shadowUsage > 50;
+  // Defensive fallbacks for all metrics
+  const shadowUsageValue = summary?.shadowUsage ?? 0;
+  const unapprovedCount = summary?.unapprovedApps ?? 0;
+  const healthScore = score ?? 0;
+  const dataRisk = summary?.dataExfiltrationRisk ?? '0 MB';
+  const compliance = summary?.complianceScore ?? 0;
+  const isHighRiskShadow = shadowUsageValue > 50;
   const cards = [
     {
       title: "Shadow AI Usage",
-      value: `${summary.shadowUsage.toFixed(1)}%`,
+      value: `${shadowUsageValue.toFixed(1)}%`,
       description: "Traffic via unmanaged endpoints.",
       icon: Activity,
       color: isHighRiskShadow ? "text-red-500" : "text-[#F38020]",
@@ -34,17 +40,17 @@ export function ExecutiveScorecard({ summary, score }: ScorecardProps) {
     },
     {
       title: "Unapproved Apps",
-      value: summary.unapprovedApps,
+      value: unapprovedCount,
       description: "Active restricted AI assets.",
       icon: AlertTriangle,
-      color: summary.unapprovedApps > 0 ? "text-red-500" : "text-green-500",
-      bg: summary.unapprovedApps > 0 ? "bg-red-500/10" : "bg-green-500/10",
-      badge: summary.unapprovedApps > 0 ? "Critical" : null,
+      color: unapprovedCount > 0 ? "text-red-500" : "text-green-500",
+      bg: unapprovedCount > 0 ? "bg-red-500/10" : "bg-green-500/10",
+      badge: unapprovedCount > 0 ? "Critical" : null,
       tooltip: "Number of Generative AI applications marked 'Unapproved' with current activity."
     },
     {
       title: "Health Score",
-      value: `${score.toFixed(0)}%`,
+      value: `${healthScore.toFixed(0)}%`,
       description: "Aggregate security posture.",
       icon: ShieldCheck,
       color: "text-blue-500",
@@ -53,7 +59,7 @@ export function ExecutiveScorecard({ summary, score }: ScorecardProps) {
     },
     {
       title: "Data Risk",
-      value: summary.dataExfiltrationRisk,
+      value: dataRisk,
       description: "Shadow AI payload volume.",
       icon: Database,
       color: "text-purple-500",
@@ -62,7 +68,7 @@ export function ExecutiveScorecard({ summary, score }: ScorecardProps) {
     },
     {
       title: "Compliance",
-      value: `${summary.complianceScore}%`,
+      value: `${compliance}%`,
       description: "Policy adherence rate.",
       icon: FileCheck,
       color: "text-emerald-500",

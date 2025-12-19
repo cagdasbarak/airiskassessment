@@ -96,34 +96,29 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       unapproved_apps: ["midjourney-v6"]
     };
     // PRECISION JQ LOGIC
-    // .result[] | select(.application_type_id == 25) | .id
     const ai_ids = (mockAppTypes || []).filter(app => app.application_type_id === 25).map(app => app.id);
     const total_ai = ai_ids.length;
-    // managed = [approved, inreview, unapproved].flat
     const managed_set = [
       ...(mockReviewStatus.approved_apps || []),
       ...(mockReviewStatus.in_review_apps || []),
       ...(mockReviewStatus.unapproved_apps || [])
     ];
-    // managed_count = intersection(ai_ids, managed_set)
     const managed_count = ai_ids.filter(id => managed_set.includes(id)).length;
-    // shadow_usage = (totalAI - managed_count) / totalAI * 100
     const shadowUsage = total_ai > 0 ? ((total_ai - managed_count) / total_ai) * 100 : 0;
-    // Unapproved = intersection(ai_ids, unapproved_apps)
     const unapprovedAppsCount = (mockReviewStatus.unapproved_apps || []).filter(id => ai_ids.includes(id)).length;
     const report: AssessmentReport = {
       id: `rep_${Date.now()}`,
       date: now.toISOString().split('T')[0],
       status: 'Completed',
-      score: 100 - (shadowUsage / 2), // Simplistic health score logic
-      riskLevel: shadowUsage > 50 ? 'High' : 'Medium',
+      score: Math.max(0, Math.min(100, 100 - (shadowUsage / 1.5))), // Hardened scoring logic
+      riskLevel: shadowUsage > 50 ? 'High' : shadowUsage > 20 ? 'Medium' : 'Low',
       summary: {
         totalApps: 184,
         aiApps: total_ai,
-        shadowAiApps: total_ai - managed_count,
-        shadowUsage: shadowUsage,
+        shadowAiApps: Math.max(0, total_ai - managed_count),
+        shadowUsage: Number(shadowUsage.toFixed(2)),
         unapprovedApps: unapprovedAppsCount,
-        dataExfiltrationRisk: '420 MB',
+        dataExfiltrationRisk: shadowUsage > 40 ? '420 MB' : '12 MB',
         complianceScore: 72,
         libraryCoverage: 62,
         casbPosture: 88
