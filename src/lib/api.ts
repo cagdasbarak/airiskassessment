@@ -91,43 +91,53 @@ export interface AssessmentReport {
     }>;
   };
 }
+async function safeApi<T>(endpoint: string, options?: RequestInit): Promise<ApiResponse<T>> {
+  const url = `/api${endpoint}`;
+  const res = await fetch(url, options);
+  const logCtx = endpoint.split('/').slice(-1)[0] || endpoint.slice(1);
+  if (!res.ok) {
+    const text = await res.text().catch(() => '<empty>');
+    console.error(`Client API ${logCtx} error ${res.status}:`, text.slice(0, 300));
+    return { success: false, error: `Server error ${res.status}: ${text.slice(0, 100)}` } as ApiResponse<T>;
+  }
+  try {
+    return await res.json() as ApiResponse<T>;
+  } catch (e: any) {
+    const text = await res.text().catch(() => '<empty>');
+    console.error(`Client API ${logCtx} bad JSON: ${e?.message}`, text.slice(0, 300));
+    return { success: false, error: 'Invalid JSON from server' } as ApiResponse<T>;
+  }
+}
+
 export const api = {
   async getSettings(): Promise<ApiResponse<Settings>> {
-    const res = await fetch('/api/settings');
-    return res.json();
+    return safeApi<Settings>('/settings');
   },
   async updateSettings(settings: Settings): Promise<ApiResponse<void>> {
-    const res = await fetch('/api/settings', {
+    return safeApi<void>('/settings', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(settings),
     });
-    return res.json();
   },
   async checkLicense(): Promise<ApiResponse<LicenseInfo>> {
-    const res = await fetch('/api/license-check', { method: 'POST' });
-    return res.json();
+    return safeApi<LicenseInfo>('/license-check', { method: 'POST' });
   },
   async listReports(): Promise<ApiResponse<AssessmentReport[]>> {
-    const res = await fetch('/api/reports');
-    return res.json();
+    return safeApi<AssessmentReport[]>('/reports');
   },
   async getReport(id: string): Promise<ApiResponse<AssessmentReport>> {
-    const res = await fetch(`/api/reports/${id}`);
-    return res.json();
+    return safeApi<AssessmentReport>(`/reports/${id}`);
   },
   async deleteReport(id: string): Promise<ApiResponse<void>> {
-    const res = await fetch(`/api/reports/${id}`, {
+    return safeApi<void>(`/reports/${id}`, {
       method: 'DELETE',
     });
-    return res.json();
   },
   async startAssessment(): Promise<ApiResponse<AssessmentReport>> {
-    const res = await fetch('/api/assess', { method: 'POST' });
-    return res.json();
+    return safeApi<AssessmentReport>('/assess', { method: 'POST' });
   },
   async getLogs(): Promise<ApiResponse<AuditLog[]>> {
-    const res = await fetch('/api/logs');
-    return res.json();
+    return safeApi<AuditLog[]>('/logs');
   },
 };

@@ -34,6 +34,22 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         const settings = await controller.getSettings();
         return c.json({ success: true, data: settings });
     });
+    const safeCFJson = async (resp: Response): Promise<any> => {
+        if (!resp.ok) {
+            const errText = await resp.text().catch(() => '<empty>');
+            console.error(`CF API error ${resp.status} ${resp.url.split('/').slice(-2).join('/')}:`, errText.slice(0, 300));
+            return { success: false, result: [], errors: [{ message: `HTTP ${resp.status}: ${errText.slice(0, 100)}` }], errorMsg: errText.slice(0, 200) };
+        }
+        try {
+            const data = await resp.json();
+            return data;
+        } catch (e: any) {
+            const errText = await resp.text().catch(() => '<empty>');
+            console.error(`CF API bad JSON ${resp.url.split('/').slice(-2).join('/')}: ${e.message}`, errText.slice(0, 300));
+            return { success: false, result: [], errors: [{ message: 'Invalid JSON response' }], errorMsg: 'Invalid JSON' };
+        }
+    };
+
     app.post('/api/settings', async (c) => {
         let body;
         try {
@@ -58,13 +74,13 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         try {
             const headers = getCFHeaders(settings.email, settings.apiKey);
             const subRes = await fetch(`https://api.cloudflare.com/client/v4/accounts/${settings.accountId}/subscriptions`, { headers });
-            const subData = await subRes.json() as any;
-            if (!subRes.ok || !subData.success) return c.json({ success: false, error: subData.errors?.[0]?.message || 'Invalid Credentials' }, { status: 401 });
+            const subData = await safeCFJson(subRes);
+            if (!subData.success) return c.json({ success: false, error: subData.errors?.[0]?.message || 'Invalid Credentials' }, { status: 401 });
             const results = subData.result || [];
             const plan = results.find((s: any) => s.rate_plan?.public_name?.includes('Zero Trust'))?.rate_plan?.public_name || 'Zero Trust Free';
             const totalLicenses = results.find((s: any) => s.component_values?.some((cv: any) => cv.name === 'users'))?.component_values?.find((cv: any) => cv.name === 'users')?.value || 50;
             const usersRes = await fetch(`https://api.cloudflare.com/client/v4/accounts/${settings.accountId}/access/users?per_page=1`, { headers });
-            const usersData = await usersRes.json() as any;
+            const usersData = await safeCFJson(usersRes);
             const usedLicenses = usersData.result_info?.total_count || 0;
             const checkAddon = (name: string) => results.some((s: any) => s.component_values?.some((cv: any) => cv.name === name && cv.value >= 1));
             const result = {
@@ -114,13 +130,16 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
                 fetch(`https://api.cloudflare.com/client/v4/accounts/${settings.accountId}/gateway/rules`, { headers }),
                 fetch(`https://api.cloudflare.com/client/v4/accounts/${settings.accountId}/access/policies`, { headers })
             ]);
-            const typesData = (await typesR.json() as any);
-            const reviewData = (await reviewR.json() as any);
-            const appsDataResult = (await appsR.json() as any).result || [];
-            const dlpDataResult = (await dlpR.json() as any).result || [];
-            const eventsDataResult = (await accessR.json() as any).result || [];
-            const gtwPols = (await gtwPolR.json() as any).result || [];
-            const accPols = (await accPolR.json() as any).result || [];
+            const typesData = await safeCFJson(typesR);
+            const reviewData = await safeCFJson(reviewR);
+            const appsJson = await safeCFJson(appsR);
+            const appsDataResult = appsJson.result || [];
+            const dlpJson = await safeCFJson(dlpR);
+            const dlpDataResult = dlpJson.result || [];
+            const gtwJson = await safeCFJson(gtwPolR);
+            const gtwPols = gtwJson.result || [];
+            const accJson = await safeCFJson(accPolR);
+            const accPols = accJson.result || [];
             const ai_ids = (typesData.result || [])
                 .filter((t: any) => t.application_type_id === 25)
                 .map((t: any) => t.id);
@@ -145,6 +164,8 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
             const totalExfilMB = Math.floor(dlpDataResult.reduce((acc: number, cur: any) => acc + (cur.fileSize || 0), 0) / (1024 * 1024));
             let casbPost = aiApps.length > 0 ? aiApps.reduce((acc: number, cur: any) => acc + (cur.risk_score || 0), 0) / aiApps.length : 0;
             if (!Number.isFinite(casbPost)) casbPost = 0;
+            const eventsJson = await safeCFJson(accessR);
+            const eventsDataResult = eventsJson.result || [];
             const userFreq = eventsDataResult.reduce((acc: Record<string, number>, e: any) => {
                 if (e.userEmail) acc[e.userEmail] = (acc[e.userEmail] || 0) + 1;
                 return acc;
