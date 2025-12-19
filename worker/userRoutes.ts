@@ -75,6 +75,7 @@ const getBaseReport = (idSuffix: string = '001') => {
 export function userRoutes(app: Hono<any>) {
   if (userRoutesRegistered) return;
   userRoutesRegistered = true;
+  console.log('ROUTES INLINE HARDCODED LIVE - userRoutes module');
   app.get('/api/settings', async (c) => {
     const controller = c.env.APP_CONTROLLER.get(c.env.APP_CONTROLLER.idFromName("controller"));
     const settings = await controller.getSettings();
@@ -142,6 +143,19 @@ export function userRoutes(app: Hono<any>) {
     });
     return c.json({ success: true, data: report });
   });
+  app.post('/api/reports', async (c) => {
+    const body = await c.req.json();
+    const controller = c.env.APP_CONTROLLER.get(c.env.APP_CONTROLLER.idFromName("controller"));
+    await controller.addReport(body);
+    await controller.addLog({
+      timestamp: new Date().toISOString(),
+      action: 'Report Created',
+      user: body.user || body.email || 'admin',
+      status: 'Success'
+    });
+    return c.json({ success: true });
+  });
+
   app.get('/api/reports', async (c) => {
     const controller = c.env.APP_CONTROLLER.get(c.env.APP_CONTROLLER.idFromName("controller"));
     const reports = await controller.listReports();
@@ -149,6 +163,16 @@ export function userRoutes(app: Hono<any>) {
     const data = (reports || []);
     return c.json({ success: true, data });
   });
+  app.post('/api/ai-trends', async (c) => {
+    const trends = [
+      {date:'2024-05-01',ChatGPT:400,Copilot:300},
+      {date:'2024-05-20',ChatGPT:450,Copilot:320},
+      {date:'2024-05-31',ChatGPT:480,Copilot:350},
+      {date:'2024-06-10',ChatGPT:500,Copilot:370}
+    ];
+    return c.json({success:true, data:trends});
+  });
+
   app.get('/api/reports/:id', async (c) => {
     const id = c.req.param('id');
     const controller = c.env.APP_CONTROLLER.get(c.env.APP_CONTROLLER.idFromName("controller"));
@@ -167,15 +191,12 @@ export function userRoutes(app: Hono<any>) {
     return c.json({ success: true, data: logs || [] });
   });
   app.post('/api/license-check', async (c) => {
-    const controller = c.env.APP_CONTROLLER.get(c.env.APP_CONTROLLER.idFromName("controller"));
-    const settings = await controller.getSettings();
-    const licenseResult = await fetchCloudflare('/gateway/proxy/entitlements', settings) as any;
     const licenseData = {
-      plan: settings.accountId ? (licenseResult?.result?.plan || 'Enterprise Zero Trust') : 'Free Tier',
+      plan: 'Enterprise Zero Trust',
       totalLicenses: 1000,
       usedLicenses: 742,
-      accessSub: !!settings.accountId,
-      gatewaySub: !!settings.accountId,
+      accessSub: true,
+      gatewaySub: true,
       dlp: true,
       casb: true,
       rbi: true

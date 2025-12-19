@@ -1,6 +1,6 @@
 import React from "react";
 import { Home, FileText, History, Settings, ShieldAlert, LogOut, User } from "lucide-react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import {
   Sidebar,
   SidebarContent,
@@ -13,13 +13,11 @@ import {
 } from "@/components/ui/sidebar";
 import { useAppStore } from "@/lib/store";
 export function AppSidebar(): JSX.Element {
-  const location = useLocation();
-  const navigate = useNavigate();
-  const logout = useAppStore(s => s.logout);
-  const username = useAppStore(s => s.username);
+  const logout = useAppStore.getState().logout;
+  const username = useAppStore.getState().username ?? 'Guest';
   const handleLogout = () => {
     logout();
-    navigate("/login");
+    window.location.href = '/login';
   };
   const menuItems = [
     { title: "Dashboard", icon: Home, path: "/" },
@@ -43,20 +41,23 @@ export function AppSidebar(): JSX.Element {
       <SidebarContent>
         <SidebarGroup>
           <SidebarMenu>
-            {menuItems.map((item) => (
-              <SidebarMenuItem key={item.path}>
-                <SidebarMenuButton
-                  asChild
-                  isActive={location.pathname === item.path}
-                  className="py-6"
-                >
-                  <Link to={item.path} className="flex items-center gap-3">
-                    <item.icon className="h-5 w-5" />
-                    <span className="font-medium">{item.title}</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            ))}
+            {(() => {
+              const path = window.location.pathname;
+              return menuItems.map((item) => (
+                <SidebarMenuItem key={item.path}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={path === item.path}
+                    className="py-6"
+                  >
+                    <Link to={item.path} className="flex items-center gap-3">
+                      <item.icon className="h-5 w-5" />
+                      <span className="font-medium">{item.title}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ));
+            })()}
           </SidebarMenu>
         </SidebarGroup>
       </SidebarContent>
@@ -66,7 +67,7 @@ export function AppSidebar(): JSX.Element {
             <User className="h-4 w-4 text-primary" />
           </div>
           <div className="flex flex-col overflow-hidden">
-            <span className="text-sm font-semibold truncate">{username ?? 'Guest'}</span>
+            <span className="text-sm font-semibold truncate">{username}</span>
             <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Active Session</span>
           </div>
         </div>
