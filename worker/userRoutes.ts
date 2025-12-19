@@ -3,35 +3,7 @@ console.log('[RISKGUARD] Initializing PRECISION SHADOW AI Architecture...');
 let userRoutesRegistered = false;
 async function fetchCloudflare(endpoint: string, settings: any) {
   const url = `https://api.cloudflare.com/client/v4/accounts/${settings.accountId}${endpoint}`;
-  
-  // Mock data for sandbox demo
-  if (endpoint.includes('/gateway/app_types')) {
-    const mockData = {
-      result: Array.from({length:600}, (_,i)=>({
-        id:`app_${i}`, 
-        application_type_id: i<532 ? 25 : Math.floor(Math.random()*24)+1
-      }))
-    };
-    console.log('[RAW_APP_TYPES]', {totalApps: 600, aiCount:532});
-    return mockData;
-  }
-  if (endpoint.includes('/gateway/apps/review_status')) {
-    const mockData = {
-      result: {
-        approved_apps:Array.from({length:5},(_,i)=>`app_${i}`),
-        in_review_apps:Array.from({length:2},(_,i)=>`app_${5+i}`),
-        unapproved_apps:Array.from({length:3},(_,i)=>`app_${7+i}`)
-      }
-    };
-    console.log('[RAW_REVIEW_STATUS]', mockData.result);
-    return mockData;
-  }
-  if (endpoint.includes('/gateway/proxy/entitlements')) {
-    const mockData = {result:{plan:'Enterprise Zero Trust'}};
-    console.log('[RAW_ENTITLEMENTS]', mockData);
-    return mockData;
-  }
-  
+
   try {
     const res = await fetch(url, {
       headers: {
@@ -45,9 +17,15 @@ async function fetchCloudflare(endpoint: string, settings: any) {
       console.error(`[CF_API_ERROR] ${res.status} ${endpoint}:`, text);
       return null;
     }
-    return await res.json();
+    const json = await res.json();
+    console.log(`[FULL_${endpoint.replace(/\//g,'_').toUpperCase()}]`, JSON.stringify(json));
+    return json;
   } catch (err) {
     console.error(`[CF_FETCH_EXCEPTION] ${endpoint}:`, err);
+    try {
+      const text = await fetch(url, {headers: {'X-Auth-Email': settings.email, 'X-Auth-Key': settings.apiKey, 'Content-Type': 'application/json'}}).then(r=>r.text());
+      console.log('PARSE_FAIL_RESPONSE', endpoint, text.slice(0,500));
+    } catch(e) {}
     return null;
   }
 }
@@ -117,35 +95,31 @@ export function userRoutes(app: Hono<any>) {
   app.post('/api/assess', async (c) => {
     const controller = c.env.APP_CONTROLLER.get(c.env.APP_CONTROLLER.idFromName("controller"));
     const settings = await controller.getSettings();
-    console.log('[ASSESS_SETTINGS]', {
-      accountId:settings.accountId !== '' && settings.accountId !== undefined,
-      email:settings.email !== '' && settings.email !== undefined,
-      apiKey:settings.apiKey !== '' && settings.apiKey !== undefined ? 'LOADED':'MISSING'
+    console.log('[ASSESS_CREDS]', {
+      hasAccount:!!settings.accountId,
+      hasEmail:!!settings.email,
+      hasKey:settings.apiKey?.length>0
     });
     let shadowUsage = 0;
     let total_ai = 0;
     let managed_count = 0;
     let debugInfo: any = { aiIds: [], managedIds: [] };
-    if ((settings.accountId !== '' && settings.accountId !== undefined) && 
+    if ((settings.accountId !== '' && settings.accountId !== undefined) &&
         (settings.apiKey !== '' && settings.apiKey !== undefined)) {
-      // Cast to any to resolve TS2339 result property error
       const appTypes = await fetchCloudflare('/gateway/app_types?per_page=1000', settings) as any;
       const reviewStatus = await fetchCloudflare('/gateway/apps/review_status', settings) as any;
-      if (appTypes?.result && reviewStatus?.result) {
-        const ai_ids = appTypes.result
-          .filter((t: any) => t.application_type_id === 25)
-          .map((t: any) => t.id);
-        total_ai = ai_ids.length;
-        const managed_ids = [
-          ...(reviewStatus.result.approved_apps || []),
-          ...(reviewStatus.result.in_review_apps || []),
-          ...(reviewStatus.result.unapproved_apps || [])
-        ];
-        managed_count = ai_ids.filter((id: string) => managed_ids.includes(id)).length;
-        const shadow_count = total_ai - managed_count;
-        shadowUsage = total_ai > 0 ? Math.round((shadow_count / total_ai) * 100 * 1000) / 1000 : 0;
-        debugInfo = { aiIds: ai_ids, managedIds: managed_ids, total_ai, managed_count, shadowUsage };
-      }
+      const ai_ids = (appTypes?.result || []).filter((t:any)=>t.application_type_id===25).map((t:any)=>t.id) || [];
+      total_ai = ai_ids.length;
+      const managed_ids = [
+        ...(reviewStatus?.result?.approved_apps || []),
+        ...(reviewStatus?.result?.in_review_apps || []),
+        ...(reviewStatus?.result?.unapproved_apps || [])
+      ];
+      managed_count = ai_ids.filter((id:string)=>managed_ids.includes(id)).length;
+      const shadow_count = total_ai - managed_count;
+      shadowUsage = total_ai>0 ? Math.round(shadow_count/total_ai*100*1000)/1000 : 0;
+      debugInfo = { aiIds: ai_ids, managedIds: managed_ids, total_ai, managed_count, shadowUsage };
+      console.log(`SHADOW_COMPUTE_RAW total_ai=${total_ai} managed=${managed_count} shadowUsage=${shadowUsage}`);
     }
     const report = {
       ...getBaseReport(),
@@ -195,17 +169,17 @@ export function userRoutes(app: Hono<any>) {
     const controller = c.env.APP_CONTROLLER.get(c.env.APP_CONTROLLER.idFromName("controller"));
     const settings = await controller.getSettings();
     const licenseResult = await fetchCloudflare('/gateway/proxy/entitlements', settings) as any;
-    const mockLicense = {
+    const licenseData = {
       plan: settings.accountId ? (licenseResult?.result?.plan || 'Enterprise Zero Trust') : 'Free Tier',
       totalLicenses: 1000,
       usedLicenses: 742,
-      accessSub: settings.accountId !== '' && settings.accountId !== undefined,
-      gatewaySub: settings.accountId !== '' && settings.accountId !== undefined,
+      accessSub: !!settings.accountId,
+      gatewaySub: !!settings.accountId,
       dlp: true,
       casb: true,
       rbi: true
     };
-    return c.json({ success: true, data: mockLicense });
+    return c.json({ success: true, data: licenseData });
   });
 }
 export function coreRoutes(app: Hono<any>): void {}

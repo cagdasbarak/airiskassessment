@@ -1,5 +1,4 @@
 import React from 'react';
-import { Navigate } from 'react-router-dom';
 import { useAppStore } from '@/lib/store';
 import { Loader2, ShieldCheck } from 'lucide-react';
 interface ProtectedRouteProps {
@@ -10,10 +9,9 @@ interface ProtectedRouteProps {
  * Monitors Zustand hydration state to prevent false-negative redirects on refresh.
  */
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
-  // Reactive hooks for state and hydration
-  const isAuthenticated = useAppStore(s => s.isAuthenticated);
-  const hasHydrated = useAppStore(s => s._hasHydrated);
-  // While waiting for localStorage hydration, show a secure loading state
+  const hasHydrated = useAppStore.getState()._hasHydrated;
+  const isAuthenticated = useAppStore.getState().isAuthenticated;
+
   if (!hasHydrated) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-background">
@@ -25,9 +23,11 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
       </div>
     );
   }
-  // If hydration finished and not authenticated, redirect to login via Navigate component
+
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    window.location.href = '/login';
+    return null;
   }
+
   return <>{children}</>;
 }
