@@ -58,13 +58,6 @@ export interface AppUsageEvent {
   bytesKB: number;
   prompt?: string;
 }
-export interface AssessmentReportDebug {
-  aiIds: string[];
-  totalAI: number;
-  managedIds: string[];
-  managedCount: number;
-  shadowUsage: number;
-}
 export interface AssessmentReport {
   id: string;
   date: string;
@@ -98,32 +91,31 @@ export interface AssessmentReport {
   }>;
   securityCharts: SecurityCharts;
   aiInsights?: AIInsights;
-  debug?: AssessmentReportDebug;
+  debug?: {
+    aiIds: string[];
+    totalAI: number;
+    managedIds: string[];
+    managedCount: number;
+    shadowUsage: number;
+  };
 }
 async function safeApi<T>(endpoint: string, options?: RequestInit): Promise<ApiResponse<T>> {
   const url = `/api${endpoint}`;
   try {
     const res = await fetch(url, options);
-    const text = await res.text();
     if (!res.ok) {
+      const text = await res.text();
       let errorData;
       try {
-        errorData = text ? JSON.parse(text) : { error: `Server error ${res.status}` };
+        errorData = JSON.parse(text);
       } catch {
-        errorData = { error: `Server error ${res.status}`, detail: text.slice(0, 100) };
+        errorData = { error: `Server error ${res.status}` };
       }
-      return { success: false, error: errorData.error, detail: errorData.detail } as ApiResponse<T>;
+      return { success: false, error: errorData.error || errorData.message } as ApiResponse<T>;
     }
-    if (!text || text.trim().length === 0) return { success: true } as ApiResponse<T>;
-    try {
-      return JSON.parse(text) as ApiResponse<T>;
-    } catch (e) {
-      return {
-        success: false,
-        error: 'Malformed response received from server',
-        detail: 'The backend returned a non-JSON payload.'
-      } as ApiResponse<T>;
-    }
+    const text = await res.text();
+    if (!text) return { success: true } as ApiResponse<T>;
+    return JSON.parse(text) as ApiResponse<T>;
   } catch (error: any) {
     return { success: false, error: 'Network connection failed' } as ApiResponse<T>;
   }
@@ -141,5 +133,5 @@ export const api = {
   deleteReport: (id: string) => safeApi<void>(`/reports/${id}`, { method: 'DELETE' }),
   startAssessment: () => safeApi<AssessmentReport>('/assess', { method: 'POST' }),
   getLogs: () => safeApi<AuditLog[]>('/logs'),
-  getAiTrends: () => safeApi<{ topAppsTrends: Array<Record<string, any>> }>('/ai-trends'),
+  getAiTrends: () => safeApi<{ topAppsTrends: Array<Record<string, any>> }>('/assess'), // Reusing assess data for trends in this phase
 };
